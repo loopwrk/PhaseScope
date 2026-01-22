@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import * as THREE from "three";
-
-const wavLoaded = ref(false);
-
-const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+import {
+    type FrequencyResolution,
+    getAnalysisWindowSize,
+    analyzeFrequencyBand,
+    freqContentToHz,
+    ampToOscillationRange
+} from "~/utils/audio/analysis";
 
 const snapshotCorridorPoints = ref(null as THREE.Points | null);
 const snapshotCorridorLines = ref(null as THREE.Line | null);
@@ -21,27 +24,8 @@ const initaliseScene = () => {
     three.init();
 };
 
-interface AudioState {
-    ctx: AudioContext | null;
-    buffer: AudioBuffer | null;
-    source: AudioBufferSourceNode | null;
-    wavStartedAt: number;
-    wavOffset: number;
-    started: boolean;
-}
-
-interface FileInput extends File {
-    arrayBuffer(): Promise<ArrayBuffer>;
-}
-
-const audio: AudioState = {
-    ctx: null,
-    buffer: null,
-    source: null,
-    wavStartedAt: 0,
-    wavOffset: 0,
-    started: false,
-};
+// Initialize WAV player composable
+const { audio, wavLoaded, loadWavFile: loadWavFileBase, startAudio, stopAllAudio, getPlaybackTimeSeconds } = useWavPlayer();
 
 const corridorState = ref({
     buffer: null as AudioBuffer | null,
@@ -53,7 +37,7 @@ const corridorState = ref({
     ringRadius: 1.8,
     // how many frames have been written into the positions buffer
     builtFrames: 0,
-    // typed array backing the Points geometry
+    // array backing the Points geometry
     pos: null as Float32Array | null,
     // Oscillation data
     frequencies: null as Float32Array | null,
@@ -63,23 +47,8 @@ const corridorState = ref({
 
 const oscillationEnabled = ref(false);
 
-// Frequency analysis window sizes (in samples)
-// Smaller = better temporal resolution, larger = better frequency resolution
-const ANALYSIS_WINDOW_TEMPORAL = 256;  // Fast response, good for percussion/transients
-const ANALYSIS_WINDOW_BALANCED = 512;  // Balanced time/frequency resolution
-const ANALYSIS_WINDOW_SPECTRAL = 2048; // Detailed frequency, good for sustained tones
-
-type FrequencyResolution = 'temporal' | 'balanced' | 'spectral';
+// Import audio analysis utilities
 const frequencyResolution = ref<FrequencyResolution>('balanced');
-
-const getAnalysisWindowSize = () => {
-    switch (frequencyResolution.value) {
-        case 'temporal': return ANALYSIS_WINDOW_TEMPORAL;
-        case 'spectral': return ANALYSIS_WINDOW_SPECTRAL;
-        case 'balanced':
-        default: return ANALYSIS_WINDOW_BALANCED;
-    }
-};
 
 const corridorMeta = ref({
     zStep: 0.08, // distance between frames along Z axis
@@ -206,23 +175,16 @@ const initLiveSnapshotCorridor = (buffer: AudioBuffer) => {
     scene.add(lines);
 }
 
-const loadWavFile = async (file: FileInput) => {
-    console.log('Loading WAV file:', file.name);
-    const ctx = audio.ctx || new (window.AudioContext || (window as any).webkitAudioContext)();
-    audio.ctx = ctx;
-
-    const arrayBuf = await file.arrayBuffer();
-    const decoded = await ctx.decodeAudioData(arrayBuf);
-    console.log('WAV file decoded:', decoded);
-    audio.buffer = decoded;
+const loadWavFile = async (file: File) => {
+    await loadWavFileBase(file as any);
 
     // Build the 3D snapshot corridor progressively as playback advances
-    initLiveSnapshotCorridor(decoded);
+    if (audio.buffer) {
+        initLiveSnapshotCorridor(audio.buffer);
+    }
 
     // Enable auto-follow camera mode
     autoFollowEnabled.value = true;
-
-    wavLoaded.value = true;
 }
 
 const handleFileChange = async (event: Event) => {
@@ -231,110 +193,11 @@ const handleFileChange = async (event: Event) => {
     if (!file) return;
 
     try {
-        await loadWavFile(file as FileInput);
+        await loadWavFile(file);
     } catch (err) {
         console.error('Failed to load WAV file:', err);
         alert('Failed to load WAV.');
     }
-}
-
-const playWav = (offsetSeconds = 0) => {
-    if (!audio.ctx || !audio.buffer) return;
-    stopWavOnly();
-
-    console.log('Starting WAV playback at offset', offsetSeconds);
-
-    const src = audio.ctx.createBufferSource();
-    src.buffer = audio.buffer;
-
-    console.log('src.buffer =', src.buffer);
-
-    const gain = audio.ctx.createGain();
-    const gainLevel = 0.85; // Reduce volume to 85% to avoid clipping
-    gain.gain.value = gainLevel;
-    src.connect(gain).connect(audio.ctx.destination);
-
-    audio.source = src;
-    audio.wavStartedAt = audio.ctx.currentTime;
-    audio.wavOffset = offsetSeconds;
-
-    src.start(0, offsetSeconds);
-    src.onended = () => {
-        // leave the corridor in place; just stop advancing playback mapping
-        audio.source = null;
-    };
-}
-
-const stopWavOnly = () => {
-    if (audio.source) {
-        try {
-            // store current offset so we can resume if desired
-            const played = audio.ctx!.currentTime - audio.wavStartedAt;
-            audio.wavOffset = clamp(audio.wavOffset + played, 0, audio.buffer ? audio.buffer.duration : Infinity);
-            audio.source.stop();
-        } catch (_) { }
-        audio.source = null;
-    }
-}
-
-const stopAllAudio = () => {
-    stopWavOnly();
-    audio.started = false;
-}
-
-const startAudio = async () => {
-    console.log('Starting audio playback');
-    if (audio.ctx) {
-        await audio.ctx.resume();
-    }
-    audio.started = true;
-    playWav(0);
-}
-
-// Analyze frequency content using derivative energy (rate of change)
-// High frequencies change rapidly, low frequencies change slowly
-const analyzeFrequencyBand = (data: Float32Array, startIdx: number, windowLen: number) => {
-    // Ensure integer indices to avoid fractional array access (e.g. data[123.5])
-    const safeStartIdx = Math.max(0, Math.floor(startIdx));
-    const minSamples = ref(8)
-    const endIdx = Math.min(safeStartIdx + windowLen, data.length);
-    const actualLen = endIdx - safeStartIdx;
-    const midFreq = 0.5
-    if (actualLen < minSamples.value) return midFreq;
-
-    let lowEnergy = ref(0);   // Energy in the signal itself (slow changes)
-    let highEnergy = ref(0);  // Energy in the derivative (fast changes)
-
-    // Calculate energy in signal and its derivative
-    for (let i = safeStartIdx; i < endIdx - 1; i++) {
-        const sample = data[i] ?? 0;
-        const nextSample = data[i + 1] ?? 0;
-        const derivative = nextSample - sample; // Rate of change
-
-        lowEnergy.value += sample * sample;
-        highEnergy.value += derivative * derivative;
-    }
-
-    // Normalize energies
-    lowEnergy.value = Math.sqrt(lowEnergy.value / actualLen);
-    highEnergy.value = Math.sqrt(highEnergy.value / actualLen);
-
-    const totalEnergy = lowEnergy.value + highEnergy.value;
-    if (totalEnergy < 0.001) return midFreq; // Silence
-
-    // Ratio of high to total energy indicates frequency content
-    // More high energy = higher frequencies
-    const highRatio = highEnergy.value / totalEnergy;
-
-    // Map to 0-1 range with enhanced contrast
-    const contrastMultiplier = 3;
-    return clamp(highRatio * contrastMultiplier, 0, 1);
-}
-
-const getPlaybackTimeSeconds = () => {
-    if (!audio.ctx) return 0;
-    const played = audio.source ? (audio.ctx.currentTime - audio.wavStartedAt) : 0;
-    return clamp(audio.wavOffset + played, 0, audio.buffer ? audio.buffer.duration : Infinity);
 }
 
 const getTargetFrameForPlayback = () => {
@@ -382,7 +245,7 @@ const buildOneCorridorFrame = (frameIndex: number) => {
         const normalizedAmp = clamp(amplitude, 0, 1);
 
         // Analyze frequency content in a small window around this sample
-        const analysisWindow = getAnalysisWindowSize();
+        const analysisWindow = getAnalysisWindowSize(frequencyResolution.value);
         const windowCenteringCalc = 2;
         const windowStart = Math.max(0, i - analysisWindow / windowCenteringCalc);
 
@@ -423,16 +286,10 @@ const buildOneCorridorFrame = (frameIndex: number) => {
         const pointIndex = frameIndex * pointsPerFrame + k;
 
         // Convert freqContent (0-1) to Hz using logarithmic scale
-        // Low frequencies: ~100 Hz, High frequencies: ~8000 Hz
-        const minFreqHz = 100;
-        const maxFreqHz = 8000;
-        const hz = minFreqHz * Math.pow(maxFreqHz / minFreqHz, freqContent);
-        frequencies[pointIndex] = hz;
+        frequencies[pointIndex] = freqContentToHz(freqContent);
 
         // Store amplitude (scale to reasonable oscillation range: 0.005 to 0.05 units)
-        const minOscAmpRange = 0.045;
-        const maxOscAmpRange = 0.005;
-        amplitudes[pointIndex] = normalizedAmp * minOscAmpRange + maxOscAmpRange;
+        amplitudes[pointIndex] = ampToOscillationRange(normalizedAmp);
 
         // Store anchor position (original position before any oscillation)
         anchorPositions[p] = pos[p] ?? 0;
