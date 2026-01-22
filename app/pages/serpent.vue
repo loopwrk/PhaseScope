@@ -7,8 +7,9 @@ import {
     freqContentToHz,
     ampToOscillationRange
 } from "~/utils/audio/analysis";
+import type { RenderMode } from "~/composables/useCorridorRenderer.client";
 
-const useLineMode = ref(false);
+const renderMode = ref<RenderMode>('points');
 
 const canvasContainer = ref<HTMLDivElement | null>(null);
 const three = useThree(canvasContainer);
@@ -108,7 +109,7 @@ const initLiveSnapshotCorridor = (buffer: AudioBuffer) => {
     // Create geometries using renderer
     const { positions, colors } = renderer.createGeometry({
         totalPoints,
-        useLineMode,
+        renderMode,
         pointsPosition: { x: 0, y: 1.7, z: 0.95 },
         linesPosition: { x: 0, y: 1.7, z: 0 }
     });
@@ -362,8 +363,8 @@ const animate = (now: number) => {
 }
 
 // Watch for render mode changes and update visibility
-watch(useLineMode, (newValue) => {
-    renderer.setRenderMode(newValue);
+watch(renderMode, (newMode) => {
+    renderer.setRenderMode(newMode);
 });
 
 onMounted(() => {
@@ -422,9 +423,9 @@ onUnmounted(() => {
                     </div>
                     <USeparator class="py-2" />
                     <div class="mb-6">
-                        <URadioGroup v-model="useLineMode" legend="Render Mode" size="xl" :items="[
-                            { label: 'Points', value: false },
-                            { label: 'Lines', value: true }
+                        <URadioGroup v-model="renderMode" legend="Render Mode" size="xl" :items="[
+                            { label: 'Points', value: 'points' },
+                            { label: 'Lines', value: 'lines' }
                         ]" :ui="{ legend: 'text-lg text-primary font-bold', label: 'text-primary' }" value-key="value"
                             orientation="horizontal" :disabled="audio.started" />
                     </div>

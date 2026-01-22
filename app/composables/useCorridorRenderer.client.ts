@@ -1,8 +1,10 @@
 import * as THREE from "three";
 
+export type RenderMode = 'points' | 'lines';
+
 export interface CorridorConfig {
   totalPoints: number;
-  useLineMode: Ref<boolean>;
+  renderMode: Ref<RenderMode>;
   pointsPosition?: { x: number; y: number; z: number };
   linesPosition?: { x: number; y: number; z: number };
 }
@@ -41,7 +43,7 @@ export function useCorridorRenderer(scene: THREE.Scene) {
   const createGeometry = (config: CorridorConfig) => {
     clearGeometry();
 
-    const { totalPoints, useLineMode } = config;
+    const { totalPoints, renderMode } = config;
     const positionArrayMultiplier = 3; // x, y, z
     const colorArrayMultiplier = 3; // r, g, b
 
@@ -74,7 +76,7 @@ export function useCorridorRenderer(scene: THREE.Scene) {
     const points = markRaw(new THREE.Points(gPoints, mPoints));
     points.position.set(pointsPos.x, pointsPos.y, pointsPos.z);
     points.frustumCulled = false;
-    points.visible = !useLineMode.value;
+    points.visible = renderMode.value === 'points';
     snapshotCorridorPoints.value = points;
     scene.add(points);
 
@@ -103,7 +105,7 @@ export function useCorridorRenderer(scene: THREE.Scene) {
     const lines = markRaw(new THREE.Line(gLine, mLine));
     lines.position.set(linesPos.x, linesPos.y, linesPos.z);
     lines.frustumCulled = false;
-    lines.visible = useLineMode.value;
+    lines.visible = renderMode.value === 'lines';
     snapshotCorridorLines.value = lines;
     scene.add(lines);
 
@@ -140,12 +142,12 @@ export function useCorridorRenderer(scene: THREE.Scene) {
     }
   };
 
-  const setRenderMode = (useLineMode: boolean) => {
+  const setRenderMode = (mode: RenderMode) => {
     if (snapshotCorridorPoints.value) {
-      snapshotCorridorPoints.value.visible = !useLineMode;
+      snapshotCorridorPoints.value.visible = mode === 'points';
     }
     if (snapshotCorridorLines.value) {
-      snapshotCorridorLines.value.visible = useLineMode;
+      snapshotCorridorLines.value.visible = mode === 'lines';
     }
   };
 
