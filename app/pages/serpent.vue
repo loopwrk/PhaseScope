@@ -8,13 +8,14 @@ import {
     ampToOscillationRange
 } from "~/utils/audio/analysis";
 
-const snapshotCorridorPoints = ref(null as THREE.Points | null);
-const snapshotCorridorLines = ref(null as THREE.Line | null);
 const useLineMode = ref(false);
 
 const canvasContainer = ref<HTMLDivElement | null>(null);
 const three = useThree(canvasContainer);
 const scene = three.scene;
+
+// Initialize corridor renderer
+const renderer = useCorridorRenderer(scene);
 
 const autoFollowEnabled = ref(true);
 
@@ -59,26 +60,8 @@ const corridorMeta = ref({
 });
 
 const clearCorridor = () => {
-    if (snapshotCorridorPoints.value) {
-        scene.remove(snapshotCorridorPoints.value);
-        snapshotCorridorPoints.value.geometry.dispose();
-        if (Array.isArray(snapshotCorridorPoints.value.material)) {
-            snapshotCorridorPoints.value.material.forEach(material => material.dispose());
-        } else {
-            snapshotCorridorPoints.value.material.dispose();
-        }
-        snapshotCorridorPoints.value = null;
-    }
-    if (snapshotCorridorLines.value) {
-        scene.remove(snapshotCorridorLines.value);
-        snapshotCorridorLines.value.geometry.dispose();
-        if (Array.isArray(snapshotCorridorLines.value.material)) {
-            snapshotCorridorLines.value.material.forEach(material => material.dispose());
-        } else {
-            snapshotCorridorLines.value.material.dispose();
-        }
-        snapshotCorridorLines.value = null;
-    }
+    renderer.clearGeometry();
+
     corridorState.value.buffer = null;
     corridorState.value.sr = 0;
     corridorState.value.ch0 = null;
@@ -112,12 +95,6 @@ const initLiveSnapshotCorridor = (buffer: AudioBuffer) => {
     corridorState.value.builtFrames = 0;
 
     const totalPoints = frameCount * pointsPerFrame;
-    const positionArrayMultiplier = 3; // x, y, z
-    const pos = new Float32Array(totalPoints * positionArrayMultiplier);
-    corridorState.value.pos = pos;
-
-    const colorArrayMultiplier = 3;    // r, g, b
-    const colors = new Float32Array(totalPoints * colorArrayMultiplier);
 
     // Allocate oscillation data arrays
     const frequencies = new Float32Array(totalPoints);
@@ -128,51 +105,15 @@ const initLiveSnapshotCorridor = (buffer: AudioBuffer) => {
     corridorState.value.amplitudes = amplitudes;
     corridorState.value.anchorPositions = anchorPositions;
 
-    // Create POINTS version
-    const gPoints = markRaw(new THREE.BufferGeometry());
-    gPoints.setAttribute("position", new THREE.BufferAttribute(pos, positionArrayMultiplier));
-    gPoints.setAttribute("color", new THREE.BufferAttribute(colors, colorArrayMultiplier));
-    gPoints.setDrawRange(0, 0);
-
-    const mPoints = markRaw(new THREE.PointsMaterial({
-        size: 0.02,
-        transparent: true,
-        opacity: 0.95,
-        vertexColors: true,
-    }));
-
-    const pointBasePos = reactive({
-        x: 0,
-        y: 1.7,
-        z: 0.95,
+    // Create geometries using renderer
+    const { positions, colors } = renderer.createGeometry({
+        totalPoints,
+        useLineMode,
+        pointsPosition: { x: 0, y: 1.7, z: 0.95 },
+        linesPosition: { x: 0, y: 1.7, z: 0 }
     });
 
-    const points = markRaw(new THREE.Points(gPoints, mPoints));
-    points.position.set(pointBasePos.x, pointBasePos.y, pointBasePos.z);
-    points.frustumCulled = false;
-    points.visible = !useLineMode.value; // Show points if not in line mode
-    snapshotCorridorPoints.value = points;
-    scene.add(points);
-
-    const gLine = markRaw(new THREE.BufferGeometry());
-    const buffAttrSize = 3;
-    gLine.setAttribute("position", new THREE.BufferAttribute(pos, buffAttrSize));
-    gLine.setAttribute("color", new THREE.BufferAttribute(colors, buffAttrSize));
-    gLine.setDrawRange(0, 0);
-
-    const mLine = markRaw(new THREE.LineBasicMaterial({
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.95,
-        linewidth: 1, // Note: linewidth > 1 only works with WebGLRenderer in some browsers
-    }));
-
-    const lines = markRaw(new THREE.Line(gLine, mLine));
-    lines.position.set(0, 1.7, 0);
-    lines.frustumCulled = false;
-    lines.visible = useLineMode.value; // Show line if in line mode
-    snapshotCorridorLines.value = lines;
-    scene.add(lines);
+    corridorState.value.pos = positions;
 }
 
 const loadWavFile = async (file: File) => {
@@ -217,7 +158,7 @@ const buildOneCorridorFrame = (frameIndex: number) => {
     // Writes a single frame into the preallocated positions buffer.
     const { pointsPerFrame, windowSize, hopSize, zStep } = corridorMeta.value;
     const { ch0, ch1, frameCount, xyScale, ringRadius, pos, frequencies, amplitudes, anchorPositions } = corridorState.value;
-    if (!pos || !ch0 || !ch1 || !snapshotCorridorPoints.value) return;
+    if (!pos || !ch0 || !ch1 || !renderer.hasGeometry()) return;
     if (!frequencies || !amplitudes || !anchorPositions) return;
 
     const frameStart = frameIndex * hopSize;
@@ -225,7 +166,7 @@ const buildOneCorridorFrame = (frameIndex: number) => {
 
     // Each frame occupies a contiguous block.
     let p = frameIndex * pointsPerFrame * 3;
-    const colors = snapshotCorridorPoints.value.geometry.attributes.color?.array as Float32Array | undefined;
+    const colors = renderer.getColorArray();
     if (!colors) return;
 
     for (let k = 0; k < pointsPerFrame; k++) {
@@ -334,19 +275,12 @@ const oscillateExistingPoints = (time: number) => {
     }
 
     // Mark geometry for update
-    if (snapshotCorridorPoints.value) {
-        const pointsPos = snapshotCorridorPoints.value.geometry.attributes.position;
-        if (pointsPos) pointsPos.needsUpdate = true;
-    }
-    if (snapshotCorridorLines.value) {
-        const linesPos = snapshotCorridorLines.value.geometry.attributes.position;
-        if (linesPos) linesPos.needsUpdate = true;
-    }
+    renderer.markGeometryForUpdate(true, false);
 }
 
 const updateLiveSnapshotCorridor = () => {
     // Build frames progressively up to the current playback-derived target.
-    if (!snapshotCorridorPoints.value || !corridorState.value.buffer) return;
+    if (!renderer.hasGeometry() || !corridorState.value.buffer) return;
 
     const targetFrame = getTargetFrameForPlayback();
     const remaining = targetFrame - corridorState.value.builtFrames;
@@ -364,25 +298,13 @@ const updateLiveSnapshotCorridor = () => {
 
     const builtPoints = corridorState.value.builtFrames * corridorMeta.value.pointsPerFrame;
 
-    // Update both points and line geometries
-    if (snapshotCorridorPoints.value) {
-        snapshotCorridorPoints.value.geometry.setDrawRange(0, builtPoints);
-        const pointsPos = snapshotCorridorPoints.value.geometry.attributes.position;
-        const pointsColor = snapshotCorridorPoints.value.geometry.attributes.color;
-        if (pointsPos) pointsPos.needsUpdate = true;
-        if (pointsColor) pointsColor.needsUpdate = true;
-    }
-    if (snapshotCorridorLines.value) {
-        snapshotCorridorLines.value.geometry.setDrawRange(0, builtPoints);
-        const linesPos = snapshotCorridorLines.value.geometry.attributes.position;
-        const linesColor = snapshotCorridorLines.value.geometry.attributes.color;
-        if (linesPos) linesPos.needsUpdate = true;
-        if (linesColor) linesColor.needsUpdate = true;
-    }
+    // Update geometry
+    renderer.updateDrawRange(builtPoints);
+    renderer.markGeometryForUpdate(true, true);
 }
 
 const updateAutoFollowCamera = () => {
-    if (!autoFollowEnabled.value || !snapshotCorridorPoints.value || !corridorState.value.buffer) return;
+    if (!autoFollowEnabled.value || !renderer.hasGeometry() || !corridorState.value.buffer) return;
 
     // Calculate the Z position of the corridor head (latest built frame)
     const headFrameIndex = corridorState.value.builtFrames - 1;
@@ -421,7 +343,7 @@ const updateAutoFollowCamera = () => {
 
 // ---------- Main loop ----------
 const animate = (now: number) => {
-    if (snapshotCorridorPoints.value) {
+    if (renderer.hasGeometry()) {
         // Build points progressively as playback advances
         updateLiveSnapshotCorridor();
         // Auto-follow the corridor head if enabled
@@ -441,12 +363,7 @@ const animate = (now: number) => {
 
 // Watch for render mode changes and update visibility
 watch(useLineMode, (newValue) => {
-    if (snapshotCorridorPoints.value) {
-        snapshotCorridorPoints.value.visible = !newValue;
-    }
-    if (snapshotCorridorLines.value) {
-        snapshotCorridorLines.value.visible = newValue;
-    }
+    renderer.setRenderMode(newValue);
 });
 
 onMounted(() => {
