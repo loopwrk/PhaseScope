@@ -117,6 +117,10 @@ const initLiveSnapshotCorridor = (buffer: AudioBuffer) => {
 }
 
 const loadWavFile = async (file: File) => {
+    // Reset all state before loading new file
+    stopAllAudio();
+    clearCorridor();
+
     await loadWavFileBase(file as any);
 
     // Build the 3D snapshot corridor progressively as playback advances
@@ -130,6 +134,20 @@ const loadWavFile = async (file: File) => {
 
 const onAudioLoadError = (error: Error) => {
     alert(`Failed to load audio: ${error.message}`);
+}
+
+const handlePlay = async () => {
+    // Re-initialize corridor if it was cleared but audio buffer still exists
+    if (audio.buffer && !corridorState.value.buffer) {
+        initLiveSnapshotCorridor(audio.buffer);
+        autoFollowEnabled.value = true;
+    }
+    await startAudio();
+}
+
+const handleStop = () => {
+    stopAllAudio();
+    clearCorridor();
 }
 
 const getTargetFrameForPlayback = () => {
@@ -387,12 +405,12 @@ onUnmounted(() => {
             </AudioLoaderButton>
 
             <UButton id="play" :disabled="!wavLoaded" color="primary" size="lg" leading-icon="i-heroicons-play"
-                @click="startAudio">
+                @click="handlePlay">
                 Play
             </UButton>
 
             <UButton id="stop" color="neutral" variant="outline" size="lg" leading-icon="i-heroicons-stop"
-                @click="stopAllAudio">
+                @click="handleStop">
                 Stop
             </UButton>
         </div>
