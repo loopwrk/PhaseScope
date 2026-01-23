@@ -117,7 +117,6 @@ const initLiveSnapshotCorridor = (buffer: AudioBuffer) => {
 }
 
 const loadWavFile = async (file: File) => {
-    // Reset all state before loading new file
     stopAllAudio();
     clearCorridor();
 
@@ -137,7 +136,6 @@ const onAudioLoadError = (error: Error) => {
 }
 
 const handlePlay = async () => {
-    // Re-initialize corridor if it was cleared but audio buffer still exists
     if (audio.buffer && !corridorState.value.buffer) {
         initLiveSnapshotCorridor(audio.buffer);
         autoFollowEnabled.value = true;
@@ -343,6 +341,7 @@ const updateAutoFollowCamera = () => {
     camObj.position.x += (targetPos.x - camObj.position.x) * lerpFactor;
     camObj.position.y += (targetPos.y - camObj.position.y) * lerpFactor;
     camObj.position.z += (targetPos.z - camObj.position.z) * lerpFactor;
+
 
     // Look at the corridor head
     const lookTarget = new THREE.Vector3(0, galleryY, headZ);
