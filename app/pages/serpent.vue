@@ -62,7 +62,6 @@ const corridorMeta = ref({
 
 const clearCorridor = () => {
     renderer.clearGeometry();
-
     corridorState.value.buffer = null;
     corridorState.value.sr = 0;
     corridorState.value.ch0 = null;
@@ -129,17 +128,8 @@ const loadWavFile = async (file: File) => {
     autoFollowEnabled.value = true;
 }
 
-const handleFileChange = async (event: Event) => {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-    if (!file) return;
-
-    try {
-        await loadWavFile(file);
-    } catch (err) {
-        console.error('Failed to load WAV file:', err);
-        alert('Failed to load WAV.');
-    }
+const onAudioLoadError = (error: Error) => {
+    alert(`Failed to load audio: ${error.message}`);
 }
 
 const getTargetFrameForPlayback = () => {
@@ -392,11 +382,9 @@ onUnmounted(() => {
 
         <ProseH3>Playback controls</ProseH3>
         <div class="flex flex-wrap items-center gap-2 border-accessible-blue w-full rounded-md border-1 py-3 px-5 mb-6">
-            <input id="file" type="file" accept="audio/wav" class="hidden" @change="handleFileChange" />
-
-            <UButton as="label" for="file" color="primary" size="lg" leading-icon="i-heroicons-arrow-up-tray">
+            <AudioLoaderButton :handler="loadWavFile" @error="onAudioLoadError">
                 Load WAV
-            </UButton>
+            </AudioLoaderButton>
 
             <UButton id="play" :disabled="!wavLoaded" color="primary" size="lg" leading-icon="i-heroicons-play"
                 @click="startAudio">
