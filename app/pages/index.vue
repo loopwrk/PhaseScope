@@ -39,7 +39,8 @@ definePageMeta({
       <oscilloscope v-if="play.waveform" />
     </div>
     <div class="flex mb-16">
-      <PlayStopButton @click="play.singleNote(selectedNote)" :animate-on-play="false" />
+      <PlayPauseButton @click="play.singleNote(selectedNote)" :animate-on-play="false"
+        :show-pause-when-playing="false" />
       <fieldset class="note-group" role="group">
         <legend id="play-single-note">Play single note</legend>
         <div class="flex flex-wrap gap-2" aria-labelledby="play-single-note">
@@ -52,7 +53,7 @@ definePageMeta({
       </fieldset>
     </div>
     <div class="flex mb-16">
-      <PlayStopButton @click="play.multipleNotes(noteSequence)" />
+      <PlayPauseButton @click="play.multipleNotes(noteSequence)" :show-pause-when-playing="false" />
       <fieldset class="note-group w-full" role="group">
         <legend id="play-note-sequence">Play note sequence</legend>
         <div class="note-options flex flex-wrap gap-2 mb-4">
@@ -91,8 +92,7 @@ definePageMeta({
       </fieldset>
     </div>
     <div v-if="!showSection" class="flex mb-16">
-      <PlayStopButton :has-stop="true"
-        @click="play.isCurrentlyPlaying.value ? play.stopScheduled() : play.startScheduled()" />
+      <PlayPauseButton @click="play.isCurrentlyPlaying.value ? play.stopScheduled() : play.startScheduled()" />
       <fieldset class="note-group" role="group">
         <legend id="play-note-sequence">Scheduler</legend>
       </fieldset>

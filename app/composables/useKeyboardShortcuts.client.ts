@@ -4,6 +4,7 @@ interface Shortcut {
   key: string;
   handler: ShortcutHandler;
   ignoreInInputs?: boolean;
+  preventDefault?: boolean;
 }
 
 export function useKeyboardShortcuts() {
@@ -18,8 +19,19 @@ export function useKeyboardShortcuts() {
     );
   };
 
+  const normalizeKey = (key: string): string => {
+    // Handle special keys
+    if (key === " ") return " ";
+    return key.toLowerCase();
+  };
+
   const handleKeydown = (event: KeyboardEvent) => {
-    const key = event.key.toLowerCase();
+    // Ignore when modifier keys are pressed (Cmd, Ctrl, Alt)
+    if (event.metaKey || event.ctrlKey || event.altKey) {
+      return;
+    }
+
+    const key = normalizeKey(event.key);
     const shortcut = shortcuts.get(key);
 
     if (!shortcut) return;
@@ -29,18 +41,24 @@ export function useKeyboardShortcuts() {
       return;
     }
 
+    if (shortcut.preventDefault !== false) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
     shortcut.handler();
   };
 
   const register = (
     key: string,
     handler: ShortcutHandler,
-    options: { ignoreInInputs?: boolean } = {},
+    options: { ignoreInInputs?: boolean; preventDefault?: boolean } = {},
   ) => {
-    shortcuts.set(key.toLowerCase(), {
-      key: key.toLowerCase(),
+    shortcuts.set(normalizeKey(key), {
+      key: normalizeKey(key),
       handler,
       ignoreInInputs: options.ignoreInInputs ?? true,
+      preventDefault: options.preventDefault ?? true,
     });
   };
 

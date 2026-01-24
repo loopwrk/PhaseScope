@@ -12,6 +12,9 @@ const isCurrentlyPlaying = ref<boolean>(false);
 const currentPlayingNote = ref<string | null>(null);
 const currentPlayingIndex = ref<number | null>(null);
 
+// Track which PlayPauseButton instance started the current playback
+const activePlayButtonId = ref<string | null>(null);
+
 // Analyser extracts FFT or Waveform data from the incoming signal (https://tonejs.github.io/docs/14.7.38/Analyser)
 let analyser: Tone.Analyser | null = null;
 const waveform = shallowRef<Float32Array | null>(null);
@@ -32,6 +35,7 @@ export function usePlayAudio() {
     const noopAsync = async () => {};
     return {
       isCurrentlyPlaying: ref(false),
+      activePlayButtonId: ref<string | null>(null),
       singleNote: noopAsync,
       multipleNotes: noopAsync,
       startScheduled: noopAsync,
@@ -181,15 +185,20 @@ export function usePlayAudio() {
   watch(isCurrentlyPlaying, (playing) => {
     if (playing) {
       updateWaveform();
-    } else if (animationFrameId) {
-      cancelAnimationFrame(animationFrameId);
-      animationFrameId = null;
-      waveform.value = new Float32Array(1024);
+    } else {
+      // Reset active button when playback stops
+      activePlayButtonId.value = null;
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+        waveform.value = new Float32Array(1024);
+      }
     }
   });
 
   return {
     isCurrentlyPlaying,
+    activePlayButtonId,
     singleNote,
     multipleNotes,
     startScheduled,

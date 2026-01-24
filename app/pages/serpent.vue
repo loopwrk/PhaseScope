@@ -26,6 +26,14 @@ const movement = useKeyboardMovement(three.controls, {
     }
 });
 
+
+const pointerLock = usePointerLockCamera(three.controls, canvasContainer, {
+    onLock: () => {
+        // Disable auto-follow when user takes manual camera control
+        autoFollowEnabled.value = false;
+    }
+});
+
 let requestAnimFrame: number | null = null;
 
 const initaliseScene = () => {
@@ -158,6 +166,14 @@ const handlePlay = async () => {
 
 const handlePause = () => {
     pauseAudio();
+}
+
+const handlePlayPause = async () => {
+    if (audio.source) {
+        handlePause();
+    } else {
+        await handlePlay();
+    }
 }
 
 const handleStop = () => {
@@ -408,6 +424,12 @@ shortcuts.register('r', () => {
 shortcuts.register('o', () => {
     oscillationEnabled.value = !oscillationEnabled.value;
 });
+shortcuts.register('f', () => {
+    three.toggleFullscreen();
+});
+shortcuts.register(' ', () => {
+    handlePlayPause();
+});
 
 onMounted(() => {
     initaliseScene();
@@ -432,26 +454,12 @@ onUnmounted(() => {
         <ProseH1>Serpentoscope</ProseH1>
         <ProseH2>Where Sound Draws Coils Through Explorable Space (prototype) WIP</ProseH2>
 
-        <ProseH3>Playback controls</ProseH3>
-        <div class="flex flex-wrap items-center gap-2 border-accessible-blue w-full rounded-md border-1 py-3 px-5 mb-6">
+        <div class="flex items-center mb-6">
+            <PlayPauseButton :is-playing="!!audio.source" :disabled="!wavLoaded" @click="handlePlayPause" />
+            <StopButton :disabled="!audio.started" @click="handleStop" />
             <AudioLoaderButton :handler="loadWavFile" @error="onAudioLoadError">
                 Load WAV
             </AudioLoaderButton>
-
-            <UButton id="play" :disabled="!wavLoaded" color="primary" size="lg" leading-icon="i-heroicons-play"
-                @click="handlePlay">
-                Play
-            </UButton>
-
-            <UButton id="pause" :disabled="!audio.source" color="neutral" size="lg" leading-icon="i-heroicons-pause"
-                @click="handlePause">
-                Pause
-            </UButton>
-
-            <UButton id="stop" color="neutral" variant="outline" size="lg" leading-icon="i-heroicons-stop"
-                @click="handleStop">
-                Stop
-            </UButton>
         </div>
 
         <ProseH3>Display controls</ProseH3>
@@ -533,7 +541,7 @@ onUnmounted(() => {
         </div>
 
         <div class="relative rounded-lg w-full h-[600px] bg-black" ref="canvasContainer">
-            <UButton class="absolute top-4 right-4 z-10" color="primary" variant="solid" size="xl"
+            <UButton class="absolute top-4 right-0 z-10" color="primary" variant="solid" size="xl"
                 :icon="three.isFullscreen ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'"
                 @click="three.toggleFullscreen"
                 :aria-label="three.isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'" />
