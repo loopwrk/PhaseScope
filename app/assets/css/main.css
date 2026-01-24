@@ -6,6 +6,7 @@
 @theme {
   --color-accessible-blue: #5700ed;
   --color-secondary: #a500ed;
+  --color-white: #ffffff;
 
   --breakpoint-xs: 30rem;
   --font-sans: "Inclusive Sans", sans-serif;
@@ -16,6 +17,7 @@
     --ui-primary: var(--color-accessible-blue);
     --ui-secondary: var(--color-secondary);
     --ui-text: #1c1c1c;
+    --ui-text-white: var(--color-white);
     --ui-bg: var(--color-light-bg);
     --ui-divider: #b1b1b1;
 

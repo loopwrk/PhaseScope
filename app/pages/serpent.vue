@@ -385,6 +385,12 @@ watch(renderMode, (newMode) => {
     renderer.setRenderMode(newMode);
 });
 
+// Keyboard shortcuts
+const shortcuts = useKeyboardShortcuts();
+shortcuts.register('r', () => {
+    renderMode.value = renderMode.value === 'points' ? 'lines' : 'points';
+});
+
 onMounted(() => {
     initaliseScene();
     requestAnimFrame = requestAnimationFrame(animate);
@@ -444,11 +450,21 @@ onUnmounted(() => {
                     </div>
                     <USeparator class="py-2" />
                     <div class="mb-6">
-                        <URadioGroup v-model="renderMode" legend="Render Mode" size="xl" :items="[
+                        <URadioGroup v-model="renderMode" size="xl" :items="[
                             { label: 'Points', value: 'points' },
                             { label: 'Lines', value: 'lines' }
                         ]" :ui="{ legend: 'text-lg text-primary font-bold', label: 'text-primary' }" value-key="value"
-                            orientation="horizontal" :disabled="audio.started" />
+                            orientation="horizontal">
+                            <template #legend>
+                                <span class="inline-flex items-center gap-2">
+                                    Render Mode
+                                    <UKbd size="md"
+                                        class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default">
+                                        R
+                                    </UKbd>
+                                </span>
+                            </template>
+                        </URadioGroup>
                     </div>
                     <USeparator class="py-2" />
                     <div class="flex items-center gap-3 mb-2">
