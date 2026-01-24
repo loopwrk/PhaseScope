@@ -27,7 +27,7 @@ const initaliseScene = () => {
 };
 
 // Initialize WAV player composable
-const { audio, wavLoaded, loadWavFile: loadWavFileBase, startAudio, stopAllAudio, getPlaybackTimeSeconds } = useWavPlayer();
+const { audio, wavLoaded, loadWavFile: loadWavFileBase, startAudio, stopAllAudio, pauseAudio, resumeAudio, getPlaybackTimeSeconds } = useWavPlayer();
 
 const corridorState = ref({
     buffer: null as AudioBuffer | null,
@@ -136,11 +136,22 @@ const onAudioLoadError = (error: Error) => {
 }
 
 const handlePlay = async () => {
+    // Re-initialize corridor if it was cleared but audio buffer still exists
     if (audio.buffer && !corridorState.value.buffer) {
         initLiveSnapshotCorridor(audio.buffer);
         autoFollowEnabled.value = true;
     }
-    await startAudio();
+
+    // If paused (started but no active source), resume from saved position
+    if (audio.started && !audio.source) {
+        await resumeAudio();
+    } else {
+        await startAudio();
+    }
+}
+
+const handlePause = () => {
+    pauseAudio();
 }
 
 const handleStop = () => {
@@ -406,6 +417,11 @@ onUnmounted(() => {
             <UButton id="play" :disabled="!wavLoaded" color="primary" size="lg" leading-icon="i-heroicons-play"
                 @click="handlePlay">
                 Play
+            </UButton>
+
+            <UButton id="pause" :disabled="!audio.source" color="neutral" size="lg" leading-icon="i-heroicons-pause"
+                @click="handlePause">
+                Pause
             </UButton>
 
             <UButton id="stop" color="neutral" variant="outline" size="lg" leading-icon="i-heroicons-stop"

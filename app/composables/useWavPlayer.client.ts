@@ -12,7 +12,7 @@ interface FileInput extends File {
 }
 
 export function useWavPlayer() {
-  // Handle server-side rendering
+  // Handle server-side renderinge
   if (import.meta.server) {
     const noopAsync = async () => {};
     return {
@@ -29,6 +29,8 @@ export function useWavPlayer() {
       playWav: () => {},
       stopWavOnly: () => {},
       stopAllAudio: () => {},
+      pauseAudio: () => {},
+      resumeAudio: noopAsync,
       startAudio: noopAsync,
       getPlaybackTimeSeconds: () => 0,
     };
@@ -69,7 +71,8 @@ export function useWavPlayer() {
     if (!audio.ctx || !audio.buffer) return;
     stopWavOnly();
 
-    if (import.meta.dev) console.log("Starting WAV playback at offset", offsetSeconds);
+    if (import.meta.dev)
+      console.log("Starting WAV playback at offset", offsetSeconds);
 
     const src = audio.ctx.createBufferSource();
     src.buffer = audio.buffer;
@@ -111,14 +114,34 @@ export function useWavPlayer() {
   const stopAllAudio = () => {
     stopWavOnly();
     audio.started = false;
+    audio.wavOffset = 0;
   };
 
-  const startAudio = async () => {
-    if (import.meta.dev) console.log("Starting audio playback");
+  const pauseAudio = () => {
+    if (!audio.source) return;
+
+    if (import.meta.dev)
+      console.log("Pausing audio at offset", audio.wavOffset);
+    stopWavOnly();
+  };
+
+  const resumeAudio = async () => {
+    if (import.meta.dev)
+      console.log("Resuming audio from offset", audio.wavOffset);
     if (audio.ctx) {
       await audio.ctx.resume();
     }
     audio.started = true;
+    playWav(audio.wavOffset);
+  };
+
+  const startAudio = async () => {
+    if (import.meta.dev) console.log("Starting audio playback from beginning");
+    if (audio.ctx) {
+      await audio.ctx.resume();
+    }
+    audio.started = true;
+    audio.wavOffset = 0;
     playWav(0);
   };
 
@@ -141,6 +164,8 @@ export function useWavPlayer() {
     playWav,
     stopWavOnly,
     stopAllAudio,
+    pauseAudio,
+    resumeAudio,
     startAudio,
     getPlaybackTimeSeconds,
   };
