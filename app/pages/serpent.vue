@@ -20,6 +20,12 @@ const renderer = useCorridorRenderer(scene);
 
 const autoFollowEnabled = ref(true);
 
+const movement = useKeyboardMovement(three.controls, {
+    onMovement: () => {
+        autoFollowEnabled.value = false;
+    }
+});
+
 let requestAnimFrame: number | null = null;
 
 const initaliseScene = () => {
@@ -361,7 +367,16 @@ const updateAutoFollowCamera = () => {
 
 
 // ---------- Main loop ----------
+let lastFrameTime = 0;
+
 const animate = (now: number) => {
+    // Calculate delta time (capped at 33ms to avoid large jumps)
+    const maxDeltaTime = 0.033;
+    const dt = Math.min(maxDeltaTime, (now - lastFrameTime) / 1000);
+    lastFrameTime = now;
+
+    movement.update(dt);
+
     if (renderer.hasGeometry()) {
         // Build points progressively as playback advances
         updateLiveSnapshotCorridor();
