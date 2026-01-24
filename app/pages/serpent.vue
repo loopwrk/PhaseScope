@@ -390,6 +390,9 @@ const shortcuts = useKeyboardShortcuts();
 shortcuts.register('r', () => {
     renderMode.value = renderMode.value === 'points' ? 'lines' : 'points';
 });
+shortcuts.register('o', () => {
+    oscillationEnabled.value = !oscillationEnabled.value;
+});
 
 onMounted(() => {
     initaliseScene();
@@ -469,8 +472,13 @@ onUnmounted(() => {
                     <USeparator class="py-2" />
                     <div class="flex items-center gap-3 mb-2">
                         <UCheckbox v-model="oscillationEnabled" id="oscillation-toggle" />
-                        <label for="oscillation-toggle" class="text-primary text-lg font-bold cursor-pointer">
+                        <label for="oscillation-toggle"
+                            class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2">
                             Enable Point Oscillation
+                            <UKbd size="md"
+                                class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default">
+                                O
+                            </UKbd>
                         </label>
                     </div>
                 </div>
