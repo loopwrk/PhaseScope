@@ -21,12 +21,6 @@ const clearNoteSequence = () => {
   noteSequence.value = [];
 }
 
-const showSection = ref(true);
-
-onUnmounted(() => {
-  play.stopTimeContext();
-});
-
 definePageMeta({
   title: "Tone.js - Learning Environment",
 });
@@ -90,22 +84,6 @@ definePageMeta({
             icon="i-heroicons-x-mark" @click="clearNoteSequence" aria-label="Clear sequence" />
         </div>
       </fieldset>
-    </div>
-    <div v-if="!showSection" class="flex mb-16">
-      <PlayPauseButton @click="play.isCurrentlyPlaying.value ? play.stopScheduled() : play.startScheduled()" />
-      <fieldset class="note-group" role="group">
-        <legend id="play-note-sequence">Scheduler</legend>
-      </fieldset>
-    </div>
-    <div v-if="!showSection">
-      <Heading :level="4">Time Context</Heading>
-      <UButton class="mb-4" trailing-icon="i-lucide-clock" size="xl" @click="play.startTimeContext()">
-        Start Time Context
-      </UButton>
-      <UButton class="mb-4" trailing-icon="i-lucide-square" size="xl" @click="play.stopTimeContext()">
-        Stop Time Context
-      </UButton>
-      <div class="text-2xl font-mono">Time Context: {{ play.timeContext }}s</div>
     </div>
   </div>
 </template>

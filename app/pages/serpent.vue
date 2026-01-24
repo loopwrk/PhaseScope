@@ -19,6 +19,7 @@ const scene = three.scene;
 const renderer = useCorridorRenderer(scene);
 
 const autoFollowEnabled = ref(true);
+const toast = useToast();
 
 const movement = useKeyboardMovement(three.controls, {
     onMovement: () => {
@@ -134,7 +135,7 @@ const loadWavFile = async (file: File) => {
     stopAllAudio();
     clearCorridor();
 
-    await loadWavFileBase(file as any);
+    await loadWavFileBase(file);
 
     // Build the 3D snapshot corridor progressively as playback advances
     if (audio.buffer) {
@@ -146,7 +147,12 @@ const loadWavFile = async (file: File) => {
 }
 
 const onAudioLoadError = (error: Error) => {
-    alert(`Failed to load audio: ${error.message}`);
+    toast.add({
+        title: 'Failed to load audio',
+        description: error.message,
+        color: 'error',
+        icon: 'i-heroicons-exclamation-triangle',
+    });
 }
 
 const handlePlay = async () => {

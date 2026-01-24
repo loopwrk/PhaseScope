@@ -75,12 +75,12 @@ export function usePlayAudio() {
     // Stop visualization after note ends
     setTimeout(() => {
       isCurrentlyPlaying.value = false;
-    }, 500);
+    }, 1000);
   };
 
   const multipleNotes = async (
     noteSequence: Array<string> = ["C4", "C4", "G4", "G4", "A4", "A4", "G4"],
-    restTime: number = 0.5
+    restTime: number = 0.5,
   ) => {
     await init();
 
@@ -108,7 +108,7 @@ export function usePlayAudio() {
           currentPlayingNote.value = null;
           currentPlayingIndex.value = null;
         },
-        time + Tone.Time(durations.eighth).toSeconds()
+        time + Tone.Time(durations.eighth).toSeconds(),
       );
     }, events);
 
@@ -129,7 +129,7 @@ export function usePlayAudio() {
         const index = parts.indexOf(part);
         if (index > -1) parts.splice(index, 1);
       },
-      (noteSequence.length * restTime + 1) * 1000
+      (noteSequence.length * restTime + 1) * 1000,
     );
   };
 

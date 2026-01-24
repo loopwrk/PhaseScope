@@ -7,10 +7,6 @@ interface AudioState {
   started: boolean;
 }
 
-interface FileInput extends File {
-  arrayBuffer(): Promise<ArrayBuffer>;
-}
-
 export function useWavPlayer() {
   // Handle server-side renderinge
   if (import.meta.server) {
@@ -47,7 +43,7 @@ export function useWavPlayer() {
 
   const wavLoaded = ref(false);
 
-  const loadWavFile = async (file: FileInput) => {
+  const loadWavFile = async (file: File) => {
     if (import.meta.dev) console.log("Loading WAV file:", file.name);
 
     audio.wavOffset = 0;
@@ -106,7 +102,9 @@ export function useWavPlayer() {
           audio.buffer ? audio.buffer.duration : Infinity,
         );
         audio.source.stop();
-      } catch (_) {}
+      } catch (error) {
+        if (import.meta.dev) console.warn("Failed to stop audio source:", error);
+      }
       audio.source = null;
     }
   };
