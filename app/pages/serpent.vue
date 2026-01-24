@@ -42,7 +42,7 @@ const initaliseScene = () => {
 };
 
 // Initialize WAV player composable
-const { audio, wavLoaded, loadWavFile: loadWavFileBase, startAudio, stopAllAudio, pauseAudio, resumeAudio, getPlaybackTimeSeconds } = useWavPlayer();
+const { audio, wavLoaded, loadWavFile: loadWavFileBase, startAudio, stopAllAudio, pauseAudio, resumeAudio, getPlaybackTimeSeconds, dispose: disposeWavPlayer } = useWavPlayer();
 
 const corridorState = ref({
     buffer: null as AudioBuffer | null,
@@ -442,13 +442,13 @@ onMounted(() => {
     requestAnimFrame = requestAnimationFrame(animate);
 });
 
-onUnmounted(() => {
+onUnmounted(async () => {
     if (requestAnimFrame !== null) {
         cancelAnimationFrame(requestAnimFrame);
         requestAnimFrame = null;
     }
 
-    stopAllAudio();
+    await disposeWavPlayer();
     clearCorridor();
     three.dispose();
 });
@@ -468,7 +468,7 @@ onUnmounted(() => {
             </AudioLoaderButton>
         </div>
 
-        <ProseH3>Display controls</ProseH3>
+        <ProseH3>Display settings</ProseH3>
         <div class="border-accessible-blue w-full border-1 rounded-md py-4 px-6 mb-6">
             <div class="flex gap-16">
                 <!-- Left Column -->

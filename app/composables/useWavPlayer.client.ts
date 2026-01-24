@@ -8,7 +8,7 @@ interface AudioState {
 }
 
 export function useWavPlayer() {
-  // Handle server-side renderinge
+  // Handle server-side rendering
   if (import.meta.server) {
     const noopAsync = async () => {};
     return {
@@ -29,6 +29,7 @@ export function useWavPlayer() {
       resumeAudio: noopAsync,
       startAudio: noopAsync,
       getPlaybackTimeSeconds: () => 0,
+      dispose: noopAsync,
     };
   }
 
@@ -155,6 +156,16 @@ export function useWavPlayer() {
     );
   };
 
+  const dispose = async () => {
+    stopAllAudio();
+    if (audio.ctx) {
+      await audio.ctx.close();
+      audio.ctx = null;
+    }
+    audio.buffer = null;
+    wavLoaded.value = false;
+  };
+
   return {
     audio,
     wavLoaded,
@@ -166,5 +177,6 @@ export function useWavPlayer() {
     resumeAudio,
     startAudio,
     getPlaybackTimeSeconds,
+    dispose,
   };
 }

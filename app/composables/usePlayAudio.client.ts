@@ -19,6 +19,7 @@ const activePlayButtonId = ref<string | null>(null);
 let analyser: Tone.Analyser | null = null;
 const waveform = shallowRef<Float32Array | null>(null);
 let animationFrameId: number | null = null;
+let sequenceTimeoutId: number | null = null;
 
 const updateWaveform = () => {
   if (!analyser) return;
@@ -84,6 +85,15 @@ export function usePlayAudio() {
   ) => {
     await init();
 
+    // Clear any pending timeout from previous sequence
+    if (sequenceTimeoutId !== null) {
+      clearTimeout(sequenceTimeoutId);
+      sequenceTimeoutId = null;
+    }
+
+    // Stop transport and clean up previous parts
+    Tone.getTransport().stop();
+    Tone.getTransport().position = 0;
     parts.forEach((part) => part.dispose());
     parts.length = 0;
 
@@ -121,11 +131,12 @@ export function usePlayAudio() {
     isCurrentlyPlaying.value = true;
 
     // Stop transport and cleanup after sequence completes
-    setTimeout(
+    sequenceTimeoutId = window.setTimeout(
       () => {
         Tone.getTransport().stop();
         part.dispose();
         isCurrentlyPlaying.value = false;
+        sequenceTimeoutId = null;
         const index = parts.indexOf(part);
         if (index > -1) parts.splice(index, 1);
       },
