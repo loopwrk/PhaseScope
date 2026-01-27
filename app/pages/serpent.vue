@@ -9,6 +9,21 @@ import {
 } from "~/utils/audio/analysis";
 import type { RenderMode } from "~/composables/useCorridorRenderer.client";
 
+interface CorridorState {
+    buffer: AudioBuffer | null;
+    sr: number;
+    ch0: Float32Array | null;
+    ch1: Float32Array | null;
+    frameCount: number;
+    xyScale: number;
+    ringRadius: number;
+    builtFrames: number;
+    pos: Float32Array | null;
+    frequencies: Float32Array | null;
+    amplitudes: Float32Array | null;
+    anchorPositions: Float32Array | null;
+}
+
 const renderMode = ref<RenderMode>('points');
 
 const canvasContainer = ref<HTMLDivElement | null>(null);
@@ -28,7 +43,8 @@ const movement = useKeyboardMovement(three.controls, {
 });
 
 
-const pointerLock = usePointerLockCamera(three.controls, canvasContainer, {
+// Set up pointer lock camera - composable handles click-to-lock and event listeners
+usePointerLockCamera(three.controls, canvasContainer, {
     onLock: () => {
         // Disable auto-follow when user takes manual camera control
         autoFollowEnabled.value = false;
@@ -44,22 +60,19 @@ const initaliseScene = () => {
 // Initialize WAV player composable
 const { audio, wavLoaded, loadWavFile: loadWavFileBase, startAudio, stopAllAudio, pauseAudio, resumeAudio, getPlaybackTimeSeconds, dispose: disposeWavPlayer } = useWavPlayer();
 
-const corridorState = ref({
-    buffer: null as AudioBuffer | null,
+const corridorState = ref<CorridorState>({
+    buffer: null,
     sr: 0,
-    ch0: null as Float32Array | null,
-    ch1: null as Float32Array | null,
+    ch0: null,
+    ch1: null,
     frameCount: 0,
     xyScale: 1.8,
     ringRadius: 1.8,
-    // how many frames have been written into the positions buffer
     builtFrames: 0,
-    // array backing the Points geometry
-    pos: null as Float32Array | null,
-    // Oscillation data
-    frequencies: null as Float32Array | null,
-    amplitudes: null as Float32Array | null,
-    anchorPositions: null as Float32Array | null,
+    pos: null,
+    frequencies: null,
+    amplitudes: null,
+    anchorPositions: null,
 });
 
 const oscillationEnabled = ref(false);
@@ -122,7 +135,7 @@ const initLiveSnapshotCorridor = (buffer: AudioBuffer) => {
     corridorState.value.anchorPositions = anchorPositions;
 
     // Create geometries using renderer
-    const { positions, colors } = renderer.createGeometry({
+    const { positions } = renderer.createGeometry({
         totalPoints,
         renderMode,
         pointsPosition: { x: 0, y: 1.7, z: 0.95 },

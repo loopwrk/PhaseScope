@@ -1,5 +1,5 @@
 import type { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
-import type { ShallowRef } from "vue";
+import type { ShallowRef, Ref } from "vue";
 import { useEventListener } from "@vueuse/core";
 
 interface UsePointerLockCameraOptions {

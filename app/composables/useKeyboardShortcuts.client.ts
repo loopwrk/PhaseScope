@@ -63,7 +63,7 @@ export function useKeyboardShortcuts() {
   };
 
   const unregister = (key: string) => {
-    shortcuts.delete(key.toLowerCase());
+    shortcuts.delete(normalizeKey(key));
   };
 
   onMounted(() => {

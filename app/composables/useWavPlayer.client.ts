@@ -51,9 +51,10 @@ export function useWavPlayer() {
     audio.wavStartedAt = 0;
     audio.started = false;
 
-    const ctx =
-      audio.ctx ||
-      new (window.AudioContext || (window as any).webkitAudioContext)();
+    // webkitAudioContext is a Safari-specific fallback for older versions
+    const AudioContextClass = window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = audio.ctx || new AudioContextClass();
     audio.ctx = ctx;
 
     const arrayBuf = await file.arrayBuffer();

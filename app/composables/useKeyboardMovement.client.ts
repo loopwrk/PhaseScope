@@ -104,7 +104,7 @@ export function useKeyboardMovement(
     if (right.value) ctl.moveRight(distance);
 
     // Vertical movement and turning
-    const camObj = (ctl as any).getObject?.() ?? (ctl as any).object;
+    const camObj = ctl.object;
     if (camObj) {
       if (up.value) camObj.position.y += distance;
       if (down.value) camObj.position.y -= distance;
