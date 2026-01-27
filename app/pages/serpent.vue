@@ -63,6 +63,7 @@ const corridorState = ref({
 });
 
 const oscillationEnabled = ref(false);
+const showControlsOverlay = ref(true);
 
 // Import audio analysis utilities
 const frequencyResolution = ref<FrequencyResolution>('balanced');
@@ -436,6 +437,9 @@ shortcuts.register('f', () => {
 shortcuts.register(' ', () => {
     handlePlayPause();
 });
+shortcuts.register('h', () => {
+    showControlsOverlay.value = !showControlsOverlay.value;
+});
 
 onMounted(() => {
     initaliseScene();
@@ -542,11 +546,88 @@ onUnmounted(async () => {
                             </template>
                         </URadioGroup>
                     </div>
+                    <USeparator class="py-2" />
+                    <div class="flex items-center gap-3 mb-2">
+                        <UCheckbox v-model="showControlsOverlay" id="controls-overlay-toggle" />
+                        <label for="controls-overlay-toggle"
+                            class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2">
+                            Show Controls Overlay
+                            <UKbd size="md"
+                                class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default">
+                                H
+                            </UKbd>
+                        </label>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="relative rounded-lg w-full h-[600px] bg-black" ref="canvasContainer">
+            <!-- Controls overlay -->
+            <div v-show="showControlsOverlay" class="absolute top-4 left-4 z-10 flex flex-col gap-4 opacity-60">
+                <!-- WASD keys -->
+                <div class="flex flex-col items-start gap-1">
+                    <!-- Top row: W (offset to align with S) -->
+                    <kbd
+                        class="w-8 h-8 ml-9 flex items-center justify-center border border-white/100 rounded text-white/100 text-sm font-mono">W</kbd>
+                    <!-- Bottom row: A S D -->
+                    <div class="flex gap-1">
+                        <kbd
+                            class="w-8 h-8 flex items-center justify-center border border-white/100 rounded text-white/100 text-sm font-mono">A</kbd>
+                        <kbd
+                            class="w-8 h-8 flex items-center justify-center border border-white/100 rounded text-white/100 text-sm font-mono">S</kbd>
+                        <kbd
+                            class="w-8 h-8 flex items-center justify-center border border-white/100 rounded text-white/100 text-sm font-mono">D</kbd>
+                    </div>
+                </div>
+
+                <!-- Arrow keys -->
+                <div class="flex flex-col items-start gap-1">
+                    <!-- Top row: Up (offset to align with Down) -->
+                    <kbd class="w-8 h-8 ml-9 flex items-center justify-center border border-white/100 rounded">
+                        <UIcon name="mingcute-arrow-up-line" class="text-white size-4" />
+                    </kbd>
+                    <!-- Bottom row: Left Down Right -->
+                    <div class="flex gap-1">
+                        <kbd class="w-8 h-8 flex items-center justify-center border border-white/100 rounded">
+                            <UIcon name="mingcute-arrow-left-line" class="text-white size-4" />
+                        </kbd>
+                        <kbd class="w-8 h-8 flex items-center justify-center border border-white/100 rounded">
+                            <UIcon name="mingcute-arrow-down-line" class="text-white size-4" />
+                        </kbd>
+                        <kbd class="w-8 h-8 flex items-center justify-center border border-white/100 rounded">
+                            <UIcon name="mingcute-arrow-right-line" class="text-white size-4" />
+                        </kbd>
+                    </div>
+                </div>
+
+                <!-- Mouse / Touch -->
+                <div class="flex items-center gap-2 mt-4">
+                    <UIcon name="mingcute-mouse-line" class="text-white size-10" />
+                    <div class="w-px h-5 bg-white/50"></div>
+                    <UIcon name="mingcute-finger-swipe-line" class="text-white size-10" />
+                </div>
+
+                <!-- Keyboard shortcuts -->
+                <div class="flex flex-col gap-1 mt-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-white/80 text-s">Render Mode</span>
+                        <kbd
+                            class="w-5 h-5 flex items-center justify-center border border-white/100 rounded text-white/100 text-xs font-mono">R</kbd>
+                    </div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-white/80 text-s">Point Oscillation</span>
+                        <kbd
+                            class="w-5 h-5 flex items-center justify-center border border-white/100 rounded text-white/100 text-xs font-mono">O</kbd>
+                    </div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-white/80 text-s">Hide Overlay</span>
+                        <kbd
+                            class="w-5 h-5 flex items-center justify-center border border-white/100 rounded text-white/100 text-xs font-mono">H</kbd>
+                    </div>
+                </div>
+            </div>
+
             <UButton class="absolute top-4 right-0 z-10" color="primary" variant="solid" size="xl"
                 :icon="three.isFullscreen ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'"
                 @click="three.toggleFullscreen"
