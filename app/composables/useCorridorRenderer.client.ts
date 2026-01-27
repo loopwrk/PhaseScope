@@ -9,11 +9,6 @@ export interface CorridorConfig {
   linesPosition?: { x: number; y: number; z: number };
 }
 
-export interface GeometryUpdateData {
-  positions: Float32Array;
-  colors?: Float32Array;
-}
-
 export function useCorridorRenderer(scene: THREE.Scene) {
   const snapshotCorridorPoints = ref<THREE.Points | null>(null);
   const snapshotCorridorLines = ref<THREE.Line | null>(null);

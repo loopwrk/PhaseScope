@@ -107,9 +107,8 @@ export function useThree(canvasContainer: Ref<HTMLDivElement | null>) {
     // Controls
     const ctl = markRaw(new PointerLockControls(c, r.domElement));
     controls.value = ctl;
-    // Prefer getObject() if present, otherwise .object
-    const obj = (ctl as any).getObject?.() ?? (ctl as any).object;
-    if (obj) scene.add(obj);
+    // PointerLockControls exposes the camera via the 'object' property
+    scene.add(ctl.object);
 
     // Fog (obscures head and tail)
     scene.fog = markRaw(new THREE.Fog(0x000000, 200, 200));
@@ -124,9 +123,7 @@ export function useThree(canvasContainer: Ref<HTMLDivElement | null>) {
     document.removeEventListener("fullscreenchange", onFullscreenChange);
 
     if (controls.value) {
-      const obj =
-        (controls.value as any).getObject?.() ?? (controls.value as any).object;
-      if (obj) scene.remove(obj);
+      scene.remove(controls.value.object);
     }
 
     if (ground.value) {

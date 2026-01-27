@@ -229,6 +229,9 @@ const buildOneCorridorFrame = (frameIndex: number) => {
     const colors = renderer.getColorArray();
     if (!colors) return;
 
+    // Reuse a single Color object to avoid allocating one per point
+    const color = new THREE.Color();
+
     for (let k = 0; k < pointsPerFrame; k++) {
         const u = (k / pointsPerFrame) * Math.PI * 2;
         const sampleIndex = frameStart + Math.floor((k / pointsPerFrame) * windowSize);
@@ -260,7 +263,6 @@ const buildOneCorridorFrame = (frameIndex: number) => {
         // Low frequencies (bass) = RED (hue 0.0)
         // Mid frequencies = YELLOW/GREEN (hue 0.33)
         // High frequencies (treble) = BLUE/MAGENTA (hue 0.75)
-        const color = new THREE.Color();
         const hueRangeMultiplier = 0.75;
         const hue = freqContent * hueRangeMultiplier; // Full spectrum: Red -> Orange -> Yellow -> Green -> Cyan -> Blue -> Magenta
         const hslColourSaturation = 0.85;
@@ -581,34 +583,30 @@ onUnmounted(async () => {
                 <!-- WASD keys -->
                 <div class="flex flex-col items-start gap-1">
                     <!-- Top row: W (offset to align with S) -->
-                    <kbd
-                        class="w-8 h-8 ml-9 flex items-center justify-center border border-white/100 rounded text-white/100 text-sm font-mono">W</kbd>
+                    <kbd class="overlay-kbd overlay-kbd-lg ml-9">W</kbd>
                     <!-- Bottom row: A S D -->
                     <div class="flex gap-1">
-                        <kbd
-                            class="w-8 h-8 flex items-center justify-center border border-white/100 rounded text-white/100 text-sm font-mono">A</kbd>
-                        <kbd
-                            class="w-8 h-8 flex items-center justify-center border border-white/100 rounded text-white/100 text-sm font-mono">S</kbd>
-                        <kbd
-                            class="w-8 h-8 flex items-center justify-center border border-white/100 rounded text-white/100 text-sm font-mono">D</kbd>
+                        <kbd class="overlay-kbd overlay-kbd-lg">A</kbd>
+                        <kbd class="overlay-kbd overlay-kbd-lg">S</kbd>
+                        <kbd class="overlay-kbd overlay-kbd-lg">D</kbd>
                     </div>
                 </div>
 
                 <!-- Arrow keys -->
                 <div class="flex flex-col items-start gap-1">
                     <!-- Top row: Up (offset to align with Down) -->
-                    <kbd class="w-8 h-8 ml-9 flex items-center justify-center border border-white/100 rounded">
+                    <kbd class="overlay-kbd overlay-kbd-lg ml-9">
                         <UIcon name="mingcute-arrow-up-line" class="text-white size-4" />
                     </kbd>
                     <!-- Bottom row: Left Down Right -->
                     <div class="flex gap-1">
-                        <kbd class="w-8 h-8 flex items-center justify-center border border-white/100 rounded">
+                        <kbd class="overlay-kbd overlay-kbd-lg">
                             <UIcon name="mingcute-arrow-left-line" class="text-white size-4" />
                         </kbd>
-                        <kbd class="w-8 h-8 flex items-center justify-center border border-white/100 rounded">
+                        <kbd class="overlay-kbd overlay-kbd-lg">
                             <UIcon name="mingcute-arrow-down-line" class="text-white size-4" />
                         </kbd>
-                        <kbd class="w-8 h-8 flex items-center justify-center border border-white/100 rounded">
+                        <kbd class="overlay-kbd overlay-kbd-lg">
                             <UIcon name="mingcute-arrow-right-line" class="text-white size-4" />
                         </kbd>
                     </div>
@@ -625,18 +623,15 @@ onUnmounted(async () => {
                 <div class="flex flex-col gap-1 mt-4">
                     <div class="flex items-center gap-2 mb-2">
                         <span class="text-white/80 text-s">Render Mode</span>
-                        <kbd
-                            class="w-5 h-5 flex items-center justify-center border border-white/100 rounded text-white/100 text-xs font-mono">R</kbd>
+                        <kbd class="overlay-kbd overlay-kbd-sm">R</kbd>
                     </div>
                     <div class="flex items-center gap-2 mb-2">
                         <span class="text-white/80 text-s">Point Oscillation</span>
-                        <kbd
-                            class="w-5 h-5 flex items-center justify-center border border-white/100 rounded text-white/100 text-xs font-mono">O</kbd>
+                        <kbd class="overlay-kbd overlay-kbd-sm">O</kbd>
                     </div>
                     <div class="flex items-center gap-2 mb-2">
                         <span class="text-white/80 text-s">Hide Overlay</span>
-                        <kbd
-                            class="w-5 h-5 flex items-center justify-center border border-white/100 rounded text-white/100 text-xs font-mono">H</kbd>
+                        <kbd class="overlay-kbd overlay-kbd-sm">H</kbd>
                     </div>
                 </div>
             </div>
@@ -648,3 +643,29 @@ onUnmounted(async () => {
         </div>
     </div>
 </template>
+
+<style scoped>
+.overlay-kbd {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid white;
+    border-radius: 0.25rem;
+}
+
+.overlay-kbd-lg {
+    width: 2rem;
+    height: 2rem;
+    color: white;
+    font-size: 0.875rem;
+    font-family: ui-monospace, monospace;
+}
+
+.overlay-kbd-sm {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: white;
+    font-size: 0.75rem;
+    font-family: ui-monospace, monospace;
+}
+</style>
