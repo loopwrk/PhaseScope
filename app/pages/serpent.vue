@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import * as THREE from "three";
 import {
-    type FrequencyResolution,
-    getAnalysisWindowSize,
     analyzeFrequencyBand,
     freqContentToHz,
     ampToOscillationRange
@@ -77,9 +75,6 @@ const corridorState = ref<CorridorState>({
 
 const oscillationEnabled = ref(false);
 const showControlsOverlay = ref(true);
-
-// Import audio analysis utilities
-const frequencyResolution = ref<FrequencyResolution>('balanced');
 
 const corridorMeta = ref({
     zStep: 0.08, // distance between frames along Z axis
@@ -235,7 +230,7 @@ const buildOneCorridorFrame = (frameIndex: number) => {
     // Precompute frequency analysis once per frame (at frame center)
     // This avoids redundant analysis since frequency content doesn't change
     // meaningfully within a single frame's time window (~23ms)
-    const analysisWindow = getAnalysisWindowSize(frequencyResolution.value);
+    const analysisWindow = 4096; // Fixed window size for good frequency/time balance
     const frameCenterSample = clamp(frameStart + windowSize / 2, 0, ch0.length - 1);
     const windowStart = Math.max(0, frameCenterSample - analysisWindow / 2);
     const freqL = analyzeFrequencyBand(ch0, windowStart, analysisWindow);
@@ -549,35 +544,6 @@ onUnmounted(async () => {
 
                 <!-- Right Column -->
                 <div class="flex-1 space-y-4">
-                    <div>
-                        <URadioGroup v-model="frequencyResolution" legend="Frequency Analysis Resolution" size="xl"
-                            :items="[
-                                {
-                                    label: 'Hi-Res',
-                                    value: 'spectral',
-                                    help: 'Detailed frequency analysis. Best for sustained tones, classical and ambient.'
-                                },
-                                {
-                                    label: 'Mid',
-                                    value: 'balanced',
-                                    help: 'Balanced time/frequency resolution. Good for most music genres.'
-                                },
-                                {
-                                    label: 'Lo-Res',
-                                    value: 'temporal',
-                                    help: 'Fast response to changes. Best for percussion and electronic.'
-                                }
-                            ]" :ui="{ legend: 'text-lg text-primary font-bold', label: 'text-primary' }"
-                            value-key="value" :disabled="audio.started">
-                            <template #label="{ item }">
-                                <div class="flex flex-col gap-1">
-                                    <span class="font-bold text-primary">{{ item.label }}</span>
-                                    <span class="text-sm text-primary dark:text-gray-400">{{ item.help }}</span>
-                                </div>
-                            </template>
-                        </URadioGroup>
-                    </div>
-                    <USeparator class="py-2" />
                     <div class="flex items-center gap-3 mb-2">
                         <UCheckbox v-model="showControlsOverlay" id="controls-overlay-toggle" />
                         <label for="controls-overlay-toggle"
@@ -648,6 +614,12 @@ onUnmounted(async () => {
                     <div class="flex items-center gap-2 mb-2">
                         <span class="text-white/80 text-s">Hide Overlay</span>
                         <kbd class="overlay-kbd overlay-kbd-sm">H</kbd>
+                    </div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-white/80 text-s">Speed Boost</span>
+                        <kbd class="overlay-kbd overlay-kbd-sm !justify-start pl-1"
+                            style="font-size: 1.2rem; width: 2rem;"><span
+                                style="transform: translateY(-1px); display: inline-block;">⇧</span></kbd>
                     </div>
                 </div>
             </div>

@@ -59,7 +59,7 @@ export function useKeyboardMovement(
   const down = getKeyRef(keyMap, "arrowdown");
   const turnLeft = getKeyRef(keyMap, "arrowleft");
   const turnRight = getKeyRef(keyMap, "arrowright");
-  const boost = getKeyRef(keyMap, "control");
+  const boost = getKeyRef(keyMap, "shift");
 
   // Prevent default browser behavior for movement keys (e.g., Space scrolling)
   useEventListener(window, "keydown", (event: KeyboardEvent) => {
