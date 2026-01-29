@@ -232,6 +232,26 @@ const buildOneCorridorFrame = (frameIndex: number) => {
     // Reuse a single Color object to avoid allocating one per point
     const color = new THREE.Color();
 
+    // Precompute frequency analysis once per frame (at frame center)
+    // This avoids redundant analysis since frequency content doesn't change
+    // meaningfully within a single frame's time window (~23ms)
+    const analysisWindow = getAnalysisWindowSize(frequencyResolution.value);
+    const frameCenterSample = clamp(frameStart + windowSize / 2, 0, ch0.length - 1);
+    const windowStart = Math.max(0, frameCenterSample - analysisWindow / 2);
+    const freqL = analyzeFrequencyBand(ch0, windowStart, analysisWindow);
+    const freqR = analyzeFrequencyBand(ch1, windowStart, analysisWindow);
+    const freqContent = (freqL + freqR) / 2; // 0 = low freq, 1 = high freq
+
+    // Precompute hue from frequency (same for all points in frame)
+    // Low frequencies (bass) = RED (hue 0.0)
+    // Mid frequencies = YELLOW/GREEN (hue 0.33)
+    // High frequencies (treble) = BLUE/MAGENTA (hue 0.75)
+    const hueRangeMultiplier = 0.75;
+    const hue = freqContent * hueRangeMultiplier;
+    const saturation = 0.85;
+    const baseLightness = 0.35;
+    const amplitudeBrightnessFactor = 0.5;
+
     for (let k = 0; k < pointsPerFrame; k++) {
         const u = (k / pointsPerFrame) * Math.PI * 2;
         const sampleIndex = frameStart + Math.floor((k / pointsPerFrame) * windowSize);
@@ -244,32 +264,32 @@ const buildOneCorridorFrame = (frameIndex: number) => {
         const x2 = L * xyScale;
         const y2 = R * xyScale;
 
-        // Calculate amplitude for brightness
+        // Calculate amplitude for brightness (varies per point)
         const amplitude = Math.sqrt(L * L + R * R);
         const normalizedAmp = clamp(amplitude, 0, 1);
 
-        // Analyze frequency content in a small window around this sample
-        const analysisWindow = getAnalysisWindowSize(frequencyResolution.value);
-        const windowCenteringCalc = 2;
-        const windowStart = Math.max(0, i - analysisWindow / windowCenteringCalc);
+        // Lightweight per-point frequency estimate for oscillation
+        // Uses 8 samples instead of full analysis
+        const microWindow = 8;
+        const halfMicro = microWindow / 2;
+        let localChangeEnergy = 0;
+        let localAmpEnergy = 0;
+        for (let m = -halfMicro; m < halfMicro; m++) {
+            const idx = clamp(i + m, 0, ch0.length - 2);
+            const s0 = (ch0[idx] ?? 0) + (ch1[idx] ?? 0);
+            const s1 = (ch0[idx + 1] ?? 0) + (ch1[idx + 1] ?? 0);
+            const diff = s1 - s0;
+            localChangeEnergy += diff * diff;
+            localAmpEnergy += s0 * s0;
+        }
+        const localTotal = Math.sqrt(localChangeEnergy) + Math.sqrt(localAmpEnergy);
+        const localFreqContent = localTotal > 0.001
+            ? clamp(Math.sqrt(localChangeEnergy) / localTotal * 3, 0, 1)
+            : 0.5;
+        const pointFreqHz = freqContentToHz(localFreqContent);
 
-        // Analyze both channels and average
-        const freqL = analyzeFrequencyBand(ch0, windowStart, analysisWindow);
-        const freqR = analyzeFrequencyBand(ch1, windowStart, analysisWindow);
-        const channelAverage = 2;
-        const freqContent = (freqL + freqR) / channelAverage; // 0 = low freq, 1 = high freq
-
-        // Map frequency to color with FULL spectrum range:
-        // Low frequencies (bass) = RED (hue 0.0)
-        // Mid frequencies = YELLOW/GREEN (hue 0.33)
-        // High frequencies (treble) = BLUE/MAGENTA (hue 0.75)
-        const hueRangeMultiplier = 0.75;
-        const hue = freqContent * hueRangeMultiplier; // Full spectrum: Red -> Orange -> Yellow -> Green -> Cyan -> Blue -> Magenta
-        const hslColourSaturation = 0.85;
-        const saturation = hslColourSaturation; // High saturation for vivid colors
-        const baseLightness = 0.35
-        const amplitudeBrightnessFactor = 0.5;
-        const lightness = baseLightness + normalizedAmp * amplitudeBrightnessFactor; // Amplitude affects brightness only
+        // Lightness varies per point based on amplitude
+        const lightness = baseLightness + normalizedAmp * amplitudeBrightnessFactor;
         color.setHSL(hue, saturation, lightness);
 
         // Stable 3D: wrap around a ring so each frame becomes a "floating wreath" you can walk through
@@ -287,11 +307,7 @@ const buildOneCorridorFrame = (frameIndex: number) => {
 
         // Store oscillation data for this point
         const pointIndex = frameIndex * pointsPerFrame + k;
-
-        // Convert freqContent (0-1) to Hz using logarithmic scale
-        frequencies[pointIndex] = freqContentToHz(freqContent);
-
-        // Store amplitude (scale to reasonable oscillation range: 0.005 to 0.05 units)
+        frequencies[pointIndex] = pointFreqHz;
         amplitudes[pointIndex] = ampToOscillationRange(normalizedAmp);
 
         // Store anchor position (original position before any oscillation)
