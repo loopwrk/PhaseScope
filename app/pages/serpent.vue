@@ -31,12 +31,13 @@ const scene = three.scene;
 // Initialize corridor renderer
 const renderer = useCorridorRenderer(scene);
 
-const autoFollowEnabled = ref(true);
+type CameraMode = 'free' | 'follow' | 'orbit';
+const cameraMode = ref<CameraMode>('follow');
 const toast = useToast();
 
 const movement = useKeyboardMovement(three.controls, {
     onMovement: () => {
-        autoFollowEnabled.value = false;
+        cameraMode.value = 'free';
     }
 });
 
@@ -45,7 +46,7 @@ const movement = useKeyboardMovement(three.controls, {
 usePointerLockCamera(three.controls, canvasContainer, {
     onLock: () => {
         // Disable auto-follow when user takes manual camera control
-        autoFollowEnabled.value = false;
+        cameraMode.value = 'free';
     }
 });
 
@@ -151,8 +152,8 @@ const loadWavFile = async (file: File) => {
         initLiveSnapshotCorridor(audio.buffer);
     }
 
-    // Enable auto-follow camera mode
-    autoFollowEnabled.value = true;
+    // Enable follow camera mode
+    cameraMode.value = 'follow';
 }
 
 const onAudioLoadError = (error: Error) => {
@@ -168,7 +169,7 @@ const handlePlay = async () => {
     // Re-initialize corridor if it was cleared but audio buffer still exists
     if (audio.buffer && !corridorState.value.buffer) {
         initLiveSnapshotCorridor(audio.buffer);
-        autoFollowEnabled.value = true;
+        cameraMode.value = 'follow';
     }
 
     // If paused (started but no active source), resume from saved position
@@ -376,38 +377,60 @@ const updateLiveSnapshotCorridor = () => {
     renderer.markGeometryForUpdate(true, true);
 }
 
-const updateAutoFollowCamera = () => {
-    if (!autoFollowEnabled.value || !renderer.hasGeometry() || !corridorState.value.buffer) return;
+const updateAutoFollowCamera = (time: number) => {
+    if (cameraMode.value === 'free' || !renderer.hasGeometry() || !corridorState.value.buffer) return;
 
     // Calculate the Z position of the corridor head (latest built frame)
     const headFrameIndex = corridorState.value.builtFrames - 1;
     if (headFrameIndex < 0) return;
 
-    const frameCenteringDivisor = 2; // to center the head frame
+    const frameCenteringDivisor = 2;
     const headZ = (headFrameIndex - corridorState.value.frameCount / frameCenteringDivisor) * corridorMeta.value.zStep;
     const galleryY = 1.7; // gallery.position.y
 
-    // Position camera at an isometric angle: behind, above, and to the side of the head
-    const offset = {
-        x: 5.0,   // to the side
-        y: 4.5,   // above
-        z: 7.0    // behind the head
-    };
-
-    const targetPos = {
-        x: offset.x,
-        y: galleryY + offset.y,
-        z: headZ + offset.z
-    };
-
-    // Smooth camera movement
     const camObj = three.controls.value?.object;
     if (!camObj) return;
+
     const lerpFactor = 0.1;
+    let targetPos: { x: number; y: number; z: number };
+
+    if (cameraMode.value === 'orbit') {
+        // Drone-like orbit around the corridor head
+        // Uses Lissajous-like path for interesting 3D movement
+        const orbitRadius = 8.0;
+        const verticalAmplitude = 3.0;
+        const orbitSpeed = 0.15; // Slow rotation
+
+        // Different frequencies for each axis create figure-8 like patterns
+        const horizontalAngle = time * orbitSpeed;
+        const verticalAngle = time * orbitSpeed * 0.7; // Slower vertical oscillation
+        const tiltAngle = time * orbitSpeed * 0.3; // Even slower tilt
+
+        // Orbit in XZ plane around the head, with Y oscillation
+        targetPos = {
+            x: Math.cos(horizontalAngle) * orbitRadius * (1 + Math.sin(tiltAngle) * 0.3),
+            y: galleryY + 2 + Math.sin(verticalAngle) * verticalAmplitude,
+            z: headZ + Math.sin(horizontalAngle) * orbitRadius
+        };
+    } else {
+        // Follow mode: isometric angle behind and above the head
+        const offset = {
+            x: 5.0,   // to the side
+            y: 4.5,   // above
+            z: 7.0    // behind the head
+        };
+
+        targetPos = {
+            x: offset.x,
+            y: galleryY + offset.y,
+            z: headZ + offset.z
+        };
+    }
+
+    // Smooth camera movement
     camObj.position.x += (targetPos.x - camObj.position.x) * lerpFactor;
     camObj.position.y += (targetPos.y - camObj.position.y) * lerpFactor;
     camObj.position.z += (targetPos.z - camObj.position.z) * lerpFactor;
-
 
     // Look at the corridor head
     const lookTarget = new THREE.Vector3(0, galleryY, headZ);
@@ -429,12 +452,12 @@ const animate = (now: number) => {
     if (renderer.hasGeometry()) {
         // Build points progressively as playback advances
         updateLiveSnapshotCorridor();
-        // Auto-follow the corridor head if enabled
-        updateAutoFollowCamera();
+        // Update camera based on current mode
+        const timeInSeconds = now / 1000;
+        updateAutoFollowCamera(timeInSeconds);
         // Apply oscillation to existing points if enabled
-        const milliSecToSec = now / 1000;
         if (oscillationEnabled.value) {
-            oscillateExistingPoints(milliSecToSec);
+            oscillateExistingPoints(timeInSeconds);
         }
     }
 
@@ -448,6 +471,22 @@ const animate = (now: number) => {
 watch(renderMode, (newMode) => {
     renderer.setRenderMode(newMode);
 });
+
+// Cycle through camera modes: free -> follow -> orbit -> free
+const toggleCameraMode = () => {
+    // Only allow toggling if WAV is loaded
+    if (!wavLoaded.value) return;
+
+    const modes: CameraMode[] = ['free', 'follow', 'orbit'];
+    const currentIndex = modes.indexOf(cameraMode.value);
+    const nextIndex = (currentIndex + 1) % modes.length;
+    cameraMode.value = modes[nextIndex] ?? 'free';
+
+    // Exit pointer lock when entering follow/orbit mode so camera can move smoothly
+    if (cameraMode.value !== 'free' && document.pointerLockElement) {
+        document.exitPointerLock();
+    }
+};
 
 // Keyboard shortcuts
 const shortcuts = useKeyboardShortcuts();
@@ -465,6 +504,9 @@ shortcuts.register(' ', () => {
 });
 shortcuts.register('h', () => {
     showControlsOverlay.value = !showControlsOverlay.value;
+});
+shortcuts.register('c', () => {
+    toggleCameraMode();
 });
 
 onMounted(() => {
@@ -620,6 +662,10 @@ onUnmounted(async () => {
                         <kbd class="overlay-kbd overlay-kbd-sm !justify-start pl-1"
                             style="font-size: 1.2rem; width: 2rem;"><span
                                 style="transform: translateY(-1px); display: inline-block;">⇧</span></kbd>
+                    </div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-white/80 text-s">Camera: {{ cameraMode }}</span>
+                        <kbd class="overlay-kbd overlay-kbd-sm">C</kbd>
                     </div>
                 </div>
             </div>
