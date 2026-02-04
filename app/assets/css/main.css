@@ -7,6 +7,7 @@
   --color-accessible-blue: #5700ed;
   --color-secondary: #a500ed;
   --color-white: #ffffff;
+  --color-warning: #ed3a00;
 
   --breakpoint-xs: 30rem;
   --font-sans: "Inclusive Sans", sans-serif;
@@ -20,6 +21,8 @@
     --ui-text-white: var(--color-white);
     --ui-bg: var(--color-light-bg);
     --ui-divider: #b1b1b1;
+
+    --ui-warning: var(--color-warning);
 
     --theme-transition-duration: 750ms;
     --theme-transition-easing: cubic-bezier(0.2, 0.6, 0.2, 1);

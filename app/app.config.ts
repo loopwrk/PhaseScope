@@ -23,6 +23,7 @@ export default defineAppConfig({
     },
     toast: {
       slots: {
+        root: "bg-white",
         wrapper: "py-2",
         title: "text-xl",
         icon: "size-7 mt-2",

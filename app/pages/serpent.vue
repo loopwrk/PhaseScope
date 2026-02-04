@@ -42,7 +42,6 @@ const movement = useKeyboardMovement(three.controls, {
 });
 
 
-// Set up pointer lock camera - composable handles click-to-lock and event listeners
 usePointerLockCamera(three.controls, canvasContainer, {
     onLock: () => {
         // Disable auto-follow when user takes manual camera control
@@ -77,13 +76,52 @@ const corridorState = ref<CorridorState>({
 const oscillationEnabled = ref(false);
 const showControlsOverlay = ref(true);
 
+// Track coverage as percentage (0-100)
+const trackCoveragePercent = ref(100);
+
 const corridorMeta = ref({
     zStep: 0.08, // distance between frames along Z axis
     pointsPerFrame: 128,
     windowSize: 2048, // samples per frame window
     hopSize: 1024,    // samples between frames
-    maxPoints: 1500000, // cap total points for performance (instead of fixed frame count)
 });
+
+// Performance warning thresholds
+const POINTS_WARNING_THRESHOLD = 3_000_000;
+const POINTS_DANGER_THRESHOLD = 8_000_000;
+
+// Calculate total frames possible for the loaded audio
+const totalFramesForTrack = computed(() => {
+    if (!audio.buffer) return 0;
+    const { windowSize, hopSize } = corridorMeta.value;
+    return Math.floor((audio.buffer.length - windowSize) / hopSize);
+});
+
+// Calculate total points needed for full track at current pointsPerFrame
+const totalPointsForFullTrack = computed(() => {
+    return totalFramesForTrack.value * corridorMeta.value.pointsPerFrame;
+});
+
+// Calculate effective max points based on percentage slider
+const effectiveMaxPoints = computed(() => {
+    const fullPoints = totalPointsForFullTrack.value;
+    return Math.floor(fullPoints * (trackCoveragePercent.value / 100));
+});
+
+// Warning level: 'none' | 'warning' | 'danger'
+const pointsWarningLevel = computed(() => {
+    const points = effectiveMaxPoints.value;
+    if (points >= POINTS_DANGER_THRESHOLD) return 'danger';
+    if (points >= POINTS_WARNING_THRESHOLD) return 'warning';
+    return 'none';
+});
+
+// Format large numbers for display
+const formatPointCount = (count: number): string => {
+    if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+    if (count >= 1_000) return `${(count / 1_000).toFixed(0)}K`;
+    return count.toString();
+};
 
 const clearCorridor = () => {
     renderer.clearGeometry();
@@ -106,10 +144,14 @@ const initLiveSnapshotCorridor = (buffer: AudioBuffer) => {
     const ch0 = buffer.getChannelData(0);
     const ch1 = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : ch0;
 
-    const { windowSize, hopSize, pointsPerFrame, maxPoints } = corridorMeta.value;
+    const { windowSize, hopSize, pointsPerFrame } = corridorMeta.value;
     const totalFrames = Math.floor((ch0.length - windowSize) / hopSize);
-    // Calculate max frames based on point budget instead of arbitrary frame limit
-    const maxFrames = Math.floor(maxPoints / pointsPerFrame);
+
+    // Calculate max frames based on percentage-based point budget
+    // Use buffer directly here to avoid reactivity timing issues with computed properties
+    const totalPointsForBuffer = totalFrames * pointsPerFrame;
+    const maxPointsForCoverage = Math.floor(totalPointsForBuffer * (trackCoveragePercent.value / 100));
+    const maxFrames = Math.floor(maxPointsForCoverage / pointsPerFrame);
     const frameCount = Math.max(1, Math.min(totalFrames, maxFrames));
 
     corridorState.value.buffer = buffer;
@@ -152,7 +194,6 @@ const loadWavFile = async (file: File) => {
         initLiveSnapshotCorridor(audio.buffer);
     }
 
-    // Enable follow camera mode
     cameraMode.value = 'follow';
 }
 
@@ -396,7 +437,7 @@ const updateAutoFollowCamera = (time: number) => {
 
     if (cameraMode.value === 'orbit') {
         // Drone-like orbit around the corridor head
-        // Uses Lissajous-like path for interesting 3D movement
+        // Uses Lissajous-like path
         const orbitRadius = 8.0;
         const verticalAmplitude = 3.0;
         const orbitSpeed = 0.15; // Slow rotation
@@ -545,12 +586,44 @@ onUnmounted(async () => {
             <div class="flex gap-16">
                 <!-- Left Column -->
                 <div class="flex-1 space-y-4">
-                    <div class="mb-6">
+                    <div class="mb-6" :class="{ 'opacity-40': audio.started || !wavLoaded }">
                         <label class="block font-bold text-primary text-lg mb-2">
                             Points Per Frame: <span class="text-secondary">{{ corridorMeta.pointsPerFrame }}</span>
                         </label>
                         <USlider v-model="corridorMeta.pointsPerFrame" :min="32" :max="512" :step="32"
-                            :ui="{ thumb: 'bg-primary' }" :disabled="audio.started" />
+                            :ui="{ thumb: 'bg-primary' }" :disabled="audio.started || !wavLoaded" />
+                    </div>
+                    <div class="mb-6" :class="{ 'opacity-40': audio.started || !wavLoaded }">
+                        <label class="block font-bold text-primary text-lg mb-2">
+                            Track Coverage: <span class="text-secondary">{{ trackCoveragePercent }}%</span>
+                            <span v-if="wavLoaded" class="text-sm font-normal ml-2 text-gray-500">
+                                ({{ formatPointCount(effectiveMaxPoints) }} points)
+                            </span>
+                        </label>
+                        <USlider v-model="trackCoveragePercent" :min="10" :max="100" :step="5"
+                            :ui="{ thumb: 'bg-primary' }" :disabled="audio.started || !wavLoaded" />
+                        <p v-if="!wavLoaded" class="text-sm text-gray-400 mt-1">
+                            Load a WAV file to enable this setting
+                        </p>
+                    </div>
+                    <!-- Points warning -->
+                    <div v-if="wavLoaded && pointsWarningLevel !== 'none'"
+                        class="p-3 rounded-md mb-4 bg-white border border-[color:var(--ui-warning)]">
+                        <div class="flex items-start gap-2">
+                            <UIcon
+                                name="i-heroicons-exclamation-triangle"
+                                class="size-5 mt-0.5 flex-shrink-0 text-[color:var(--ui-warning)]" />
+                            <div>
+                                <p class="font-semibold text-sm text-[color:var(--ui-warning)]">
+                                    {{ pointsWarningLevel === 'danger' ? 'High Performance Risk' : 'Performance Warning' }}
+                                </p>
+                                <p class="text-sm text-[color:var(--ui-text)] mt-1">
+                                    {{ formatPointCount(effectiveMaxPoints) }} points may
+                                    {{ pointsWarningLevel === 'danger' ? 'cause significant lag or crashes' : 'impact performance' }}
+                                    on some devices. Consider reducing track coverage or points per frame.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                     <USeparator class="py-2" />
                     <div class="mb-6">
