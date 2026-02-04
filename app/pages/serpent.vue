@@ -33,6 +33,10 @@ const renderer = useCorridorRenderer(scene);
 
 type CameraMode = 'free' | 'follow' | 'orbit';
 const cameraMode = ref<CameraMode>('follow');
+
+type TopologyMode = 'corridor' | 'sphere';
+const topologyMode = ref<TopologyMode>('corridor');
+
 const toast = useToast();
 
 const movement = useKeyboardMovement(three.controls, {
@@ -173,11 +177,14 @@ const initLiveSnapshotCorridor = (buffer: AudioBuffer) => {
     corridorState.value.anchorPositions = anchorPositions;
 
     // Create geometries using renderer
+    // Position depends on topology mode
+    const isSphere = topologyMode.value === 'sphere';
     const { positions } = renderer.createGeometry({
         totalPoints,
         renderMode,
-        pointsPosition: { x: 0, y: 1.7, z: 0.95 },
-        linesPosition: { x: 0, y: 1.7, z: 0 }
+        // Sphere is centered at origin with Y offset; corridor extends along Z
+        pointsPosition: isSphere ? { x: 0, y: 1.7, z: 0 } : { x: 0, y: 1.7, z: 0.95 },
+        linesPosition: isSphere ? { x: 0, y: 1.7, z: 0 } : { x: 0, y: 1.7, z: 0 }
     });
 
     corridorState.value.pos = positions;
@@ -192,6 +199,22 @@ const loadWavFile = async (file: File) => {
     // Build the 3D snapshot corridor progressively as playback advances
     if (audio.buffer) {
         initLiveSnapshotCorridor(audio.buffer);
+    }
+
+    // Position camera based on topology mode
+    if (topologyMode.value === 'sphere') {
+        const camObj = three.controls.value?.object;
+        if (camObj) {
+            // Position camera outside sphere for a good overview
+            const initialOrbitRadius = 12;
+            const galleryY = 1.7;
+            camObj.position.set(initialOrbitRadius, galleryY + 3, 0);
+            three.camera.value?.lookAt(0, galleryY, 0);
+        }
+        // Exit pointer lock so camera can orbit smoothly
+        if (document.pointerLockElement) {
+            document.exitPointerLock();
+        }
     }
 
     cameraMode.value = 'follow';
@@ -357,6 +380,116 @@ const buildOneCorridorFrame = (frameIndex: number) => {
     }
 }
 
+const buildOneSphereFrame = (frameIndex: number) => {
+    // Spherical topology: map audio onto a sphere with surface displacement
+    const { pointsPerFrame, windowSize, hopSize } = corridorMeta.value;
+    const { ch0, ch1, frameCount, pos, frequencies, amplitudes, anchorPositions } = corridorState.value;
+    if (!pos || !ch0 || !ch1 || !renderer.hasGeometry()) return;
+    if (!frequencies || !amplitudes || !anchorPositions) return;
+
+    const frameStart = frameIndex * hopSize;
+
+    // Spherical parameters
+    const baseRadius = 5.0;
+    const displacementScale = 1.5;
+
+    // Map frame index to polar angle (phi): time evolution from north to south pole
+    const phi = (frameIndex / frameCount) * Math.PI;
+
+    // Each frame occupies a contiguous block
+    let p = frameIndex * pointsPerFrame * 3;
+    const colors = renderer.getColorArray();
+    if (!colors) return;
+
+    // Reuse a single Color object to avoid allocating one per point
+    const color = new THREE.Color();
+
+    // Precompute frequency analysis once per frame (at frame center)
+    const analysisWindow = 4096;
+    const frameCenterSample = clamp(frameStart + windowSize / 2, 0, ch0.length - 1);
+    const windowStart = Math.max(0, frameCenterSample - analysisWindow / 2);
+    const freqL = analyzeFrequencyBand(ch0, windowStart, analysisWindow);
+    const freqR = analyzeFrequencyBand(ch1, windowStart, analysisWindow);
+    const freqContent = (freqL + freqR) / 2;
+
+    // Precompute hue from frequency (same for all points in frame)
+    const hueRangeMultiplier = 0.75;
+    const hue = freqContent * hueRangeMultiplier;
+    const saturation = 0.85;
+    const baseLightness = 0.35;
+    const amplitudeBrightnessFactor = 0.5;
+
+    for (let k = 0; k < pointsPerFrame; k++) {
+        // Map point index to azimuth angle (theta): full rotation around sphere
+        const theta = (k / pointsPerFrame) * Math.PI * 2;
+
+        const sampleIndex = frameStart + Math.floor((k / pointsPerFrame) * windowSize);
+        const i = clamp(sampleIndex, 0, ch0.length - 1);
+
+        const L = ch0[i] ?? 0;
+        const R = ch1[i] ?? 0;
+
+        // Calculate amplitude for radial displacement
+        const amplitude = Math.sqrt(L * L + R * R);
+        const normalizedAmp = clamp(amplitude, 0, 1);
+
+        // Radial displacement based on amplitude
+        const displacement = normalizedAmp * displacementScale;
+        const r = baseRadius + displacement;
+
+        // Spherical to Cartesian conversion
+        const x = r * Math.sin(phi) * Math.cos(theta);
+        const y = r * Math.cos(phi);
+        const z = r * Math.sin(phi) * Math.sin(theta);
+
+        // Lightness varies per point based on amplitude
+        const lightness = baseLightness + normalizedAmp * amplitudeBrightnessFactor;
+        color.setHSL(hue, saturation, lightness);
+
+        // Set position
+        pos[p] = x;
+        pos[p + 1] = y;
+        pos[p + 2] = z;
+
+        // Set color
+        colors[p] = color.r;
+        colors[p + 1] = color.g;
+        colors[p + 2] = color.b;
+
+        // Lightweight per-point frequency estimate for oscillation
+        const microWindow = 8;
+        const halfMicro = microWindow / 2;
+        let localChangeEnergy = 0;
+        let localAmpEnergy = 0;
+        for (let m = -halfMicro; m < halfMicro; m++) {
+            const idx = clamp(i + m, 0, ch0.length - 2);
+            const s0 = (ch0[idx] ?? 0) + (ch1[idx] ?? 0);
+            const s1 = (ch0[idx + 1] ?? 0) + (ch1[idx + 1] ?? 0);
+            const diff = s1 - s0;
+            localChangeEnergy += diff * diff;
+            localAmpEnergy += s0 * s0;
+        }
+        const localTotal = Math.sqrt(localChangeEnergy) + Math.sqrt(localAmpEnergy);
+        const localFreqContent = localTotal > 0.001
+            ? clamp(Math.sqrt(localChangeEnergy) / localTotal * 3, 0, 1)
+            : 0.5;
+        const pointFreqHz = freqContentToHz(localFreqContent);
+
+        // Store oscillation data for this point
+        const pointIndex = frameIndex * pointsPerFrame + k;
+        frequencies[pointIndex] = pointFreqHz;
+        amplitudes[pointIndex] = ampToOscillationRange(normalizedAmp);
+
+        // Store anchor position (original position before any oscillation)
+        anchorPositions[p] = pos[p] ?? 0;
+        anchorPositions[p + 1] = pos[p + 1] ?? 0;
+        anchorPositions[p + 2] = pos[p + 2] ?? 0;
+
+        const positionIncrement = 3;
+        p += positionIncrement;
+    }
+}
+
 const oscillateExistingPoints = (time: number) => {
     // Apply oscillation to all built points based on their stored frequency data
     const { pos, frequencies, amplitudes, anchorPositions, builtFrames } = corridorState.value;
@@ -407,7 +540,12 @@ const updateLiveSnapshotCorridor = () => {
 
     for (let i = 0; i < toBuild; i++) {
         const f = corridorState.value.builtFrames;
-        buildOneCorridorFrame(f);
+        // Dispatch to the appropriate builder based on topology mode
+        if (topologyMode.value === 'sphere') {
+            buildOneSphereFrame(f);
+        } else {
+            buildOneCorridorFrame(f);
+        }
         corridorState.value.builtFrames++;
     }
 
@@ -421,51 +559,72 @@ const updateLiveSnapshotCorridor = () => {
 const updateAutoFollowCamera = (time: number) => {
     if (cameraMode.value === 'free' || !renderer.hasGeometry() || !corridorState.value.buffer) return;
 
-    // Calculate the Z position of the corridor head (latest built frame)
-    const headFrameIndex = corridorState.value.builtFrames - 1;
-    if (headFrameIndex < 0) return;
-
-    const frameCenteringDivisor = 2;
-    const headZ = (headFrameIndex - corridorState.value.frameCount / frameCenteringDivisor) * corridorMeta.value.zStep;
-    const galleryY = 1.7; // gallery.position.y
-
     const camObj = three.controls.value?.object;
     if (!camObj) return;
 
+    const galleryY = 1.7; // gallery.position.y
     const lerpFactor = 0.1;
     let targetPos: { x: number; y: number; z: number };
+    let lookTarget: THREE.Vector3;
 
-    if (cameraMode.value === 'orbit') {
-        // Drone-like orbit around the corridor head
-        // Uses Lissajous-like path
-        const orbitRadius = 8.0;
-        const verticalAmplitude = 3.0;
-        const orbitSpeed = 0.15; // Slow rotation
+    if (topologyMode.value === 'sphere') {
+        // Sphere mode: orbit camera around the outside for a good overview
+        const sphereCenter = new THREE.Vector3(0, galleryY, 0);
 
-        // Different frequencies for each axis create figure-8 like patterns
-        const horizontalAngle = time * orbitSpeed;
-        const verticalAngle = time * orbitSpeed * 0.7; // Slower vertical oscillation
-        const tiltAngle = time * orbitSpeed * 0.3; // Even slower tilt
+        // Orbital camera path - slowly rotating around the sphere
+        const orbitRadius = 12; // Distance from sphere center
+        const orbitHeight = 3; // How high above the equator
+        const orbitSpeed = 0.2;
 
-        // Orbit in XZ plane around the head, with Y oscillation
         targetPos = {
-            x: Math.cos(horizontalAngle) * orbitRadius * (1 + Math.sin(tiltAngle) * 0.3),
-            y: galleryY + 2 + Math.sin(verticalAngle) * verticalAmplitude,
-            z: headZ + Math.sin(horizontalAngle) * orbitRadius
+            x: Math.cos(time * orbitSpeed) * orbitRadius,
+            y: galleryY + orbitHeight + Math.sin(time * orbitSpeed * 0.5) * 2, // Gentle up/down motion
+            z: Math.sin(time * orbitSpeed) * orbitRadius
         };
+
+        lookTarget = sphereCenter;
     } else {
-        // Follow mode: isometric angle behind and above the head
-        const offset = {
-            x: 5.0,   // to the side
-            y: 4.5,   // above
-            z: 7.0    // behind the head
-        };
+        // Corridor mode
+        const headFrameIndex = corridorState.value.builtFrames - 1;
+        if (headFrameIndex < 0) return;
 
-        targetPos = {
-            x: offset.x,
-            y: galleryY + offset.y,
-            z: headZ + offset.z
-        };
+        const frameCenteringDivisor = 2;
+        const headZ = (headFrameIndex - corridorState.value.frameCount / frameCenteringDivisor) * corridorMeta.value.zStep;
+
+        if (cameraMode.value === 'orbit') {
+            // Drone-like orbit around the corridor head
+            // Uses Lissajous-like path
+            const orbitRadius = 8.0;
+            const verticalAmplitude = 3.0;
+            const orbitSpeed = 0.15; // Slow rotation
+
+            // Different frequencies for each axis create figure-8 like patterns
+            const horizontalAngle = time * orbitSpeed;
+            const verticalAngle = time * orbitSpeed * 0.7; // Slower vertical oscillation
+            const tiltAngle = time * orbitSpeed * 0.3; // Even slower tilt
+
+            // Orbit in XZ plane around the head, with Y oscillation
+            targetPos = {
+                x: Math.cos(horizontalAngle) * orbitRadius * (1 + Math.sin(tiltAngle) * 0.3),
+                y: galleryY + 2 + Math.sin(verticalAngle) * verticalAmplitude,
+                z: headZ + Math.sin(horizontalAngle) * orbitRadius
+            };
+        } else {
+            // Follow mode: isometric angle behind and above the head
+            const offset = {
+                x: 5.0,   // to the side
+                y: 4.5,   // above
+                z: 7.0    // behind the head
+            };
+
+            targetPos = {
+                x: offset.x,
+                y: galleryY + offset.y,
+                z: headZ + offset.z
+            };
+        }
+
+        lookTarget = new THREE.Vector3(0, galleryY, headZ);
     }
 
     // Smooth camera movement
@@ -473,8 +632,7 @@ const updateAutoFollowCamera = (time: number) => {
     camObj.position.y += (targetPos.y - camObj.position.y) * lerpFactor;
     camObj.position.z += (targetPos.z - camObj.position.z) * lerpFactor;
 
-    // Look at the corridor head
-    const lookTarget = new THREE.Vector3(0, galleryY, headZ);
+    // Look at the target
     three.camera.value?.lookAt(lookTarget);
 }
 
@@ -511,6 +669,21 @@ const animate = (now: number) => {
 // Watch for render mode changes and update visibility
 watch(renderMode, (newMode) => {
     renderer.setRenderMode(newMode);
+});
+
+// Restore smooth curves when oscillation is disabled
+watch(oscillationEnabled, (enabled) => {
+    if (!enabled) {
+        const { pos, anchorPositions, builtFrames } = corridorState.value;
+        const { pointsPerFrame } = corridorMeta.value;
+        if (pos && anchorPositions && builtFrames > 0) {
+            const totalPoints = builtFrames * pointsPerFrame * 3;
+            for (let i = 0; i < totalPoints; i++) {
+                pos[i] = anchorPositions[i] ?? 0;
+            }
+            renderer.markGeometryForUpdate(true, false);
+        }
+    }
 });
 
 // Cycle through camera modes: free -> follow -> orbit -> free
@@ -659,6 +832,21 @@ onUnmounted(async () => {
 
                 <!-- Right Column -->
                 <div class="flex-1 space-y-4">
+                    <div class="mb-6" :class="{ 'opacity-40': audio.started }">
+                        <URadioGroup v-model="topologyMode" size="xl" :items="[
+                            { label: 'Corridor', value: 'corridor' },
+                            { label: 'Sphere', value: 'sphere' }
+                        ]" :ui="{ legend: 'text-lg text-primary font-bold', label: 'text-primary' }" value-key="value"
+                            orientation="horizontal" :disabled="audio.started">
+                            <template #legend>
+                                Topology
+                            </template>
+                        </URadioGroup>
+                        <p class="text-sm text-gray-500 mt-2">
+                            Corridor maps time along Z-axis. Sphere wraps audio from north to south pole.
+                        </p>
+                    </div>
+                    <USeparator class="py-2" />
                     <div class="flex items-center gap-3 mb-2">
                         <UCheckbox v-model="showControlsOverlay" id="controls-overlay-toggle" />
                         <label for="controls-overlay-toggle"
@@ -739,6 +927,9 @@ onUnmounted(async () => {
                     <div class="flex items-center gap-2 mb-2">
                         <span class="text-white/80 text-s">Camera: {{ cameraMode }}</span>
                         <kbd class="overlay-kbd overlay-kbd-sm">C</kbd>
+                    </div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-white/80 text-s">Topology: {{ topologyMode }}</span>
                     </div>
                 </div>
             </div>
