@@ -43,7 +43,7 @@ export function useKeyboardMovement(
     normalSpeed = 4.0,
     boostSpeed = 7.5,
     turnSpeed = 2.0, // radians per second
-    minHeight = 0.3,
+    minHeight = -Infinity,
     onMovement,
   } = options;
 

@@ -21,7 +21,6 @@ export function useThree(canvasContainer: Ref<HTMLDivElement | null>) {
   const camera = shallowRef<THREE.PerspectiveCamera | null>(null);
   const renderer = shallowRef<THREE.WebGLRenderer | null>(null);
   const controls = shallowRef<PointerLockControls | null>(null);
-  const ground = shallowRef<THREE.Mesh | null>(null);
   const isFullscreen = ref(false);
 
   const updateRendererSize = () => {
@@ -88,21 +87,6 @@ export function useThree(canvasContainer: Ref<HTMLDivElement | null>) {
     point.position.set(3, 6, 4);
     scene.add(point);
 
-    // Ground
-    const g = markRaw(
-      new THREE.Mesh(
-        new THREE.PlaneGeometry(200, 200),
-        new THREE.MeshStandardMaterial({
-          color: 0x050505,
-          roughness: 1,
-          metalness: 0,
-        })
-      )
-    );
-    g.rotation.x = -Math.PI / 2;
-    g.position.y = 0;
-    scene.add(g);
-    ground.value = g;
 
     // Controls
     const ctl = markRaw(new PointerLockControls(c, r.domElement));
@@ -126,14 +110,6 @@ export function useThree(canvasContainer: Ref<HTMLDivElement | null>) {
       scene.remove(controls.value.object);
     }
 
-    if (ground.value) {
-      scene.remove(ground.value);
-      ground.value.geometry.dispose();
-      const mat = ground.value.material;
-      if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
-      else mat.dispose();
-      ground.value = null;
-    }
 
     if (renderer.value) {
       const el = renderer.value.domElement;
@@ -145,6 +121,7 @@ export function useThree(canvasContainer: Ref<HTMLDivElement | null>) {
     camera.value = null;
     controls.value = null;
   };
+
 
   return {
     scene,

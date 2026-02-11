@@ -1,11 +1,8 @@
 <script setup lang="ts">
-import * as THREE from "three";
-import {
-    analyzeFrequencyBand,
-    freqContentToHz,
-    ampToOscillationRange
-} from "~/utils/audio/analysis";
-import type { RenderMode } from "~/composables/useCorridorRenderer.client";
+import * as THREE from 'three';
+import { toRaw } from 'vue';
+import { analyzeFrequencyBand, freqContentToHz, ampToOscillationRange } from '~/utils/audio/analysis';
+import type { RenderMode } from '~/composables/useCorridorRenderer.client';
 
 interface CorridorState {
     buffer: AudioBuffer | null;
@@ -42,15 +39,14 @@ const toast = useToast();
 const movement = useKeyboardMovement(three.controls, {
     onMovement: () => {
         cameraMode.value = 'free';
-    }
+    },
 });
-
 
 usePointerLockCamera(three.controls, canvasContainer, {
     onLock: () => {
         // Disable auto-follow when user takes manual camera control
         cameraMode.value = 'free';
-    }
+    },
 });
 
 let requestAnimFrame: number | null = null;
@@ -60,7 +56,17 @@ const initaliseScene = () => {
 };
 
 // Initialize WAV player composable
-const { audio, wavLoaded, loadWavFile: loadWavFileBase, startAudio, stopAllAudio, pauseAudio, resumeAudio, getPlaybackTimeSeconds, dispose: disposeWavPlayer } = useWavPlayer();
+const {
+    audio,
+    wavLoaded,
+    loadWavFile: loadWavFileBase,
+    startAudio,
+    stopAllAudio,
+    pauseAudio,
+    resumeAudio,
+    getPlaybackTimeSeconds,
+    dispose: disposeWavPlayer,
+} = useWavPlayer();
 
 const corridorState = ref<CorridorState>({
     buffer: null,
@@ -77,8 +83,13 @@ const corridorState = ref<CorridorState>({
     anchorPositions: null,
 });
 
-const oscillationEnabled = ref(false);
+// Initialize oscillation composable
+const oscillation = useOscillation({
+    onUpdate: () => renderer.markGeometryForUpdate(true, false),
+});
+
 const showControlsOverlay = ref(true);
+const advancedOptionsOpen = ref(false);
 
 // Track coverage as percentage (0-100)
 const trackCoveragePercent = ref(100);
@@ -87,7 +98,7 @@ const corridorMeta = ref({
     zStep: 0.08, // distance between frames along Z axis
     pointsPerFrame: 128,
     windowSize: 2048, // samples per frame window
-    hopSize: 1024,    // samples between frames
+    hopSize: 1024, // samples between frames
 });
 
 // Performance warning thresholds
@@ -139,7 +150,7 @@ const clearCorridor = () => {
     corridorState.value.frequencies = null;
     corridorState.value.amplitudes = null;
     corridorState.value.anchorPositions = null;
-}
+};
 
 const initLiveSnapshotCorridor = (buffer: AudioBuffer) => {
     clearCorridor();
@@ -184,11 +195,11 @@ const initLiveSnapshotCorridor = (buffer: AudioBuffer) => {
         renderMode,
         // Sphere is centered at origin with Y offset; corridor extends along Z
         pointsPosition: isSphere ? { x: 0, y: 1.7, z: 0 } : { x: 0, y: 1.7, z: 0.95 },
-        linesPosition: isSphere ? { x: 0, y: 1.7, z: 0 } : { x: 0, y: 1.7, z: 0 }
+        linesPosition: isSphere ? { x: 0, y: 1.7, z: 0 } : { x: 0, y: 1.7, z: 0 },
     });
 
     corridorState.value.pos = positions;
-}
+};
 
 const loadWavFile = async (file: File) => {
     stopAllAudio();
@@ -218,7 +229,7 @@ const loadWavFile = async (file: File) => {
     }
 
     cameraMode.value = 'follow';
-}
+};
 
 const onAudioLoadError = (error: Error) => {
     toast.add({
@@ -227,26 +238,26 @@ const onAudioLoadError = (error: Error) => {
         color: 'error',
         icon: 'i-heroicons-exclamation-triangle',
     });
-}
+};
 
 const handlePlay = async () => {
-    // Re-initialize corridor if it was cleared but audio buffer still exists
-    if (audio.buffer && !corridorState.value.buffer) {
-        initLiveSnapshotCorridor(audio.buffer);
-        cameraMode.value = 'follow';
-    }
-
     // If paused (started but no active source), resume from saved position
     if (audio.started && !audio.source) {
         await resumeAudio();
     } else {
+        // Fresh playback - always re-initialize corridor to ensure arrays
+        // are sized correctly for current settings (pointsPerFrame, trackCoverage, etc.)
+        if (audio.buffer) {
+            initLiveSnapshotCorridor(audio.buffer);
+            cameraMode.value = 'follow';
+        }
         await startAudio();
     }
-}
+};
 
 const handlePause = () => {
     pauseAudio();
-}
+};
 
 const handlePlayPause = async () => {
     if (audio.source) {
@@ -254,12 +265,12 @@ const handlePlayPause = async () => {
     } else {
         await handlePlay();
     }
-}
+};
 
 const handleStop = () => {
     stopAllAudio();
     clearCorridor();
-}
+};
 
 const getTargetFrameForPlayback = () => {
     // Map playback time to a frame index.
@@ -272,12 +283,14 @@ const getTargetFrameForPlayback = () => {
     // frame 0 corresponds to window starting at sample 0
     const f = Math.floor((sample - windowSize) / hopSize);
     return clamp(f, 0, Math.max(0, corridorState.value.frameCount - 1));
-}
+};
 
 const buildOneCorridorFrame = (frameIndex: number) => {
     // Writes a single frame into the preallocated positions buffer.
     const { pointsPerFrame, windowSize, hopSize, zStep } = corridorMeta.value;
-    const { ch0, ch1, frameCount, xyScale, ringRadius, pos, frequencies, amplitudes, anchorPositions } = corridorState.value;
+    // Use toRaw to ensure we write to the actual Float32Arrays, not Vue proxies
+    const rawState = toRaw(corridorState.value);
+    const { ch0, ch1, frameCount, xyScale, ringRadius, pos, frequencies, amplitudes, anchorPositions } = rawState;
     if (!pos || !ch0 || !ch1 || !renderer.hasGeometry()) return;
     if (!frequencies || !amplitudes || !anchorPositions) return;
 
@@ -343,9 +356,8 @@ const buildOneCorridorFrame = (frameIndex: number) => {
             localAmpEnergy += s0 * s0;
         }
         const localTotal = Math.sqrt(localChangeEnergy) + Math.sqrt(localAmpEnergy);
-        const localFreqContent = localTotal > 0.001
-            ? clamp(Math.sqrt(localChangeEnergy) / localTotal * 3, 0, 1)
-            : 0.5;
+        const localFreqContent =
+            localTotal > 0.001 ? clamp((Math.sqrt(localChangeEnergy) / localTotal) * 3, 0, 1) : 0.5;
         const pointFreqHz = freqContentToHz(localFreqContent);
 
         // Lightness varies per point based on amplitude
@@ -357,7 +369,7 @@ const buildOneCorridorFrame = (frameIndex: number) => {
         const ringZ = Math.sin(u) * ringRadius;
 
         pos[p] = ringX + x2;
-        pos[p + 1] = y2;        // portrait controls vertical shape
+        pos[p + 1] = y2; // portrait controls vertical shape
         pos[p + 2] = ringZ + z0; // time corridor
 
         // Set color for this point
@@ -378,12 +390,13 @@ const buildOneCorridorFrame = (frameIndex: number) => {
         const positionIncrement = 3;
         p += positionIncrement;
     }
-}
+};
 
 const buildOneSphereFrame = (frameIndex: number) => {
     // Spherical topology: map audio onto a sphere with surface displacement
     const { pointsPerFrame, windowSize, hopSize } = corridorMeta.value;
-    const { ch0, ch1, frameCount, pos, frequencies, amplitudes, anchorPositions } = corridorState.value;
+    const rawState = toRaw(corridorState.value);
+    const { ch0, ch1, frameCount, pos, frequencies, amplitudes, anchorPositions } = rawState;
     if (!pos || !ch0 || !ch1 || !renderer.hasGeometry()) return;
     if (!frequencies || !amplitudes || !anchorPositions) return;
 
@@ -470,9 +483,8 @@ const buildOneSphereFrame = (frameIndex: number) => {
             localAmpEnergy += s0 * s0;
         }
         const localTotal = Math.sqrt(localChangeEnergy) + Math.sqrt(localAmpEnergy);
-        const localFreqContent = localTotal > 0.001
-            ? clamp(Math.sqrt(localChangeEnergy) / localTotal * 3, 0, 1)
-            : 0.5;
+        const localFreqContent =
+            localTotal > 0.001 ? clamp((Math.sqrt(localChangeEnergy) / localTotal) * 3, 0, 1) : 0.5;
         const pointFreqHz = freqContentToHz(localFreqContent);
 
         // Store oscillation data for this point
@@ -488,43 +500,7 @@ const buildOneSphereFrame = (frameIndex: number) => {
         const positionIncrement = 3;
         p += positionIncrement;
     }
-}
-
-const oscillateExistingPoints = (time: number) => {
-    // Apply oscillation to all built points based on their stored frequency data
-    const { pos, frequencies, amplitudes, anchorPositions, builtFrames } = corridorState.value;
-    const { pointsPerFrame } = corridorMeta.value;
-
-    if (!pos || !frequencies || !amplitudes || !anchorPositions) return;
-    if (builtFrames === 0) return;
-
-    const totalBuiltPoints = builtFrames * pointsPerFrame;
-
-    for (let i = 0; i < totalBuiltPoints; i++) {
-        const positionArrayStride = 3;
-        const p = i * positionArrayStride;
-        const freq = frequencies[i] ?? 0;
-        const amp = amplitudes[i] ?? 0;
-
-        // Calculate oscillation using sine wave at the point's frequency
-        // Use slight phase offsets for each axis to create 3D motion
-        const phaseCalcMultiplier = 2;
-        const phaseShiftY = Math.PI / 3; // 60° phase offset for Y-axis
-        const phaseShiftZ = 2 * Math.PI / 3; // 120° phase offset for Z-axis
-        const phase = phaseCalcMultiplier * Math.PI * freq * time;
-        const oscX = Math.sin(phase) * amp;
-        const oscY = Math.sin(phase + phaseShiftY) * amp;
-        const oscZ = Math.sin(phase + phaseShiftZ) * amp;
-
-        // Update position by adding oscillation to anchor position
-        pos[p] = (anchorPositions[p] ?? 0) + oscX;
-        pos[p + 1] = (anchorPositions[p + 1] ?? 0) + oscY;
-        pos[p + 2] = (anchorPositions[p + 2] ?? 0) + oscZ;
-    }
-
-    // Mark geometry for update
-    renderer.markGeometryForUpdate(true, false);
-}
+};
 
 const updateLiveSnapshotCorridor = () => {
     // Build frames progressively up to the current playback-derived target.
@@ -554,7 +530,7 @@ const updateLiveSnapshotCorridor = () => {
     // Update geometry
     renderer.updateDrawRange(builtPoints);
     renderer.markGeometryForUpdate(true, true);
-}
+};
 
 const updateAutoFollowCamera = (time: number) => {
     if (cameraMode.value === 'free' || !renderer.hasGeometry() || !corridorState.value.buffer) return;
@@ -579,7 +555,7 @@ const updateAutoFollowCamera = (time: number) => {
         targetPos = {
             x: Math.cos(time * orbitSpeed) * orbitRadius,
             y: galleryY + orbitHeight + Math.sin(time * orbitSpeed * 0.5) * 2, // Gentle up/down motion
-            z: Math.sin(time * orbitSpeed) * orbitRadius
+            z: Math.sin(time * orbitSpeed) * orbitRadius,
         };
 
         lookTarget = sphereCenter;
@@ -589,7 +565,8 @@ const updateAutoFollowCamera = (time: number) => {
         if (headFrameIndex < 0) return;
 
         const frameCenteringDivisor = 2;
-        const headZ = (headFrameIndex - corridorState.value.frameCount / frameCenteringDivisor) * corridorMeta.value.zStep;
+        const headZ =
+            (headFrameIndex - corridorState.value.frameCount / frameCenteringDivisor) * corridorMeta.value.zStep;
 
         if (cameraMode.value === 'orbit') {
             // Drone-like orbit around the corridor head
@@ -607,20 +584,20 @@ const updateAutoFollowCamera = (time: number) => {
             targetPos = {
                 x: Math.cos(horizontalAngle) * orbitRadius * (1 + Math.sin(tiltAngle) * 0.3),
                 y: galleryY + 2 + Math.sin(verticalAngle) * verticalAmplitude,
-                z: headZ + Math.sin(horizontalAngle) * orbitRadius
+                z: headZ + Math.sin(horizontalAngle) * orbitRadius,
             };
         } else {
             // Follow mode: isometric angle behind and above the head
             const offset = {
-                x: 5.0,   // to the side
-                y: 4.5,   // above
-                z: 7.0    // behind the head
+                x: 5.0, // to the side
+                y: 4.5, // above
+                z: 7.0, // behind the head
             };
 
             targetPos = {
                 x: offset.x,
                 y: galleryY + offset.y,
-                z: headZ + offset.z
+                z: headZ + offset.z,
             };
         }
 
@@ -634,8 +611,7 @@ const updateAutoFollowCamera = (time: number) => {
 
     // Look at the target
     three.camera.value?.lookAt(lookTarget);
-}
-
+};
 
 // ---------- Main loop ----------
 let lastFrameTime = 0;
@@ -655,8 +631,10 @@ const animate = (now: number) => {
         const timeInSeconds = now / 1000;
         updateAutoFollowCamera(timeInSeconds);
         // Apply oscillation to existing points if enabled
-        if (oscillationEnabled.value) {
-            oscillateExistingPoints(timeInSeconds);
+        if (oscillation.enabled.value) {
+            oscillation.oscillate(timeInSeconds, toRaw(corridorState.value), {
+                pointsPerFrame: corridorMeta.value.pointsPerFrame,
+            });
         }
     }
 
@@ -664,7 +642,7 @@ const animate = (now: number) => {
     const c = three.camera.value;
     if (r && c) r.render(scene, c);
     requestAnimFrame = requestAnimationFrame(animate);
-}
+};
 
 // Watch for render mode changes and update visibility
 watch(renderMode, (newMode) => {
@@ -672,17 +650,11 @@ watch(renderMode, (newMode) => {
 });
 
 // Restore smooth curves when oscillation is disabled
-watch(oscillationEnabled, (enabled) => {
+watch(oscillation.enabled, (enabled) => {
     if (!enabled) {
-        const { pos, anchorPositions, builtFrames } = corridorState.value;
-        const { pointsPerFrame } = corridorMeta.value;
-        if (pos && anchorPositions && builtFrames > 0) {
-            const totalPoints = builtFrames * pointsPerFrame * 3;
-            for (let i = 0; i < totalPoints; i++) {
-                pos[i] = anchorPositions[i] ?? 0;
-            }
-            renderer.markGeometryForUpdate(true, false);
-        }
+        oscillation.restoreAnchorPositions(toRaw(corridorState.value), {
+            pointsPerFrame: corridorMeta.value.pointsPerFrame,
+        });
     }
 });
 
@@ -708,7 +680,7 @@ shortcuts.register('r', () => {
     renderMode.value = renderMode.value === 'points' ? 'lines' : 'points';
 });
 shortcuts.register('o', () => {
-    oscillationEnabled.value = !oscillationEnabled.value;
+    oscillation.enabled.value = !oscillation.enabled.value;
 });
 shortcuts.register('f', () => {
     three.toggleFullscreen();
@@ -738,7 +710,6 @@ onUnmounted(async () => {
     clearCorridor();
     three.dispose();
 });
-
 </script>
 
 <template>
@@ -749,9 +720,7 @@ onUnmounted(async () => {
         <div class="flex items-center mb-6">
             <PlayPauseButton :is-playing="!!audio.source" :disabled="!wavLoaded" @click="handlePlayPause" />
             <StopButton :disabled="!audio.started" @click="handleStop" />
-            <AudioLoaderButton :handler="loadWavFile" @error="onAudioLoadError">
-                Load WAV
-            </AudioLoaderButton>
+            <AudioLoaderButton :handler="loadWavFile" @error="onAudioLoadError"> Load WAV </AudioLoaderButton>
         </div>
 
         <ProseH3>Display settings</ProseH3>
@@ -763,8 +732,14 @@ onUnmounted(async () => {
                         <label class="block font-bold text-primary text-lg mb-2">
                             Points Per Frame: <span class="text-secondary">{{ corridorMeta.pointsPerFrame }}</span>
                         </label>
-                        <USlider v-model="corridorMeta.pointsPerFrame" :min="32" :max="512" :step="32"
-                            :ui="{ thumb: 'bg-primary' }" :disabled="audio.started || !wavLoaded" />
+                        <USlider
+                            v-model="corridorMeta.pointsPerFrame"
+                            :min="32"
+                            :max="512"
+                            :step="32"
+                            :ui="{ thumb: 'bg-primary' }"
+                            :disabled="audio.started || !wavLoaded"
+                        />
                     </div>
                     <div class="mb-6" :class="{ 'opacity-40': audio.started || !wavLoaded }">
                         <label class="block font-bold text-primary text-lg mb-2">
@@ -773,26 +748,43 @@ onUnmounted(async () => {
                                 ({{ formatPointCount(effectiveMaxPoints) }} points)
                             </span>
                         </label>
-                        <USlider v-model="trackCoveragePercent" :min="10" :max="100" :step="5"
-                            :ui="{ thumb: 'bg-primary' }" :disabled="audio.started || !wavLoaded" />
+                        <USlider
+                            v-model="trackCoveragePercent"
+                            :min="10"
+                            :max="100"
+                            :step="5"
+                            :ui="{ thumb: 'bg-primary' }"
+                            :disabled="audio.started || !wavLoaded"
+                        />
                         <p v-if="!wavLoaded" class="text-sm text-gray-400 mt-1">
                             Load a WAV file to enable this setting
                         </p>
                     </div>
                     <!-- Points warning -->
-                    <div v-if="wavLoaded && pointsWarningLevel !== 'none'"
-                        class="p-3 rounded-md mb-4 bg-white border border-[color:var(--ui-warning)]">
+                    <div
+                        v-if="wavLoaded && pointsWarningLevel !== 'none'"
+                        class="p-3 rounded-md mb-4 bg-white border border-[color:var(--ui-warning)]"
+                    >
                         <div class="flex items-start gap-2">
                             <UIcon
                                 name="i-heroicons-exclamation-triangle"
-                                class="size-5 mt-0.5 flex-shrink-0 text-[color:var(--ui-warning)]" />
+                                class="size-5 mt-0.5 flex-shrink-0 text-[color:var(--ui-warning)]"
+                            />
                             <div>
                                 <p class="font-semibold text-sm text-[color:var(--ui-warning)]">
-                                    {{ pointsWarningLevel === 'danger' ? 'High Performance Risk' : 'Performance Warning' }}
+                                    {{
+                                        pointsWarningLevel === 'danger'
+                                            ? 'High Performance Risk'
+                                            : 'Performance Warning'
+                                    }}
                                 </p>
                                 <p class="text-sm text-[color:var(--ui-text)] mt-1">
                                     {{ formatPointCount(effectiveMaxPoints) }} points may
-                                    {{ pointsWarningLevel === 'danger' ? 'cause significant lag or crashes' : 'impact performance' }}
+                                    {{
+                                        pointsWarningLevel === 'danger'
+                                            ? 'cause significant lag or crashes'
+                                            : 'impact performance'
+                                    }}
                                     on some devices. Consider reducing track coverage or points per frame.
                                 </p>
                             </div>
@@ -800,16 +792,24 @@ onUnmounted(async () => {
                     </div>
                     <USeparator class="py-2" />
                     <div class="mb-6">
-                        <URadioGroup v-model="renderMode" size="xl" :items="[
-                            { label: 'Points', value: 'points' },
-                            { label: 'Lines', value: 'lines' }
-                        ]" :ui="{ legend: 'text-lg text-primary font-bold', label: 'text-primary' }" value-key="value"
-                            orientation="horizontal">
+                        <URadioGroup
+                            v-model="renderMode"
+                            size="xl"
+                            :items="[
+                                { label: 'Points', value: 'points' },
+                                { label: 'Lines', value: 'lines' },
+                            ]"
+                            :ui="{ legend: 'text-lg text-primary font-bold', label: 'text-primary' }"
+                            value-key="value"
+                            orientation="horizontal"
+                        >
                             <template #legend>
                                 <span class="inline-flex items-center gap-2">
                                     Render Mode
-                                    <UKbd size="md"
-                                        class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default">
+                                    <UKbd
+                                        size="md"
+                                        class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default"
+                                    >
                                         R
                                     </UKbd>
                                 </span>
@@ -818,12 +818,16 @@ onUnmounted(async () => {
                     </div>
                     <USeparator class="py-2" />
                     <div class="flex items-center gap-3 mb-2">
-                        <UCheckbox v-model="oscillationEnabled" id="oscillation-toggle" />
-                        <label for="oscillation-toggle"
-                            class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2">
+                        <UCheckbox v-model="oscillation.enabled.value" id="oscillation-toggle" />
+                        <label
+                            for="oscillation-toggle"
+                            class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2"
+                        >
                             Enable Point Oscillation
-                            <UKbd size="md"
-                                class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default">
+                            <UKbd
+                                size="md"
+                                class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default"
+                            >
                                 O
                             </UKbd>
                         </label>
@@ -833,14 +837,19 @@ onUnmounted(async () => {
                 <!-- Right Column -->
                 <div class="flex-1 space-y-4">
                     <div class="mb-6" :class="{ 'opacity-40': audio.started }">
-                        <URadioGroup v-model="topologyMode" size="xl" :items="[
-                            { label: 'Corridor', value: 'corridor' },
-                            { label: 'Sphere', value: 'sphere' }
-                        ]" :ui="{ legend: 'text-lg text-primary font-bold', label: 'text-primary' }" value-key="value"
-                            orientation="horizontal" :disabled="audio.started">
-                            <template #legend>
-                                Topology
-                            </template>
+                        <URadioGroup
+                            v-model="topologyMode"
+                            size="xl"
+                            :items="[
+                                { label: 'Corridor', value: 'corridor' },
+                                { label: 'Sphere', value: 'sphere' },
+                            ]"
+                            :ui="{ legend: 'text-lg text-primary font-bold', label: 'text-primary' }"
+                            value-key="value"
+                            orientation="horizontal"
+                            :disabled="audio.started"
+                        >
+                            <template #legend> Topology </template>
                         </URadioGroup>
                         <p class="text-sm text-gray-500 mt-2">
                             Corridor maps time along Z-axis. Sphere wraps audio from north to south pole.
@@ -849,17 +858,80 @@ onUnmounted(async () => {
                     <USeparator class="py-2" />
                     <div class="flex items-center gap-3 mb-2">
                         <UCheckbox v-model="showControlsOverlay" id="controls-overlay-toggle" />
-                        <label for="controls-overlay-toggle"
-                            class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2">
+                        <label
+                            for="controls-overlay-toggle"
+                            class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2"
+                        >
                             Show Controls Overlay
-                            <UKbd size="md"
-                                class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default">
+                            <UKbd
+                                size="md"
+                                class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default"
+                            >
                                 H
                             </UKbd>
                         </label>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="flex items-center justify-between mb-2">
+            <ProseH3 class="!mb-0">Advanced options</ProseH3>
+            <button
+                type="button"
+                class="p-1 text-primary hover:text-primary/80 transition-colors cursor-pointer"
+                @click="advancedOptionsOpen = !advancedOptionsOpen"
+                :aria-expanded="advancedOptionsOpen"
+                aria-controls="advanced-options-content"
+            >
+                <UIcon
+                    :name="advancedOptionsOpen ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
+                    class="size-6"
+                />
+            </button>
+        </div>
+        <div
+            id="advanced-options-content"
+            class="w-full border-1 rounded-md py-4 px-6 mb-6 transition-all duration-700 ease-out"
+            :class="
+                advancedOptionsOpen
+                    ? 'max-h-[30rem] border-accessible-blue'
+                    : 'max-h-5 overflow-hidden border-accessible-blue/30 [mask-image:linear-gradient(to_bottom,black_0%,transparent_100%)]'
+            "
+        >
+            <URadioGroup
+                v-model="oscillation.mode.value"
+                size="xl"
+                :items="[
+                    {
+                        label: 'Wave',
+                        value: 'wave',
+                        description:
+                            'Visualises loudness as a ripple propagating through the structure. Oscillates at a fixed visible speed; wave intensity reflects audio amplitude.',
+                    },
+                    {
+                        label: 'Per-point',
+                        value: 'per-point',
+                        description:
+                            'Visualises local frequency content. Each point oscillates at its own rate derived from the audio at that position.',
+                    },
+                    {
+                        label: 'Per-frame',
+                        value: 'per-frame',
+                        description:
+                            'Visualises average frequency per frame. All points in a frame move together at the same rate. Bass-heavy moments oscillate slower; treble-heavy moments faster.',
+                    },
+                ]"
+                :ui="{
+                    legend: 'text-lg text-primary font-bold',
+                    label: 'text-primary',
+                    description: 'text-gray-500',
+                }"
+                value-key="value"
+                orientation="horizontal"
+            >
+                <template #legend> Oscillation Mode </template>
+            </URadioGroup>
         </div>
 
         <div class="relative rounded-lg w-full h-[600px] bg-black" ref="canvasContainer">
@@ -911,7 +983,9 @@ onUnmounted(async () => {
                         <kbd class="overlay-kbd overlay-kbd-sm">R</kbd>
                     </div>
                     <div class="flex items-center gap-2 mb-2">
-                        <span class="text-white/80 text-s">Point Oscillation</span>
+                        <span class="text-white/80 text-s"
+                            >Oscillation: {{ oscillation.enabled.value ? oscillation.mode.value : 'off' }}</span
+                        >
                         <kbd class="overlay-kbd overlay-kbd-sm">O</kbd>
                     </div>
                     <div class="flex items-center gap-2 mb-2">
@@ -920,9 +994,11 @@ onUnmounted(async () => {
                     </div>
                     <div class="flex items-center gap-2 mb-2">
                         <span class="text-white/80 text-s">Speed Boost</span>
-                        <kbd class="overlay-kbd overlay-kbd-sm !justify-start pl-1"
-                            style="font-size: 1.2rem; width: 2rem;"><span
-                                style="transform: translateY(-1px); display: inline-block;">⇧</span></kbd>
+                        <kbd
+                            class="overlay-kbd overlay-kbd-sm !justify-start pl-1"
+                            style="font-size: 1.2rem; width: 2rem"
+                            ><span style="transform: translateY(-1px); display: inline-block">⇧</span></kbd
+                        >
                     </div>
                     <div class="flex items-center gap-2 mb-2">
                         <span class="text-white/80 text-s">Camera: {{ cameraMode }}</span>
@@ -934,10 +1010,15 @@ onUnmounted(async () => {
                 </div>
             </div>
 
-            <UButton class="absolute top-4 right-0 z-10" color="primary" variant="solid" size="xl"
+            <UButton
+                class="absolute top-4 right-0 z-10"
+                color="primary"
+                variant="solid"
+                size="xl"
                 :icon="three.isFullscreen ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'"
                 @click="three.toggleFullscreen"
-                :aria-label="three.isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'" />
+                :aria-label="three.isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'"
+            />
         </div>
     </div>
 </template>
