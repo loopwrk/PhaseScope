@@ -30,7 +30,7 @@ export function useOscillation(options: UseOscillationOptions = {}) {
     }
 
     const { onUpdate } = options;
-    const enabled = ref(false);
+    const enabled = ref(true);
 
     const mode = ref<OscillationMode>('wave');
 
