@@ -50,9 +50,15 @@ usePointerLockCamera(three.controls, canvasContainer, {
 });
 
 let requestAnimFrame: number | null = null;
+let sphereOrbitStartPos: { x: number; y: number; z: number } | null = null;
+let sphereOrbitStartAngle: number | null = null;
 
 const initaliseScene = () => {
     three.init();
+};
+
+const applyTopologyCameraDefaults = () => {
+    cameraMode.value = topologyMode.value === 'sphere' ? 'orbit' : 'follow';
 };
 
 // Initialize WAV player composable
@@ -154,6 +160,8 @@ const clearCorridor = () => {
 
 const initLiveSnapshotCorridor = (buffer: AudioBuffer) => {
     clearCorridor();
+    sphereOrbitStartPos = null;
+    sphereOrbitStartAngle = null;
 
     const sr = buffer.sampleRate;
     const ch0 = buffer.getChannelData(0);
@@ -216,19 +224,20 @@ const loadWavFile = async (file: File) => {
     if (topologyMode.value === 'sphere') {
         const camObj = three.controls.value?.object;
         if (camObj) {
-            // Position camera outside sphere for a good overview
-            const initialOrbitRadius = 12;
+            // Start above the north pole before orbiting
             const galleryY = 1.7;
-            camObj.position.set(initialOrbitRadius, galleryY + 3, 0);
+            const baseRadius = 5.0;
+            camObj.position.set(0, galleryY + baseRadius + 6, 0);
             three.camera.value?.lookAt(0, galleryY, 0);
         }
         // Exit pointer lock so camera can orbit smoothly
         if (document.pointerLockElement) {
             document.exitPointerLock();
         }
+        applyTopologyCameraDefaults();
+    } else {
+        applyTopologyCameraDefaults();
     }
-
-    cameraMode.value = 'follow';
 };
 
 const onAudioLoadError = (error: Error) => {
@@ -249,7 +258,7 @@ const handlePlay = async () => {
         // are sized correctly for current settings (pointsPerFrame, trackCoverage, etc.)
         if (audio.buffer) {
             initLiveSnapshotCorridor(audio.buffer);
-            cameraMode.value = 'follow';
+            applyTopologyCameraDefaults();
         }
         await startAudio();
     }
@@ -544,18 +553,45 @@ const updateAutoFollowCamera = (time: number) => {
     let lookTarget: THREE.Vector3;
 
     if (topologyMode.value === 'sphere') {
-        // Sphere mode: orbit camera around the outside for a good overview
+        // Sphere mode: start above the north pole, then orbit as it develops
         const sphereCenter = new THREE.Vector3(0, galleryY, 0);
+        const orbitRadius = 12;
+        const startHeight = 11;
+        const orbitHeight = 3;
+        const orbitSpeed = 0.25;
+        const orbitDelaySeconds = corridorState.value.buffer?.duration
+            ? corridorState.value.buffer.duration * 0.05
+            : 0;
+        const playbackSeconds = getPlaybackTimeSeconds();
+        const orbitElapsed = Math.max(0, playbackSeconds - orbitDelaySeconds);
+        const progress = clamp(
+            corridorState.value.frameCount > 0 ? corridorState.value.builtFrames / corridorState.value.frameCount : 0,
+            0,
+            1
+        );
+        if (orbitElapsed <= 0) {
+            sphereOrbitStartPos = null;
+            sphereOrbitStartAngle = null;
+        } else if (!sphereOrbitStartPos || sphereOrbitStartAngle === null) {
+            sphereOrbitStartPos = { x: camObj.position.x, y: camObj.position.y, z: camObj.position.z };
+            sphereOrbitStartAngle = Math.atan2(camObj.position.z, camObj.position.x);
+        }
 
-        // Orbital camera path - slowly rotating around the sphere
-        const orbitRadius = 12; // Distance from sphere center
-        const orbitHeight = 3; // How high above the equator
-        const orbitSpeed = 0.2;
+        const baseAngle = sphereOrbitStartAngle ?? 0;
+        const orbitAngle = baseAngle + orbitElapsed * orbitSpeed;
+        const height = startHeight + (orbitHeight - startHeight) * progress;
+        const orbitPos = {
+            x: Math.cos(orbitAngle) * orbitRadius,
+            y: galleryY + height,
+            z: Math.sin(orbitAngle) * orbitRadius,
+        };
+        const startPos = sphereOrbitStartPos ?? { x: 0, y: galleryY + startHeight, z: 0 };
+        const orbitBlend = clamp(orbitElapsed / 72, 0, 1);
 
         targetPos = {
-            x: Math.cos(time * orbitSpeed) * orbitRadius,
-            y: galleryY + orbitHeight + Math.sin(time * orbitSpeed * 0.5) * 2, // Gentle up/down motion
-            z: Math.sin(time * orbitSpeed) * orbitRadius,
+            x: startPos.x + (orbitPos.x - startPos.x) * orbitBlend,
+            y: startPos.y + (orbitPos.y - startPos.y) * orbitBlend,
+            z: startPos.z + (orbitPos.z - startPos.z) * orbitBlend,
         };
 
         lookTarget = sphereCenter;
@@ -656,6 +692,10 @@ watch(oscillation.enabled, (enabled) => {
             pointsPerFrame: corridorMeta.value.pointsPerFrame,
         });
     }
+});
+
+watch(topologyMode, () => {
+    applyTopologyCameraDefaults();
 });
 
 // Cycle through camera modes: free -> follow -> orbit -> free
