@@ -728,9 +728,7 @@ watch(topologyMode, () => {
     applyTopologyCameraDefaults();
 });
 
-// Watch RTNA toggle to ensure geometry is marked for update
 watch(narrativeEnabled, (enabled) => {
-    // When toggling RTNA on/off, re-mark geometry so changes appear immediately
     if (renderer.hasGeometry() && enabled) {
         renderer.markGeometryForUpdate(true, true);
     }
@@ -1013,7 +1011,7 @@ onUnmounted(async () => {
             </URadioGroup>
             <USeparator class="py-2 mb-2" />
             <div class="mb-6">
-                <div class="flex items-center gap-3 mb-2">
+                <div class="flex items-center gap-3">
                     <UCheckbox v-model="narrativeEnabled" id="narrative-toggle" />
                     <label
                         for="narrative-toggle"
@@ -1024,22 +1022,11 @@ onUnmounted(async () => {
                 </div>
                 <p class="text-sm text-gray-500 mt-1">Layers a staged transform over the audio geometry.</p>
 
-                <div class="mt-4 space-y-3" :class="{ 'opacity-40': !narrativeEnabled }">
-                    <div class="flex items-center gap-3">
-                        <UCheckbox
-                            v-model="narrativeAutoStage"
-                            id="narrative-autostage"
-                            :disabled="!narrativeEnabled"
-                        />
-                        <label for="narrative-autostage" class="text-primary font-semibold cursor-pointer">
-                            Auto-stage (driven by build progress)
-                        </label>
-                    </div>
-
-                    <div v-if="narrativeEnabled && !narrativeAutoStage" class="mb-2">
+                <div class="mt-4 mb-12 space-y-3" :class="{ 'opacity-40': !narrativeEnabled }">
+                    <div v-if="narrativeEnabled && !narrativeAutoStage" class="mb-4">
                         <URadioGroup
                             v-model="narrativeStage"
-                            size="md"
+                            size="xl"
                             :items="[
                                 { label: 'Channel Bias', value: 'channel-bias' },
                                 { label: 'Tilt', value: 'tilt' },
@@ -1059,9 +1046,9 @@ onUnmounted(async () => {
                         </URadioGroup>
                     </div>
 
-                    <div class="mb-1" :class="{ 'opacity-40': !narrativeEnabled }">
+                    <div class="mb-6" :class="{ 'opacity-40': !narrativeEnabled }">
                         <label class="block font-bold text-primary mb-2">
-                            Handed Bias:
+                            Chirality Bias:
                             <span class="text-secondary">{{ narrativeHandedBias.toFixed(2) }}</span>
                         </label>
                         <USlider
@@ -1072,6 +1059,17 @@ onUnmounted(async () => {
                             :ui="{ thumb: 'bg-primary' }"
                             :disabled="!narrativeEnabled"
                         />
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <UCheckbox
+                            v-model="narrativeAutoStage"
+                            id="narrative-autostage"
+                            :disabled="!narrativeEnabled"
+                        />
+                        <label for="narrative-autostage" class="text-primary font-semibold cursor-pointer">
+                            Auto-stage (driven by build progress)
+                        </label>
                     </div>
                 </div>
             </div>

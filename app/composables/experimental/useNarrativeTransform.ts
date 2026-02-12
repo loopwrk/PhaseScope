@@ -35,7 +35,7 @@ interface NarrativeVector3 {
 
 export const useNarrativeTransform = (corridorState: Ref<NarrativeCorridorState>) => {
     const narrativeEnabled = ref(false);
-    const narrativeAutoStage = ref(true);
+    const narrativeAutoStage = ref(false);
     const narrativeStage = ref<NarrativeStage>('channel-bias');
 
     const narrativeHandedBias = ref(0.22);
