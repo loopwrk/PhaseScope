@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { toRaw } from 'vue';
 import { analyzeFrequencyBand, freqContentToHz, ampToOscillationRange } from '~/utils/audio/analysis';
 import type { RenderMode } from '~/composables/useCorridorRenderer.client';
+import { useNarrativeTransform } from '~/composables/experimental/useNarrativeTransform';
 
 interface CorridorState {
     buffer: AudioBuffer | null;
@@ -88,6 +89,9 @@ const corridorState = ref<CorridorState>({
     amplitudes: null,
     anchorPositions: null,
 });
+
+const { narrativeEnabled, narrativeAutoStage, narrativeStage, narrativeHandedBias, applyNarrativeTransform } =
+    useNarrativeTransform(corridorState);
 
 // Initialize oscillation composable
 const oscillation = useOscillation({
@@ -377,9 +381,25 @@ const buildOneCorridorFrame = (frameIndex: number) => {
         const ringX = Math.cos(u) * ringRadius;
         const ringZ = Math.sin(u) * ringRadius;
 
-        pos[p] = ringX + x2;
-        pos[p + 1] = y2; // portrait controls vertical shape
-        pos[p + 2] = ringZ + z0; // time corridor
+        const basePos = {
+            x: ringX + x2,
+            y: y2, // portrait controls vertical shape
+            z: ringZ + z0, // time corridor backbone
+        };
+
+        const transformed = applyNarrativeTransform(basePos, {
+            L,
+            R,
+            normalizedAmp,
+            uAngle: u,
+            frameIndex,
+            frameCount,
+            z0,
+        });
+
+        pos[p] = transformed.x;
+        pos[p + 1] = transformed.y;
+        pos[p + 2] = transformed.z;
 
         // Set color for this point
         colors[p] = color.r;
@@ -468,10 +488,22 @@ const buildOneSphereFrame = (frameIndex: number) => {
         const lightness = baseLightness + normalizedAmp * amplitudeBrightnessFactor;
         color.setHSL(hue, saturation, lightness);
 
+        const basePos = { x, y, z };
+
+        const transformed = applyNarrativeTransform(basePos, {
+            L,
+            R,
+            normalizedAmp,
+            uAngle: theta,
+            frameIndex,
+            frameCount,
+            z0: 0,
+        });
+
         // Set position
-        pos[p] = x;
-        pos[p + 1] = y;
-        pos[p + 2] = z;
+        pos[p] = transformed.x;
+        pos[p + 1] = transformed.y;
+        pos[p + 2] = transformed.z;
 
         // Set color
         colors[p] = color.r;
@@ -559,9 +591,7 @@ const updateAutoFollowCamera = (time: number) => {
         const startHeight = 11;
         const orbitHeight = 3;
         const orbitSpeed = 0.25;
-        const orbitDelaySeconds = corridorState.value.buffer?.duration
-            ? corridorState.value.buffer.duration * 0.05
-            : 0;
+        const orbitDelaySeconds = corridorState.value.buffer?.duration ? corridorState.value.buffer.duration * 0.05 : 0;
         const playbackSeconds = getPlaybackTimeSeconds();
         const orbitElapsed = Math.max(0, playbackSeconds - orbitDelaySeconds);
         const progress = clamp(
@@ -696,6 +726,14 @@ watch(oscillation.enabled, (enabled) => {
 
 watch(topologyMode, () => {
     applyTopologyCameraDefaults();
+});
+
+// Watch RTNA toggle to ensure geometry is marked for update
+watch(narrativeEnabled, (enabled) => {
+    // When toggling RTNA on/off, re-mark geometry so changes appear immediately
+    if (renderer.hasGeometry() && enabled) {
+        renderer.markGeometryForUpdate(true, true);
+    }
 });
 
 // Cycle through camera modes: free -> follow -> orbit -> free
@@ -942,6 +980,7 @@ onUnmounted(async () => {
             <URadioGroup
                 v-model="oscillation.mode.value"
                 size="xl"
+                class="mb-2"
                 :items="[
                     {
                         label: 'Wave',
@@ -972,6 +1011,70 @@ onUnmounted(async () => {
             >
                 <template #legend> Oscillation Mode </template>
             </URadioGroup>
+            <USeparator class="py-2 mb-2" />
+            <div class="mb-6">
+                <div class="flex items-center gap-3 mb-2">
+                    <UCheckbox v-model="narrativeEnabled" id="narrative-toggle" />
+                    <label
+                        for="narrative-toggle"
+                        class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2"
+                    >
+                        Narrative Visualisation (Experimental)
+                    </label>
+                </div>
+                <p class="text-sm text-gray-500 mt-1">Layers a staged transform over the audio geometry.</p>
+
+                <div class="mt-4 space-y-3" :class="{ 'opacity-40': !narrativeEnabled }">
+                    <div class="flex items-center gap-3">
+                        <UCheckbox
+                            v-model="narrativeAutoStage"
+                            id="narrative-autostage"
+                            :disabled="!narrativeEnabled"
+                        />
+                        <label for="narrative-autostage" class="text-primary font-semibold cursor-pointer">
+                            Auto-stage (driven by build progress)
+                        </label>
+                    </div>
+
+                    <div v-if="narrativeEnabled && !narrativeAutoStage" class="mb-2">
+                        <URadioGroup
+                            v-model="narrativeStage"
+                            size="md"
+                            :items="[
+                                { label: 'Channel Bias', value: 'channel-bias' },
+                                { label: 'Tilt', value: 'tilt' },
+                                { label: 'Folding', value: 'folding' },
+                                { label: 'Coils', value: 'coils' },
+                                { label: 'Stabilization', value: 'stabilization' },
+                                { label: 'Z-axis scaling', value: 'z-axis-scaling' },
+                                { label: 'Radial flattening', value: 'radial-flattening' },
+                                { label: 'Radial scaling', value: 'radial-scaling' },
+                            ]"
+                            :ui="{ legend: 'text-primary font-bold', label: 'text-primary' }"
+                            value-key="value"
+                            orientation="horizontal"
+                            :disabled="!narrativeEnabled"
+                        >
+                            <template #legend> Stage </template>
+                        </URadioGroup>
+                    </div>
+
+                    <div class="mb-1" :class="{ 'opacity-40': !narrativeEnabled }">
+                        <label class="block font-bold text-primary mb-2">
+                            Handed Bias:
+                            <span class="text-secondary">{{ narrativeHandedBias.toFixed(2) }}</span>
+                        </label>
+                        <USlider
+                            v-model="narrativeHandedBias"
+                            :min="0"
+                            :max="0.8"
+                            :step="0.02"
+                            :ui="{ thumb: 'bg-primary' }"
+                            :disabled="!narrativeEnabled"
+                        />
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="relative rounded-lg w-full h-[600px] bg-black" ref="canvasContainer">
