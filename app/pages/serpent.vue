@@ -796,7 +796,7 @@ onUnmounted(async () => {
         <div class="flex items-center mb-6">
             <PlayPauseButton :is-playing="!!audio.source" :disabled="!wavLoaded" @click="handlePlayPause" />
             <StopButton :disabled="!audio.started" @click="handleStop" />
-            <AudioLoaderButton :handler="loadWavFile" @error="onAudioLoadError"> Load WAV </AudioLoaderButton>
+            <AudioLoaderButton :handler="loadWavFile" @error="onAudioLoadError"> Load Audio </AudioLoaderButton>
         </div>
 
         <ProseH3>Display settings</ProseH3>

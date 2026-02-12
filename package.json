@@ -19,6 +19,7 @@
     "@nuxtjs/color-mode": "^3.5.2",
     "@unhead/vue": "^2.0.14",
     "@vueuse/core": "^13.9.0",
+    "better-sqlite3": "^12.6.2",
     "eslint": "^9.34.0",
     "nuxt": "^4.1.0",
     "three": "^0.182.0",

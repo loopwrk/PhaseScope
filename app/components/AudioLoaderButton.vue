@@ -9,7 +9,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   disabled: false,
-  accept: 'audio/wav',
+  accept: 'audio/*',
   handler: undefined,
 });
 
