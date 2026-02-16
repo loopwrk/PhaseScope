@@ -63,6 +63,8 @@ const initaliseScene = () => {
     three.init();
 };
 
+const sphereOrbitStartTime = ref(0);
+
 const applyTopologyCameraDefaults = () => {
     cameraMode.value = 'orbit';
 };
@@ -229,6 +231,8 @@ const loadWavFile = async (file: File) => {
         initLiveSnapshotCorridor(audio.buffer);
     }
 
+    sphereOrbitStartTime.value = performance.now() / 1000;
+
     // Position camera based on topology mode
     if (topologyMode.value === 'sphere') {
         const camObj = three.controls.value?.object;
@@ -314,7 +318,10 @@ const handleStop = () => {
 };
 
 // Auto-play: play tracks sequentially, looping back to start
-const autoPlayIndex = ref(0);
+const autoPlayIndex = ref(-1);
+const selectedDemoTrackId = computed(() =>
+    autoPlayIndex.value >= 0 ? (sortedDemoTracks.value[autoPlayIndex.value]?.id ?? null) : null
+);
 
 const playAutoTrackAtIndex = async (index: number) => {
     const tracks = sortedDemoTracks.value;
@@ -645,8 +652,8 @@ const updateAutoFollowCamera = (time: number) => {
         const orbitRadius = 12;
         const orbitSpeed = 0.2;
 
-        // Use wall-clock time so the orbit keeps moving even after playback ends
-        const t = time * orbitSpeed;
+        // Reset-relative time so the orbit starts fresh for each new track
+        const t = (time - sphereOrbitStartTime.value) * orbitSpeed;
 
         // Horizontal angle — primary orbit
         const horizontalAngle = t;
@@ -874,6 +881,7 @@ onUnmounted(async () => {
             <div v-if="sortedDemoTracks.length > 0" class="flex items-center gap-2">
                 <span class="text-sm text-gray-500">or try a demo:</span>
                 <USelectMenu
+                    :model-value="selectedDemoTrackId"
                     :items="sortedDemoTracks.map((t) => ({ label: t.name, value: t.id }))"
                     placeholder="Select demo track"
                     value-key="value"
