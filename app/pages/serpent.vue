@@ -652,18 +652,18 @@ const updateAutoFollowCamera = (time: number) => {
         const orbitRadius = 12;
         const orbitSpeed = 0.2;
 
-        // Reset-relative time so the orbit starts fresh for each new track
-        const t = (time - sphereOrbitStartTime.value) * orbitSpeed;
+        const elapsed = time - sphereOrbitStartTime.value;
+        const t = elapsed * orbitSpeed;
 
-        // Horizontal angle — primary orbit
+        // Horizontal angle — slow rotation around the sphere
         const horizontalAngle = t;
 
-        // Elevation angle — sweeps from above (+) to below (-) the sphere.
-        // Uses an irrational frequency ratio so the path never closes on itself.
-        // Range roughly ±70° so the camera passes well underneath.
-        const elevationAngle = Math.sin(t * 0.37) * 1.22 + Math.sin(t * 0.13) * 0.35;
+        // Elevation: starts at π/2 (directly above) and slowly descends
+        // cos(t * 0.13) starts at 1 (top) and naturally drifts down
+        // Second term adds variety so the path never repeats
+        const elevationAngle = Math.cos(t * 0.13) * 1.22 + Math.sin(t * 0.37) * 0.35;
 
-        // Slight radius variation to keep the distance from feeling locked
+        // Slight radius variation
         const r = orbitRadius + Math.sin(t * 0.53) * 1.5;
 
         targetPos = {
