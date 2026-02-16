@@ -29,6 +29,7 @@ export function useWavPlayer() {
       resumeAudio: noopAsync,
       startAudio: noopAsync,
       getPlaybackTimeSeconds: () => 0,
+      onTrackEnded: () => {},
       dispose: noopAsync,
     };
   }
@@ -43,6 +44,7 @@ export function useWavPlayer() {
   });
 
   const wavLoaded = ref(false);
+  let onEndedCallback: (() => void) | null = null;
 
   const loadWavFile = async (file: File) => {
     if (import.meta.dev) console.log("Loading WAV file:", file.name);
@@ -90,11 +92,14 @@ export function useWavPlayer() {
     src.onended = () => {
       // leave the corridor in place; just stop advancing playback mapping
       audio.source = null;
+      onEndedCallback?.();
     };
   };
 
   const stopWavOnly = () => {
     if (audio.source) {
+      // Detach onended so programmatic stop doesn't trigger the callback
+      audio.source.onended = null;
       try {
         // store current offset so we can resume if desired
         const played = audio.ctx!.currentTime - audio.wavStartedAt;
@@ -167,6 +172,10 @@ export function useWavPlayer() {
     wavLoaded.value = false;
   };
 
+  const onTrackEnded = (cb: () => void) => {
+    onEndedCallback = cb;
+  };
+
   return {
     audio,
     wavLoaded,
@@ -178,6 +187,7 @@ export function useWavPlayer() {
     resumeAudio,
     startAudio,
     getPlaybackTimeSeconds,
+    onTrackEnded,
     dispose,
   };
 }

@@ -30,12 +30,19 @@ const scene = three.scene;
 const renderer = useCorridorRenderer(scene);
 
 type CameraMode = 'free' | 'follow' | 'orbit';
-const cameraMode = ref<CameraMode>('follow');
+const cameraMode = ref<CameraMode>('orbit');
 
 type TopologyMode = 'corridor' | 'sphere';
 const topologyMode = ref<TopologyMode>('corridor');
 
 const toast = useToast();
+
+// Demo tracks
+const { tracks: demoTracks, loadDemoTrack, isLoading: demoTracksLoading } = useDemoTracks();
+const sortedDemoTracks = computed(() => {
+    const orderKey = topologyMode.value === 'corridor' ? 'corridorOrder' : 'sphereOrder';
+    return [...demoTracks.value].sort((a, b) => a[orderKey] - b[orderKey]);
+});
 
 const movement = useKeyboardMovement(three.controls, {
     onMovement: () => {
@@ -51,15 +58,13 @@ usePointerLockCamera(three.controls, canvasContainer, {
 });
 
 let requestAnimFrame: number | null = null;
-let sphereOrbitStartPos: { x: number; y: number; z: number } | null = null;
-let sphereOrbitStartAngle: number | null = null;
 
 const initaliseScene = () => {
     three.init();
 };
 
 const applyTopologyCameraDefaults = () => {
-    cameraMode.value = topologyMode.value === 'sphere' ? 'orbit' : 'follow';
+    cameraMode.value = 'orbit';
 };
 
 // Initialize WAV player composable
@@ -72,6 +77,7 @@ const {
     pauseAudio,
     resumeAudio,
     getPlaybackTimeSeconds,
+    onTrackEnded,
     dispose: disposeWavPlayer,
 } = useWavPlayer();
 
@@ -100,13 +106,14 @@ const oscillation = useOscillation({
 
 const showControlsOverlay = ref(true);
 const advancedOptionsOpen = ref(false);
+const useAlternateColors = ref(false);
 
 // Track coverage as percentage (0-100)
 const trackCoveragePercent = ref(100);
 
 const corridorMeta = ref({
     zStep: 0.08, // distance between frames along Z axis
-    pointsPerFrame: 128,
+    pointsPerFrame: 512,
     windowSize: 2048, // samples per frame window
     hopSize: 1024, // samples between frames
 });
@@ -164,8 +171,6 @@ const clearCorridor = () => {
 
 const initLiveSnapshotCorridor = (buffer: AudioBuffer) => {
     clearCorridor();
-    sphereOrbitStartPos = null;
-    sphereOrbitStartAngle = null;
 
     const sr = buffer.sampleRate;
     const ch0 = buffer.getChannelData(0);
@@ -244,6 +249,29 @@ const loadWavFile = async (file: File) => {
     }
 };
 
+const handleLoadDemoTrack = async (trackId: string) => {
+    const track = sortedDemoTracks.value.find((t) => t.id === trackId);
+    if (!track) return;
+
+    const trackIndex = sortedDemoTracks.value.indexOf(track);
+    if (trackIndex !== -1) autoPlayIndex.value = trackIndex;
+
+    demoTracksLoading.value = true;
+    try {
+        const file = await loadDemoTrack(track);
+        await loadWavFile(file);
+    } catch (error) {
+        toast.add({
+            title: 'Failed to load demo track',
+            description: error instanceof Error ? error.message : 'Unknown error',
+            color: 'error',
+            icon: 'i-heroicons-exclamation-triangle',
+        });
+    } finally {
+        demoTracksLoading.value = false;
+    }
+};
+
 const onAudioLoadError = (error: Error) => {
     toast.add({
         title: 'Failed to load audio',
@@ -284,6 +312,27 @@ const handleStop = () => {
     stopAllAudio();
     clearCorridor();
 };
+
+// Auto-play: play tracks sequentially, looping back to start
+const autoPlayIndex = ref(0);
+
+const playAutoTrackAtIndex = async (index: number) => {
+    const tracks = sortedDemoTracks.value;
+    const track = tracks[index];
+    if (!track) return;
+    autoPlayIndex.value = index;
+    await handleLoadDemoTrack(track.id);
+    await handlePlay();
+};
+
+onTrackEnded(() => {
+    const nextIndex = autoPlayIndex.value + 1;
+    if (nextIndex < sortedDemoTracks.value.length) {
+        playAutoTrackAtIndex(nextIndex);
+    } else {
+        playAutoTrackAtIndex(0);
+    }
+});
 
 const getTargetFrameForPlayback = () => {
     // Map playback time to a frame index.
@@ -329,14 +378,16 @@ const buildOneCorridorFrame = (frameIndex: number) => {
     const freqContent = (freqL + freqR) / 2; // 0 = low freq, 1 = high freq
 
     // Precompute hue from frequency (same for all points in frame)
-    // Low frequencies (bass) = RED (hue 0.0)
-    // Mid frequencies = YELLOW/GREEN (hue 0.33)
-    // High frequencies (treble) = BLUE/MAGENTA (hue 0.75)
+    const reverseSpectrum = useAlternateColors.value;
     const hueRangeMultiplier = 0.75;
-    const hue = freqContent * hueRangeMultiplier;
-    const saturation = 0.85;
+    // Default:  bass (0) = BLUE/MAGENTA → treble (1) = RED
+    // Reversed: bass (0) = RED → treble (1) = BLUE/MAGENTA
+    const hue = reverseSpectrum
+        ? freqContent * hueRangeMultiplier
+        : hueRangeMultiplier - freqContent * hueRangeMultiplier;
+    const baseSaturation = 0.92;
     const baseLightness = 0.35;
-    const amplitudeBrightnessFactor = 0.5;
+    const amplitudeBrightnessFactor = 0.35;
 
     for (let k = 0; k < pointsPerFrame; k++) {
         const u = (k / pointsPerFrame) * Math.PI * 2;
@@ -375,6 +426,7 @@ const buildOneCorridorFrame = (frameIndex: number) => {
 
         // Lightness varies per point based on amplitude
         const lightness = baseLightness + normalizedAmp * amplitudeBrightnessFactor;
+        const saturation = clamp(baseSaturation + normalizedAmp * (1 - baseSaturation), baseSaturation, 1);
         color.setHSL(hue, saturation, lightness);
 
         // Stable 3D: wrap around a ring so each frame becomes a "floating wreath" you can walk through
@@ -455,11 +507,14 @@ const buildOneSphereFrame = (frameIndex: number) => {
     const freqContent = (freqL + freqR) / 2;
 
     // Precompute hue from frequency (same for all points in frame)
+    const reverseSpectrum = useAlternateColors.value;
     const hueRangeMultiplier = 0.75;
-    const hue = freqContent * hueRangeMultiplier;
-    const saturation = 0.85;
+    const hue = reverseSpectrum
+        ? freqContent * hueRangeMultiplier
+        : hueRangeMultiplier - freqContent * hueRangeMultiplier;
+    const baseSaturation = 0.92;
     const baseLightness = 0.35;
-    const amplitudeBrightnessFactor = 0.5;
+    const amplitudeBrightnessFactor = 0.35;
 
     for (let k = 0; k < pointsPerFrame; k++) {
         // Map point index to azimuth angle (theta): full rotation around sphere
@@ -486,6 +541,7 @@ const buildOneSphereFrame = (frameIndex: number) => {
 
         // Lightness varies per point based on amplitude
         const lightness = baseLightness + normalizedAmp * amplitudeBrightnessFactor;
+        const saturation = clamp(baseSaturation + normalizedAmp * (1 - baseSaturation), baseSaturation, 1);
         color.setHSL(hue, saturation, lightness);
 
         const basePos = { x, y, z };
@@ -585,43 +641,28 @@ const updateAutoFollowCamera = (time: number) => {
     let lookTarget: THREE.Vector3;
 
     if (topologyMode.value === 'sphere') {
-        // Sphere mode: start above the north pole, then orbit as it develops
         const sphereCenter = new THREE.Vector3(0, galleryY, 0);
         const orbitRadius = 12;
-        const startHeight = 11;
-        const orbitHeight = 3;
-        const orbitSpeed = 0.25;
-        const orbitDelaySeconds = corridorState.value.buffer?.duration ? corridorState.value.buffer.duration * 0.05 : 0;
-        const playbackSeconds = getPlaybackTimeSeconds();
-        const orbitElapsed = Math.max(0, playbackSeconds - orbitDelaySeconds);
-        const progress = clamp(
-            corridorState.value.frameCount > 0 ? corridorState.value.builtFrames / corridorState.value.frameCount : 0,
-            0,
-            1
-        );
-        if (orbitElapsed <= 0) {
-            sphereOrbitStartPos = null;
-            sphereOrbitStartAngle = null;
-        } else if (!sphereOrbitStartPos || sphereOrbitStartAngle === null) {
-            sphereOrbitStartPos = { x: camObj.position.x, y: camObj.position.y, z: camObj.position.z };
-            sphereOrbitStartAngle = Math.atan2(camObj.position.z, camObj.position.x);
-        }
+        const orbitSpeed = 0.2;
 
-        const baseAngle = sphereOrbitStartAngle ?? 0;
-        const orbitAngle = baseAngle + orbitElapsed * orbitSpeed;
-        const height = startHeight + (orbitHeight - startHeight) * progress;
-        const orbitPos = {
-            x: Math.cos(orbitAngle) * orbitRadius,
-            y: galleryY + height,
-            z: Math.sin(orbitAngle) * orbitRadius,
-        };
-        const startPos = sphereOrbitStartPos ?? { x: 0, y: galleryY + startHeight, z: 0 };
-        const orbitBlend = clamp(orbitElapsed / 72, 0, 1);
+        // Use wall-clock time so the orbit keeps moving even after playback ends
+        const t = time * orbitSpeed;
+
+        // Horizontal angle — primary orbit
+        const horizontalAngle = t;
+
+        // Elevation angle — sweeps from above (+) to below (-) the sphere.
+        // Uses an irrational frequency ratio so the path never closes on itself.
+        // Range roughly ±70° so the camera passes well underneath.
+        const elevationAngle = Math.sin(t * 0.37) * 1.22 + Math.sin(t * 0.13) * 0.35;
+
+        // Slight radius variation to keep the distance from feeling locked
+        const r = orbitRadius + Math.sin(t * 0.53) * 1.5;
 
         targetPos = {
-            x: startPos.x + (orbitPos.x - startPos.x) * orbitBlend,
-            y: startPos.y + (orbitPos.y - startPos.y) * orbitBlend,
-            z: startPos.z + (orbitPos.z - startPos.z) * orbitBlend,
+            x: Math.cos(horizontalAngle) * Math.cos(elevationAngle) * r,
+            y: galleryY + Math.sin(elevationAngle) * r,
+            z: Math.sin(horizontalAngle) * Math.cos(elevationAngle) * r,
         };
 
         lookTarget = sphereCenter;
@@ -770,9 +811,39 @@ shortcuts.register('h', () => {
 shortcuts.register('c', () => {
     toggleCameraMode();
 });
+shortcuts.register('v', () => {
+    useAlternateColors.value = !useAlternateColors.value;
+});
+shortcuts.register('<', () => {
+    if (sortedDemoTracks.value.length === 0) return;
+    const prevIndex = (autoPlayIndex.value - 1 + sortedDemoTracks.value.length) % sortedDemoTracks.value.length;
+    playAutoTrackAtIndex(prevIndex);
+});
+shortcuts.register('>', () => {
+    if (sortedDemoTracks.value.length === 0) return;
+    const nextIndex = (autoPlayIndex.value + 1) % sortedDemoTracks.value.length;
+    playAutoTrackAtIndex(nextIndex);
+});
+
+// Media Session API — handles hardware media keys on macOS (and other OSes)
+// Registered in onMounted to avoid SSR access to navigator
+const initMediaSessionHandlers = () => {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+        if (sortedDemoTracks.value.length === 0) return;
+        const nextIndex = (autoPlayIndex.value + 1) % sortedDemoTracks.value.length;
+        playAutoTrackAtIndex(nextIndex);
+    });
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+        if (sortedDemoTracks.value.length === 0) return;
+        const prevIndex = (autoPlayIndex.value - 1 + sortedDemoTracks.value.length) % sortedDemoTracks.value.length;
+        playAutoTrackAtIndex(prevIndex);
+    });
+};
 
 onMounted(() => {
     initaliseScene();
+    initMediaSessionHandlers();
     requestAnimFrame = requestAnimationFrame(animate);
 });
 
@@ -793,10 +864,26 @@ onUnmounted(async () => {
         <ProseH1>Serpentoscope</ProseH1>
         <ProseH2>Where Sound Draws Coils Through Explorable Space (prototype) WIP</ProseH2>
 
-        <div class="flex items-center mb-6">
-            <PlayPauseButton :is-playing="!!audio.source" :disabled="!wavLoaded" @click="handlePlayPause" />
-            <StopButton :disabled="!audio.started" @click="handleStop" />
-            <AudioLoaderButton :handler="loadWavFile" @error="onAudioLoadError"> Load Audio </AudioLoaderButton>
+        <div class="flex items-center gap-4 mb-6">
+            <div class="flex items-center">
+                <PlayPauseButton :is-playing="!!audio.source" :disabled="!wavLoaded" @click="handlePlayPause" />
+                <StopButton :disabled="!audio.started" @click="handleStop" />
+                <AudioLoaderButton :handler="loadWavFile" @error="onAudioLoadError"> Load Audio </AudioLoaderButton>
+            </div>
+
+            <div v-if="sortedDemoTracks.length > 0" class="flex items-center gap-2">
+                <span class="text-sm text-gray-500">or try a demo:</span>
+                <USelectMenu
+                    :items="sortedDemoTracks.map((t) => ({ label: t.name, value: t.id }))"
+                    placeholder="Select demo track"
+                    value-key="value"
+                    :loading="demoTracksLoading"
+                    :disabled="demoTracksLoading"
+                    class="w-48"
+                    :ui="{ content: 'bg-white' }"
+                    @update:model-value="(value: string) => value && handleLoadDemoTrack(value)"
+                />
+            </div>
         </div>
 
         <ProseH3>Display settings</ProseH3>
@@ -893,18 +980,35 @@ onUnmounted(async () => {
                         </URadioGroup>
                     </div>
                     <USeparator class="py-2" />
+                    <ClientOnly>
+                        <div class="flex items-center gap-3 mb-2">
+                            <UCheckbox v-model="oscillation.enabled.value" id="oscillation-toggle" />
+                            <label
+                                for="oscillation-toggle"
+                                class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2"
+                            >
+                                Enable Point Oscillation
+                                <UKbd
+                                    size="md"
+                                    class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default"
+                                >
+                                    O
+                                </UKbd>
+                            </label>
+                        </div>
+                    </ClientOnly>
                     <div class="flex items-center gap-3 mb-2">
-                        <UCheckbox v-model="oscillation.enabled.value" id="oscillation-toggle" />
+                        <UCheckbox v-model="useAlternateColors" id="alt-colors-toggle" />
                         <label
-                            for="oscillation-toggle"
+                            for="alt-colors-toggle"
                             class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2"
                         >
-                            Enable Point Oscillation
+                            Reverse Colour Spectrum
                             <UKbd
                                 size="md"
                                 class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default"
                             >
-                                O
+                                V
                             </UKbd>
                         </label>
                     </div>
