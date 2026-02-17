@@ -13,7 +13,7 @@ export function useDemoTracks() {
     const fetchTracks = async () => {
         isLoading.value = true;
         try {
-            const response = await fetch('/api/audio-files');
+            const response = await fetch('/audio-manifest.json');
             if (response.ok) {
                 tracks.value = await response.json();
             }

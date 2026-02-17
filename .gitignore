@@ -15,6 +15,9 @@ node_modules
 logs
 *.log
 
+# Generated
+public/audio-manifest.json
+
 # Misc
 .DS_Store
 .fleet
