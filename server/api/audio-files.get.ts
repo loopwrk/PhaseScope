@@ -2,14 +2,6 @@ import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
 export default defineEventHandler(async () => {
-    // Only allow in development
-    if (!import.meta.dev) {
-        throw createError({
-            statusCode: 404,
-            message: 'Not found',
-        });
-    }
-
     try {
         const audioDir = join(process.cwd(), 'public', 'audio');
         const files = await readdir(audioDir);
