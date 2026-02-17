@@ -655,7 +655,7 @@ const updateAutoFollowCamera = (time: number) => {
         const elapsed = time - sphereOrbitStartTime.value;
         const t = elapsed * orbitSpeed;
 
-        // Horizontal angle — slow rotation around the sphere
+        // Horizontal angle, slow rotation around the sphere
         const horizontalAngle = t;
 
         // Elevation: starts at π/2 (directly above) and slowly descends
