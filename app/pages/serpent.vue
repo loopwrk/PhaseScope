@@ -128,7 +128,7 @@ const POINTS_DANGER_THRESHOLD = 8_000_000;
 const totalFramesForTrack = computed(() => {
     if (!audio.buffer) return 0;
     const { windowSize, hopSize } = corridorMeta.value;
-    return Math.floor((audio.buffer.length - windowSize) / hopSize);
+    return Math.max(0, Math.floor((audio.buffer.length - windowSize) / hopSize));
 });
 
 // Calculate total points needed for full track at current pointsPerFrame
@@ -253,9 +253,9 @@ const loadWavFile = async (file: File) => {
     }
 };
 
-const handleLoadDemoTrack = async (trackId: string) => {
+const handleLoadDemoTrack = async (trackId: string): Promise<boolean> => {
     const track = sortedDemoTracks.value.find((t) => t.id === trackId);
-    if (!track) return;
+    if (!track) return false;
 
     const trackIndex = sortedDemoTracks.value.indexOf(track);
     if (trackIndex !== -1) autoPlayIndex.value = trackIndex;
@@ -264,6 +264,7 @@ const handleLoadDemoTrack = async (trackId: string) => {
     try {
         const file = await loadDemoTrack(track);
         await loadWavFile(file);
+        return true;
     } catch (error) {
         toast.add({
             title: 'Failed to load demo track',
@@ -271,6 +272,7 @@ const handleLoadDemoTrack = async (trackId: string) => {
             color: 'error',
             icon: 'i-heroicons-exclamation-triangle',
         });
+        return false;
     } finally {
         demoTracksLoading.value = false;
     }
@@ -328,16 +330,17 @@ const playAutoTrackAtIndex = async (index: number) => {
     const track = tracks[index];
     if (!track) return;
     autoPlayIndex.value = index;
-    await handleLoadDemoTrack(track.id);
+    const loaded = await handleLoadDemoTrack(track.id);
+    if (!loaded) return;
     await handlePlay();
 };
 
 onTrackEnded(() => {
-    const nextIndex = autoPlayIndex.value + 1;
-    if (nextIndex < sortedDemoTracks.value.length) {
+    // Only auto-advance if a demo track was playing (not a user-loaded file)
+    if (autoPlayIndex.value < 0) return;
+    const nextIndex = (autoPlayIndex.value + 1) % sortedDemoTracks.value.length;
+    if (sortedDemoTracks.value.length > 0) {
         playAutoTrackAtIndex(nextIndex);
-    } else {
-        playAutoTrackAtIndex(0);
     }
 });
 
@@ -821,12 +824,12 @@ shortcuts.register('c', () => {
 shortcuts.register('v', () => {
     useAlternateColors.value = !useAlternateColors.value;
 });
-shortcuts.register('<', () => {
+shortcuts.register('{', () => {
     if (sortedDemoTracks.value.length === 0) return;
     const prevIndex = (autoPlayIndex.value - 1 + sortedDemoTracks.value.length) % sortedDemoTracks.value.length;
     playAutoTrackAtIndex(prevIndex);
 });
-shortcuts.register('>', () => {
+shortcuts.register('}', () => {
     if (sortedDemoTracks.value.length === 0) return;
     const nextIndex = (autoPlayIndex.value + 1) % sortedDemoTracks.value.length;
     playAutoTrackAtIndex(nextIndex);
@@ -863,6 +866,11 @@ onUnmounted(async () => {
     await disposeWavPlayer();
     clearCorridor();
     three.dispose();
+
+    if ('mediaSession' in navigator) {
+        navigator.mediaSession.setActionHandler('nexttrack', null);
+        navigator.mediaSession.setActionHandler('previoustrack', null);
+    }
 });
 </script>
 

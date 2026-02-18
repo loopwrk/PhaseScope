@@ -107,6 +107,7 @@ export function useThree(canvasContainer: Ref<HTMLDivElement | null>) {
     document.removeEventListener("fullscreenchange", onFullscreenChange);
 
     if (controls.value) {
+      controls.value.dispose();
       scene.remove(controls.value.object);
     }
 

@@ -9,15 +9,13 @@
 
 <script setup lang="ts">
 import { useFavicon } from "@vueuse/core";
-const colorMode = useColorMode();
 
 const icon = useFavicon();
+const colorMode = useColorMode();
 
 onMounted(() => {
-  if (colorMode.preference === "light") {
-    icon.value = "/favicon-light.ico";
-  } else {
-    icon.value = "/favicon-dark.ico";
-  }
+  icon.value = "/favicon-light.ico";
+  colorMode.preference = "light";
+  colorMode.value = "light";
 });
 </script>

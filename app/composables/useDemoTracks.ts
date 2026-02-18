@@ -24,7 +24,9 @@ export function useDemoTracks() {
         }
     };
 
-    fetchTracks();
+    if (import.meta.client) {
+        fetchTracks();
+    }
 
     const loadDemoTrack = async (track: DemoTrack): Promise<File> => {
         const response = await fetch(track.file);

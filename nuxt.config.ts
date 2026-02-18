@@ -42,9 +42,14 @@ export default defineNuxtConfig({
       title: "PhaseFold",
       htmlAttrs: {
         lang: "en",
+        class: "light",
       },
       link: [{ rel: "icon", type: "image/x-icon", href: "/favicon.ico" }],
     },
+  },
+  colorMode: {
+    preference: "light",
+    fallback: "light",
   },
   devtools: { enabled: true },
 
@@ -55,13 +60,6 @@ export default defineNuxtConfig({
     "@nuxt/test-utils",
     "@nuxt/ui",
     "@nuxt/content",
-    "@nuxtjs/color-mode",
   ],
   css: ["~/assets/css/main.css"],
-  colorMode: {
-    preference: "light",
-    fallback: "light",
-    classSuffix: "",
-    disableTransition: false,
-  },
 });

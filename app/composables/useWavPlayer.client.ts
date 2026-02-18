@@ -2,6 +2,7 @@ interface AudioState {
   ctx: AudioContext | null;
   buffer: AudioBuffer | null;
   source: AudioBufferSourceNode | null;
+  gain: GainNode | null;
   wavStartedAt: number;
   wavOffset: number;
   started: boolean;
@@ -12,10 +13,11 @@ export function useWavPlayer() {
   if (import.meta.server) {
     const noopAsync = async () => {};
     return {
-      audio: reactive<AudioState>({
+      audio: shallowReactive<AudioState>({
         ctx: null,
         buffer: null,
         source: null,
+        gain: null,
         wavStartedAt: 0,
         wavOffset: 0,
         started: false,
@@ -34,10 +36,11 @@ export function useWavPlayer() {
     };
   }
 
-  const audio = reactive<AudioState>({
+  const audio = shallowReactive<AudioState>({
     ctx: null,
     buffer: null,
     source: null,
+    gain: null,
     wavStartedAt: 0,
     wavOffset: 0,
     started: false,
@@ -85,6 +88,7 @@ export function useWavPlayer() {
     src.connect(gain).connect(audio.ctx.destination);
 
     audio.source = src;
+    audio.gain = gain;
     audio.wavStartedAt = audio.ctx.currentTime;
     audio.wavOffset = offsetSeconds;
 
@@ -92,6 +96,8 @@ export function useWavPlayer() {
     src.onended = () => {
       // leave the corridor in place; just stop advancing playback mapping
       audio.source = null;
+      audio.started = false;
+      audio.wavOffset = 0;
       onEndedCallback?.();
     };
   };
@@ -113,6 +119,10 @@ export function useWavPlayer() {
         if (import.meta.dev) console.warn("Failed to stop audio source:", error);
       }
       audio.source = null;
+    }
+    if (audio.gain) {
+      audio.gain.disconnect();
+      audio.gain = null;
     }
   };
 
