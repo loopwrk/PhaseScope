@@ -10,14 +10,14 @@ const error = ref(false);
 // If already authenticated, redirect to home
 onMounted(() => {
     if (checkAuth()) {
-        navigateTo('/');
+        navigateTo('/serpent');
     }
 });
 
 const handleSubmit = () => {
     error.value = false;
     if (login(password.value)) {
-        navigateTo('/');
+        navigateTo('/serpent');
     } else {
         error.value = true;
         password.value = '';

@@ -29,6 +29,10 @@ const scene = three.scene;
 // Initialize corridor renderer
 const renderer = useCorridorRenderer(scene);
 
+// Dream background variants — mutually exclusive
+const dreamBg    = useDreamBackground(scene);
+const heavenlyBg = useHeavenlyBackground(scene);
+
 type CameraMode = 'free' | 'follow' | 'orbit';
 const cameraMode = ref<CameraMode>('orbit');
 
@@ -757,6 +761,8 @@ const animate = (now: number) => {
 
     const r = three.renderer.value;
     const c = three.camera.value;
+    dreamBg.update(now / 1000, c?.position);
+    heavenlyBg.update(now / 1000, c?.position);
     if (r && c) r.render(scene, c);
     requestAnimFrame = requestAnimationFrame(animate);
 };
@@ -824,6 +830,21 @@ shortcuts.register('c', () => {
 shortcuts.register('v', () => {
     useAlternateColors.value = !useAlternateColors.value;
 });
+shortcuts.register('b', () => {
+    dreamBg.enabled.value = !dreamBg.enabled.value;
+    if (dreamBg.enabled.value) heavenlyBg.enabled.value = false;
+});
+shortcuts.register('n', () => {
+    heavenlyBg.enabled.value = !heavenlyBg.enabled.value;
+    if (heavenlyBg.enabled.value) dreamBg.enabled.value = false;
+});
+
+const onDreamBgToggle = () => {
+    if (dreamBg.enabled.value) heavenlyBg.enabled.value = false;
+};
+const onHeavenlyBgToggle = () => {
+    if (heavenlyBg.enabled.value) dreamBg.enabled.value = false;
+};
 shortcuts.register('{', () => {
     if (sortedDemoTracks.value.length === 0) return;
     const prevIndex = (autoPlayIndex.value - 1 + sortedDemoTracks.value.length) % sortedDemoTracks.value.length;
@@ -865,6 +886,8 @@ onUnmounted(async () => {
 
     await disposeWavPlayer();
     clearCorridor();
+    dreamBg.dispose();
+    heavenlyBg.dispose();
     three.dispose();
 
     if ('mediaSession' in navigator) {
@@ -1025,6 +1048,36 @@ onUnmounted(async () => {
                                 class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default"
                             >
                                 V
+                            </UKbd>
+                        </label>
+                    </div>
+                    <div class="flex items-center gap-3 mb-2">
+                        <UCheckbox v-model="dreamBg.enabled.value" id="dream-bg-toggle" @change="onDreamBgToggle" />
+                        <label
+                            for="dream-bg-toggle"
+                            class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2"
+                        >
+                            Dream Background
+                            <UKbd
+                                size="md"
+                                class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default"
+                            >
+                                B
+                            </UKbd>
+                        </label>
+                    </div>
+                    <div class="flex items-center gap-3 mb-2">
+                        <UCheckbox v-model="heavenlyBg.enabled.value" id="heavenly-bg-toggle" @change="onHeavenlyBgToggle" />
+                        <label
+                            for="heavenly-bg-toggle"
+                            class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2"
+                        >
+                            Heavenly Background
+                            <UKbd
+                                size="md"
+                                class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default"
+                            >
+                                N
                             </UKbd>
                         </label>
                     </div>
