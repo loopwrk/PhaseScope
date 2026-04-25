@@ -1,11 +1,12 @@
 export default defineNuxtRouteMiddleware((to) => {
-    if (import.meta.server) return;
-    if (import.meta.dev) return; // Skip auth in development
-    if (to.path === '/login') return;
+    // if (import.meta.server) return;
+    // if (import.meta.dev) return; // Skip auth in development
+    // if (to.path === '/login') return;
 
-    const { checkAuth } = useSimpleAuth();
+    // const { checkAuth } = useSimpleAuth();
 
-    if (!checkAuth()) {
-        return navigateTo('/login');
-    }
+    // if (!checkAuth()) {
+    //     return navigateTo('/login');
+    // }
+    return;
 });

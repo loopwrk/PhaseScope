@@ -33,7 +33,7 @@ const scene = three.scene;
 const renderer = useCorridorRenderer(scene);
 
 // Dream background variants — mutually exclusive
-const dreamBg    = useDreamBackground(scene);
+const dreamBg = useDreamBackground(scene);
 const heavenlyBg = useHeavenlyBackground(scene);
 
 type CameraMode = 'free' | 'follow' | 'orbit';
@@ -187,10 +187,12 @@ const clearCorridor = () => {
 const precomputeAttractorSpine = (
     frameCount: number,
     ch0: Float32Array,
-    hopSize: number,
+    hopSize: number
 ): { spine: Float32Array; normals: Float32Array; binormals: Float32Array } => {
-    const σ = 10, β = 8 / 3;
-    const ρMin = 25, ρMax = 38;
+    const σ = 10,
+        β = 8 / 3;
+    const ρMin = 25,
+        ρMax = 38;
     const dt = 0.01;
     const stepsPerFrame = 4;
 
@@ -201,25 +203,44 @@ const precomputeAttractorSpine = (
         const start = f * hopSize;
         const end = Math.min(start + hopSize, ch0.length);
         let sum = 0;
-        for (let i = start; i < end; i++) { const s = ch0[i] ?? 0; sum += s * s; }
+        for (let i = start; i < end; i++) {
+            const s = ch0[i] ?? 0;
+            sum += s * s;
+        }
         envelope[f] = Math.sqrt(sum / Math.max(1, end - start));
         if ((envelope[f] ?? 0) > maxEnv) maxEnv = envelope[f] ?? 0;
     }
     if (maxEnv < 0.0001) maxEnv = 0.0001;
 
     // 2. Warm-up: integrate 5000 steps to settle onto attractor
-    let x = 0.1, y = 0.0, z = 0.0;
+    let x = 0.1,
+        y = 0.0,
+        z = 0.0;
     for (let s = 0; s < 5000; s++) {
-        const k1x = σ*(y-x),       k1y = x*(ρMin-z)-y, k1z = x*y-β*z;
-        const x2 = x+.5*dt*k1x,    y2 = y+.5*dt*k1y,   z2 = z+.5*dt*k1z;
-        const k2x = σ*(y2-x2),     k2y = x2*(ρMin-z2)-y2, k2z = x2*y2-β*z2;
-        const x3 = x+.5*dt*k2x,    y3 = y+.5*dt*k2y,   z3 = z+.5*dt*k2z;
-        const k3x = σ*(y3-x3),     k3y = x3*(ρMin-z3)-y3, k3z = x3*y3-β*z3;
-        const x4 = x+dt*k3x,       y4 = y+dt*k3y,       z4 = z+dt*k3z;
-        const k4x = σ*(y4-x4),     k4y = x4*(ρMin-z4)-y4, k4z = x4*y4-β*z4;
-        x += (dt/6)*(k1x+2*k2x+2*k3x+k4x);
-        y += (dt/6)*(k1y+2*k2y+2*k3y+k4y);
-        z += (dt/6)*(k1z+2*k2z+2*k3z+k4z);
+        const k1x = σ * (y - x),
+            k1y = x * (ρMin - z) - y,
+            k1z = x * y - β * z;
+        const x2 = x + 0.5 * dt * k1x,
+            y2 = y + 0.5 * dt * k1y,
+            z2 = z + 0.5 * dt * k1z;
+        const k2x = σ * (y2 - x2),
+            k2y = x2 * (ρMin - z2) - y2,
+            k2z = x2 * y2 - β * z2;
+        const x3 = x + 0.5 * dt * k2x,
+            y3 = y + 0.5 * dt * k2y,
+            z3 = z + 0.5 * dt * k2z;
+        const k3x = σ * (y3 - x3),
+            k3y = x3 * (ρMin - z3) - y3,
+            k3z = x3 * y3 - β * z3;
+        const x4 = x + dt * k3x,
+            y4 = y + dt * k3y,
+            z4 = z + dt * k3z;
+        const k4x = σ * (y4 - x4),
+            k4y = x4 * (ρMin - z4) - y4,
+            k4z = x4 * y4 - β * z4;
+        x += (dt / 6) * (k1x + 2 * k2x + 2 * k3x + k4x);
+        y += (dt / 6) * (k1y + 2 * k2y + 2 * k3y + k4y);
+        z += (dt / 6) * (k1z + 2 * k2z + 2 * k3z + k4z);
     }
 
     // 3. Integrate trajectory, modulating ρ by the amplitude envelope
@@ -227,81 +248,155 @@ const precomputeAttractorSpine = (
     for (let f = 0; f < frameCount; f++) {
         const ρ = ρMin + clamp((envelope[f] ?? 0) / maxEnv, 0, 1) * (ρMax - ρMin);
         for (let s = 0; s < stepsPerFrame; s++) {
-            const k1x = σ*(y-x),       k1y = x*(ρ-z)-y,   k1z = x*y-β*z;
-            const x2 = x+.5*dt*k1x,    y2 = y+.5*dt*k1y,  z2 = z+.5*dt*k1z;
-            const k2x = σ*(y2-x2),     k2y = x2*(ρ-z2)-y2, k2z = x2*y2-β*z2;
-            const x3 = x+.5*dt*k2x,    y3 = y+.5*dt*k2y,  z3 = z+.5*dt*k2z;
-            const k3x = σ*(y3-x3),     k3y = x3*(ρ-z3)-y3, k3z = x3*y3-β*z3;
-            const x4 = x+dt*k3x,       y4 = y+dt*k3y,      z4 = z+dt*k3z;
-            const k4x = σ*(y4-x4),     k4y = x4*(ρ-z4)-y4, k4z = x4*y4-β*z4;
-            x += (dt/6)*(k1x+2*k2x+2*k3x+k4x);
-            y += (dt/6)*(k1y+2*k2y+2*k3y+k4y);
-            z += (dt/6)*(k1z+2*k2z+2*k3z+k4z);
+            const k1x = σ * (y - x),
+                k1y = x * (ρ - z) - y,
+                k1z = x * y - β * z;
+            const x2 = x + 0.5 * dt * k1x,
+                y2 = y + 0.5 * dt * k1y,
+                z2 = z + 0.5 * dt * k1z;
+            const k2x = σ * (y2 - x2),
+                k2y = x2 * (ρ - z2) - y2,
+                k2z = x2 * y2 - β * z2;
+            const x3 = x + 0.5 * dt * k2x,
+                y3 = y + 0.5 * dt * k2y,
+                z3 = z + 0.5 * dt * k2z;
+            const k3x = σ * (y3 - x3),
+                k3y = x3 * (ρ - z3) - y3,
+                k3z = x3 * y3 - β * z3;
+            const x4 = x + dt * k3x,
+                y4 = y + dt * k3y,
+                z4 = z + dt * k3z;
+            const k4x = σ * (y4 - x4),
+                k4y = x4 * (ρ - z4) - y4,
+                k4z = x4 * y4 - β * z4;
+            x += (dt / 6) * (k1x + 2 * k2x + 2 * k3x + k4x);
+            y += (dt / 6) * (k1y + 2 * k2y + 2 * k3y + k4y);
+            z += (dt / 6) * (k1z + 2 * k2z + 2 * k3z + k4z);
         }
-        spine[f * 3] = x; spine[f * 3 + 1] = y; spine[f * 3 + 2] = z;
+        spine[f * 3] = x;
+        spine[f * 3 + 1] = y;
+        spine[f * 3 + 2] = z;
     }
 
     // 4. Center and scale to fit scene (diameter 12 → radius 6)
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    let minX = Infinity,
+        maxX = -Infinity,
+        minY = Infinity,
+        maxY = -Infinity,
+        minZ = Infinity,
+        maxZ = -Infinity;
     for (let f = 0; f < frameCount; f++) {
-        const fx = spine[f*3] ?? 0, fy = spine[f*3+1] ?? 0, fz = spine[f*3+2] ?? 0;
-        if (fx < minX) minX = fx; if (fx > maxX) maxX = fx;
-        if (fy < minY) minY = fy; if (fy > maxY) maxY = fy;
-        if (fz < minZ) minZ = fz; if (fz > maxZ) maxZ = fz;
+        const fx = spine[f * 3] ?? 0,
+            fy = spine[f * 3 + 1] ?? 0,
+            fz = spine[f * 3 + 2] ?? 0;
+        if (fx < minX) minX = fx;
+        if (fx > maxX) maxX = fx;
+        if (fy < minY) minY = fy;
+        if (fy > maxY) maxY = fy;
+        if (fz < minZ) minZ = fz;
+        if (fz > maxZ) maxZ = fz;
     }
-    const cx = (minX+maxX)/2, cy = (minY+maxY)/2, cz = (minZ+maxZ)/2;
-    const maxExtent = Math.max(maxX-minX, maxY-minY, maxZ-minZ);
+    const cx = (minX + maxX) / 2,
+        cy = (minY + maxY) / 2,
+        cz = (minZ + maxZ) / 2;
+    const maxExtent = Math.max(maxX - minX, maxY - minY, maxZ - minZ);
     const scale = maxExtent > 0 ? 12 / maxExtent : 1;
     for (let f = 0; f < frameCount; f++) {
-        spine[f*3]   = ((spine[f*3]   ?? 0) - cx) * scale;
-        spine[f*3+1] = ((spine[f*3+1] ?? 0) - cy) * scale;
-        spine[f*3+2] = ((spine[f*3+2] ?? 0) - cz) * scale;
+        spine[f * 3] = ((spine[f * 3] ?? 0) - cx) * scale;
+        spine[f * 3 + 1] = ((spine[f * 3 + 1] ?? 0) - cy) * scale;
+        spine[f * 3 + 2] = ((spine[f * 3 + 2] ?? 0) - cz) * scale;
     }
 
     // 5. Compute Frenet frames via parallel transport (avoids degenerate normals at inflection points)
-    const normals   = new Float32Array(frameCount * 3);
+    const normals = new Float32Array(frameCount * 3);
     const binormals = new Float32Array(frameCount * 3);
 
     // Initial tangent T0 = normalize(P1 - P0)
-    let tx = (spine[3]??0)-(spine[0]??0), ty = (spine[4]??0)-(spine[1]??0), tz = (spine[5]??0)-(spine[2]??0);
-    let tlen = Math.sqrt(tx*tx+ty*ty+tz*tz); if (tlen < 1e-10) tlen = 1;
-    tx /= tlen; ty /= tlen; tz /= tlen;
+    let tx = (spine[3] ?? 0) - (spine[0] ?? 0),
+        ty = (spine[4] ?? 0) - (spine[1] ?? 0),
+        tz = (spine[5] ?? 0) - (spine[2] ?? 0);
+    let tlen = Math.sqrt(tx * tx + ty * ty + tz * tz);
+    if (tlen < 1e-10) tlen = 1;
+    tx /= tlen;
+    ty /= tlen;
+    tz /= tlen;
 
     // Initial normal via Gram-Schmidt with an arbitrary reference vector
-    let ax = 0, ay = 1, az = 0;
-    if (Math.abs(ty) > 0.9) { ax = 1; ay = 0; }
-    const d0 = ax*tx + ay*ty + az*tz;
-    ax -= d0*tx; ay -= d0*ty; az -= d0*tz;
-    let nlen = Math.sqrt(ax*ax+ay*ay+az*az); if (nlen < 1e-10) nlen = 1;
-    let nx = ax/nlen, ny = ay/nlen, nz = az/nlen;
-    let bx = ty*nz-tz*ny, by = tz*nx-tx*nz, bz = tx*ny-ty*nx;
-    normals[0] = nx; normals[1] = ny; normals[2] = nz;
-    binormals[0] = bx; binormals[1] = by; binormals[2] = bz;
+    let ax = 0,
+        ay = 1,
+        az = 0;
+    if (Math.abs(ty) > 0.9) {
+        ax = 1;
+        ay = 0;
+    }
+    const d0 = ax * tx + ay * ty + az * tz;
+    ax -= d0 * tx;
+    ay -= d0 * ty;
+    az -= d0 * tz;
+    let nlen = Math.sqrt(ax * ax + ay * ay + az * az);
+    if (nlen < 1e-10) nlen = 1;
+    let nx = ax / nlen,
+        ny = ay / nlen,
+        nz = az / nlen;
+    let bx = ty * nz - tz * ny,
+        by = tz * nx - tx * nz,
+        bz = tx * ny - ty * nx;
+    normals[0] = nx;
+    normals[1] = ny;
+    normals[2] = nz;
+    binormals[0] = bx;
+    binormals[1] = by;
+    binormals[2] = bz;
 
     for (let f = 1; f < frameCount; f++) {
-        const pi = f*3, pp = (f-1)*3;
-        let ntx = (spine[pi]??0)-(spine[pp]??0), nty = (spine[pi+1]??0)-(spine[pp+1]??0), ntz = (spine[pi+2]??0)-(spine[pp+2]??0);
-        let ntlen = Math.sqrt(ntx*ntx+nty*nty+ntz*ntz); if (ntlen < 1e-10) ntlen = 1;
-        ntx /= ntlen; nty /= ntlen; ntz /= ntlen;
+        const pi = f * 3,
+            pp = (f - 1) * 3;
+        let ntx = (spine[pi] ?? 0) - (spine[pp] ?? 0),
+            nty = (spine[pi + 1] ?? 0) - (spine[pp + 1] ?? 0),
+            ntz = (spine[pi + 2] ?? 0) - (spine[pp + 2] ?? 0);
+        let ntlen = Math.sqrt(ntx * ntx + nty * nty + ntz * ntz);
+        if (ntlen < 1e-10) ntlen = 1;
+        ntx /= ntlen;
+        nty /= ntlen;
+        ntz /= ntlen;
 
         // Rotation axis = T × T_new (parallel transport step)
-        const rax = ty*ntz-tz*nty, ray = tz*ntx-tx*ntz, raz = tx*nty-ty*ntx;
-        const raLen = Math.sqrt(rax*rax+ray*ray+raz*raz);
+        const rax = ty * ntz - tz * nty,
+            ray = tz * ntx - tx * ntz,
+            raz = tx * nty - ty * ntx;
+        const raLen = Math.sqrt(rax * rax + ray * ray + raz * raz);
         if (raLen > 1e-8) {
-            const rnx = rax/raLen, rny = ray/raLen, rnz = raz/raLen;
-            const cosA = clamp(tx*ntx+ty*nty+tz*ntz, -1, 1);
+            const rnx = rax / raLen,
+                rny = ray / raLen,
+                rnz = raz / raLen;
+            const cosA = clamp(tx * ntx + ty * nty + tz * ntz, -1, 1);
             const sinA = raLen;
-            const rdot = rnx*nx+rny*ny+rnz*nz;
-            const crossX = rny*nz-rnz*ny, crossY = rnz*nx-rnx*nz, crossZ = rnx*ny-rny*nx;
-            nx = nx*cosA + crossX*sinA + rnx*rdot*(1-cosA);
-            ny = ny*cosA + crossY*sinA + rny*rdot*(1-cosA);
-            nz = nz*cosA + crossZ*sinA + rnz*rdot*(1-cosA);
-            const nl = Math.sqrt(nx*nx+ny*ny+nz*nz); if (nl > 1e-10) { nx/=nl; ny/=nl; nz/=nl; }
+            const rdot = rnx * nx + rny * ny + rnz * nz;
+            const crossX = rny * nz - rnz * ny,
+                crossY = rnz * nx - rnx * nz,
+                crossZ = rnx * ny - rny * nx;
+            nx = nx * cosA + crossX * sinA + rnx * rdot * (1 - cosA);
+            ny = ny * cosA + crossY * sinA + rny * rdot * (1 - cosA);
+            nz = nz * cosA + crossZ * sinA + rnz * rdot * (1 - cosA);
+            const nl = Math.sqrt(nx * nx + ny * ny + nz * nz);
+            if (nl > 1e-10) {
+                nx /= nl;
+                ny /= nl;
+                nz /= nl;
+            }
         }
-        bx = nty*nz-ntz*ny; by = ntz*nx-ntx*nz; bz = ntx*ny-nty*nx;
-        normals[f*3] = nx; normals[f*3+1] = ny; normals[f*3+2] = nz;
-        binormals[f*3] = bx; binormals[f*3+1] = by; binormals[f*3+2] = bz;
-        tx = ntx; ty = nty; tz = ntz;
+        bx = nty * nz - ntz * ny;
+        by = ntz * nx - ntx * nz;
+        bz = ntx * ny - nty * nx;
+        normals[f * 3] = nx;
+        normals[f * 3 + 1] = ny;
+        normals[f * 3 + 2] = nz;
+        binormals[f * 3] = bx;
+        binormals[f * 3 + 1] = by;
+        binormals[f * 3 + 2] = bz;
+        tx = ntx;
+        ty = nty;
+        tz = ntz;
     }
 
     return { spine, normals, binormals };
@@ -756,8 +851,18 @@ const buildOneSphereFrame = (frameIndex: number) => {
 const buildOneAttractorFrame = (frameIndex: number) => {
     const { pointsPerFrame, windowSize, hopSize } = corridorMeta.value;
     const rawState = toRaw(corridorState.value);
-    const { ch0, ch1, frameCount, pos, frequencies, amplitudes, anchorPositions,
-            attractorSpine, attractorNormals, attractorBinormals } = rawState;
+    const {
+        ch0,
+        ch1,
+        frameCount,
+        pos,
+        frequencies,
+        amplitudes,
+        anchorPositions,
+        attractorSpine,
+        attractorNormals,
+        attractorBinormals,
+    } = rawState;
     if (!pos || !ch0 || !ch1 || !renderer.hasGeometry()) return;
     if (!frequencies || !amplitudes || !anchorPositions) return;
     if (!attractorSpine || !attractorNormals || !attractorBinormals) return;
@@ -765,15 +870,15 @@ const buildOneAttractorFrame = (frameIndex: number) => {
     const frameStart = frameIndex * hopSize;
 
     // Spine position and Frenet frame at this frame
-    const spineX = attractorSpine[frameIndex * 3]     ?? 0;
+    const spineX = attractorSpine[frameIndex * 3] ?? 0;
     const spineY = attractorSpine[frameIndex * 3 + 1] ?? 0;
     const spineZ = attractorSpine[frameIndex * 3 + 2] ?? 0;
-    const normX  = attractorNormals[frameIndex * 3]     ?? 0;
-    const normY  = attractorNormals[frameIndex * 3 + 1] ?? 0;
-    const normZ  = attractorNormals[frameIndex * 3 + 2] ?? 0;
-    const binX   = attractorBinormals[frameIndex * 3]     ?? 0;
-    const binY   = attractorBinormals[frameIndex * 3 + 1] ?? 0;
-    const binZ   = attractorBinormals[frameIndex * 3 + 2] ?? 0;
+    const normX = attractorNormals[frameIndex * 3] ?? 0;
+    const normY = attractorNormals[frameIndex * 3 + 1] ?? 0;
+    const normZ = attractorNormals[frameIndex * 3 + 2] ?? 0;
+    const binX = attractorBinormals[frameIndex * 3] ?? 0;
+    const binY = attractorBinormals[frameIndex * 3 + 1] ?? 0;
+    const binZ = attractorBinormals[frameIndex * 3 + 2] ?? 0;
 
     const baseTubeRadius = 0.15;
     const audioTubeScale = 0.6;
@@ -831,19 +936,22 @@ const buildOneAttractorFrame = (frameIndex: number) => {
             z0: 0,
         });
 
-        pos[p]     = transformed.x;
+        pos[p] = transformed.x;
         pos[p + 1] = transformed.y;
         pos[p + 2] = transformed.z;
 
         const lightness = baseLightness + normalizedAmp * amplitudeBrightnessFactor;
         const saturation = clamp(baseSaturation + normalizedAmp * (1 - baseSaturation), baseSaturation, 1);
         color.setHSL(hue, saturation, lightness);
-        colors[p] = color.r; colors[p + 1] = color.g; colors[p + 2] = color.b;
+        colors[p] = color.r;
+        colors[p + 1] = color.g;
+        colors[p + 2] = color.b;
 
         // Lightweight per-point frequency estimate for oscillation
         const microWindow = 8;
         const halfMicro = microWindow / 2;
-        let localChangeEnergy = 0, localAmpEnergy = 0;
+        let localChangeEnergy = 0,
+            localAmpEnergy = 0;
         for (let m = -halfMicro; m < halfMicro; m++) {
             const idx = clamp(i + m, 0, ch0.length - 2);
             const s0 = (ch0[idx] ?? 0) + (ch1[idx] ?? 0);
@@ -859,9 +967,9 @@ const buildOneAttractorFrame = (frameIndex: number) => {
 
         const pointIndex = frameIndex * pointsPerFrame + k;
         frequencies[pointIndex] = pointFreqHz;
-        amplitudes[pointIndex]  = ampToOscillationRange(normalizedAmp);
+        amplitudes[pointIndex] = ampToOscillationRange(normalizedAmp);
 
-        anchorPositions[p]     = pos[p]     ?? 0;
+        anchorPositions[p] = pos[p] ?? 0;
         anchorPositions[p + 1] = pos[p + 1] ?? 0;
         anchorPositions[p + 2] = pos[p + 2] ?? 0;
 
@@ -1178,8 +1286,8 @@ onUnmounted(async () => {
 
 <template>
     <div>
-        <ProseH1>Serpentoscope</ProseH1>
-        <ProseH2>Where Sound Draws Coils Through Explorable Space (prototype) WIP</ProseH2>
+        <ProseH1>PhaseScope</ProseH1>
+        <ProseH2>3D Lissajous/phase-space visualiser (prototype) WIP</ProseH2>
 
         <div class="flex items-center gap-4 mb-6">
             <div class="flex items-center">
@@ -1346,7 +1454,11 @@ onUnmounted(async () => {
                         </label>
                     </div>
                     <div class="flex items-center gap-3 mb-2">
-                        <UCheckbox v-model="heavenlyBg.enabled.value" id="heavenly-bg-toggle" @change="onHeavenlyBgToggle" />
+                        <UCheckbox
+                            v-model="heavenlyBg.enabled.value"
+                            id="heavenly-bg-toggle"
+                            @change="onHeavenlyBgToggle"
+                        />
                         <label
                             for="heavenly-bg-toggle"
                             class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2"
@@ -1381,9 +1493,15 @@ onUnmounted(async () => {
                             <template #legend> Topology </template>
                         </URadioGroup>
                         <p class="text-sm text-gray-500 mt-2">
-                            <span v-if="topologyMode === 'corridor'">Time unfolds along the Z-axis as a traversable tunnel.</span>
-                            <span v-else-if="topologyMode === 'sphere'">Audio wraps around a sphere from north to south pole.</span>
-                            <span v-else>Audio traces a Lorenz strange attractor — amplitude drives the chaos parameter ρ.</span>
+                            <span v-if="topologyMode === 'corridor'"
+                                >Time unfolds along the Z-axis as a traversable tunnel.</span
+                            >
+                            <span v-else-if="topologyMode === 'sphere'"
+                                >Audio wraps around a sphere from north to south pole.</span
+                            >
+                            <span v-else
+                                >Audio traces a Lorenz strange attractor — amplitude drives the chaos parameter ρ.</span
+                            >
                         </p>
                     </div>
                     <USeparator class="py-2" />
