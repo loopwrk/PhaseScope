@@ -10,7 +10,7 @@ A real-time 3D audio visualiser that renders stereo audio as explorable phase-sp
 
 PhaseScope reads a stereo audio file frame by frame, maps the left and right channel amplitudes to the X and Y axes of each point (a [Lissajous / phase portrait](https://en.wikipedia.org/wiki/Lissajous_curve)), and extrudes the result through 3D space as audio plays. The result is a navigable structure built from the shape of the sound itself.
 
-Points are coloured by spectral content — bass frequencies map to blue/magenta, treble to red — with brightness driven by amplitude.
+Points are coloured by spectral content. Bass frequencies map to blue/magenta, treble to red. Brightness is driven by amplitude.
 
 ### Topology modes
 
@@ -101,38 +101,6 @@ Two animated GLSL skyboxes rendered on the inside of a large sphere surrounding 
 - **Points per frame** — 32–512, controls ring resolution
 - **Track coverage** — 10–100%, sets the point budget as a percentage of the full track
 - Warnings shown at 3M and 8M points
-
----
-
-## Project structure
-
-```
-app/
-├── pages/
-│   ├── phasescope.vue          # Main visualiser (routing root)
-│   └── login.vue               # Simple auth page (disabled by default)
-├── composables/
-│   ├── useThree.client.ts          # Three.js scene, camera, renderer, PointerLock
-│   ├── useCorridorRenderer.client.ts # BufferGeometry management for points/lines
-│   ├── useWavPlayer.client.ts      # Web Audio API decode + playback with pause/resume
-│   ├── useDemoTracks.ts            # Fetches and loads tracks from audio-manifest.json
-│   ├── useOscillation.client.ts    # Wave / per-point / per-frame oscillation
-│   ├── useDreamBackground.client.ts  # Dark GLSL skybox
-│   ├── useHeavenlyBackground.client.ts # Luminous GLSL skybox
-│   ├── useKeyboardMovement.client.ts # WASD + arrow key camera movement
-│   ├── useKeyboardShortcuts.client.ts # Global shortcut registry
-│   ├── usePointerLockCamera.client.ts # Pointer lock for first-person look
-│   └── experimental/
-│       └── useNarrativeTransform.ts  # Staged geometry morphing
-├── utils/
-│   └── audio/
-│       └── analysis.ts         # Frequency band estimation via derivative energy
-└── constants/
-    └── music.ts                # Musical note / frequency constants
-
-public/
-└── audio/                      # Drop audio files here; manifest is auto-generated
-```
 
 ---
 
