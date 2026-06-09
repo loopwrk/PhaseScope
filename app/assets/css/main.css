@@ -1,180 +1,225 @@
-@import "tailwindcss";
-@import "@nuxt/ui";
+@import 'tailwindcss';
+@import '@nuxt/ui';
+@import './tokens.css';
 
 @source "../../../content/**/*";
 
-@theme {
-  --color-accessible-blue: #5700ed;
-  --color-secondary: #a500ed;
-  --color-white: #ffffff;
-  --color-warning: #ed3a00;
+/* ==================================================================
+   Token -> Tailwind bridge
 
-  --breakpoint-xs: 30rem;
-  --font-sans: "Inclusive Sans", sans-serif;
+   Exposes the semantic tokens (tokens.css) as Tailwind theme values
+   so utilities like `bg-accessible-blue`, `text-secondary`,
+   `text-warning` and the `xs:` breakpoint keep working - but their
+   source of truth is now the token layer.
+   ================================================================== */
+@theme {
+    /* Bare brand utilities (kept for back-compat: bg-accessible-blue, etc.) */
+    --color-accessible-blue: var(--brand-blue);
+    --color-secondary: var(--brand-secondary);
+    --color-white: var(--on-brand);
+    --color-warning: var(--warning);
+
+    /* Primary brand - "accessible blue" */
+    --color-accessible-blue-50: color-mix(in oklch, var(--brand-blue) 6%, white);
+    --color-accessible-blue-100: color-mix(in oklch, var(--brand-blue) 12%, white);
+    --color-accessible-blue-200: color-mix(in oklch, var(--brand-blue) 28%, white);
+    --color-accessible-blue-300: color-mix(in oklch, var(--brand-blue) 46%, white);
+    --color-accessible-blue-400: color-mix(in oklch, var(--brand-blue) 70%, white);
+    --color-accessible-blue-500: var(--brand-blue);
+    --color-accessible-blue-600: color-mix(in oklch, var(--brand-blue) 88%, black);
+    --color-accessible-blue-700: color-mix(in oklch, var(--brand-blue) 74%, black);
+    --color-accessible-blue-800: color-mix(in oklch, var(--brand-blue) 60%, black);
+    --color-accessible-blue-900: color-mix(in oklch, var(--brand-blue) 46%, black);
+    --color-accessible-blue-950: color-mix(in oklch, var(--brand-blue) 30%, black);
+
+    /* Secondary brand - violet */
+    --color-secondary-50: color-mix(in oklch, var(--brand-secondary) 6%, white);
+    --color-secondary-100: color-mix(in oklch, var(--brand-secondary) 12%, white);
+    --color-secondary-200: color-mix(in oklch, var(--brand-secondary) 28%, white);
+    --color-secondary-300: color-mix(in oklch, var(--brand-secondary) 46%, white);
+    --color-secondary-400: color-mix(in oklch, var(--brand-secondary) 70%, white);
+    --color-secondary-500: var(--brand-secondary);
+    --color-secondary-600: color-mix(in oklch, var(--brand-secondary) 88%, black);
+    --color-secondary-700: color-mix(in oklch, var(--brand-secondary) 74%, black);
+    --color-secondary-800: color-mix(in oklch, var(--brand-secondary) 60%, black);
+    --color-secondary-900: color-mix(in oklch, var(--brand-secondary) 46%, black);
+    --color-secondary-950: color-mix(in oklch, var(--brand-secondary) 30%, black);
+
+    /* State - warning */
+    --color-warning-50: color-mix(in oklch, var(--warning) 6%, white);
+    --color-warning-100: color-mix(in oklch, var(--warning) 12%, white);
+    --color-warning-200: color-mix(in oklch, var(--warning) 28%, white);
+    --color-warning-300: color-mix(in oklch, var(--warning) 46%, white);
+    --color-warning-400: color-mix(in oklch, var(--warning) 70%, white);
+    --color-warning-500: var(--warning);
+    --color-warning-600: color-mix(in oklch, var(--warning) 88%, black);
+    --color-warning-700: color-mix(in oklch, var(--warning) 74%, black);
+    --color-warning-800: color-mix(in oklch, var(--warning) 60%, black);
+    --color-warning-900: color-mix(in oklch, var(--warning) 46%, black);
+    --color-warning-950: color-mix(in oklch, var(--warning) 30%, black);
+
+    --breakpoint-xs: 30rem;
+    --font-sans: 'Inclusive Sans', sans-serif;
+
+    /* Typographic scale -> text-* utilities (e.g. text-caption, text-body) */
+    --text-caption: var(--font-size-caption);
+    --text-detail: var(--font-size-detail);
+    --text-body: var(--font-size-body);
+    --text-heading: var(--font-size-heading);
+    --text-title: var(--font-size-title);
+    --text-display: var(--font-size-display);
+
+    /* Letter-spacing -> tracking-label utility */
+    --tracking-label: var(--label-tracking);
 }
 
 @layer base {
-  :root {
-    --ui-primary: var(--color-accessible-blue);
-    --ui-secondary: var(--color-secondary);
-    --ui-text: #1c1c1c;
-    --ui-text-white: var(--color-white);
-    --ui-bg: var(--color-light-bg);
-    --ui-divider: #b1b1b1;
+    /* Token -> Nuxt UI bridge.
+     Maps semantic tokens onto Nuxt UI's --ui-* variables. The
+     surface/text/accent tokens are mode-scoped in tokens.css, so this
+     mapping follows the active theme automatically.
 
-    --ui-warning: var(--color-warning);
+     When dark mode is built (tokens added to the .dark block in
+     tokens.css), add an `html.dark { ... }` block here that re-asserts
+     these same --ui-* mappings at higher specificity, so they win over
+     Nuxt UI v4's built-in dark scheme:
 
-    --theme-transition-duration: 750ms;
-    --theme-transition-easing: cubic-bezier(0.2, 0.6, 0.2, 1);
-  }
-
-  a {
-    @apply text-primary underline-offset-2 hover:underline focus-visible:ring focus-visible:outline-none;
-  }
-
-  legend {
-    @apply font-medium text-accessible-blue pb-1;
-  }
-
-  ::selection {
-    background-color: #ffc20a;
-    color: #000000;
-  }
-
-  ::-moz-selection {
-    background-color: #ffc20a;
-    color: #000000;
-  }
-
-  html.dark {
-    --ui-primary: #ece7ff;
-    --ui-text: #e7e7e7;
-    --ui-bg: #0f1115;
-    --ui-divider: #2f323a;
-  }
-
-  @media (prefers-reduced-motion: no-preference) {
-    html,
-    body,
-    #__nuxt {
-      transition:
-        background-color var(--theme-transition-duration)
-          var(--theme-transition-easing),
-        color var(--theme-transition-duration) var(--theme-transition-easing),
-        border-color var(--theme-transition-duration)
-          var(--theme-transition-easing),
-        fill var(--theme-transition-duration) var(--theme-transition-easing),
-        stroke var(--theme-transition-duration) var(--theme-transition-easing);
+       html.dark {
+         --ui-primary: var(--accent);
+         --ui-text: var(--text);
+         --ui-bg: var(--bg);
+         --ui-divider: var(--border);
+       }
+  */
+    :root {
+        --ui-primary: var(--accent);
+        --ui-secondary: var(--brand-secondary);
+        --ui-text: var(--text);
+        --ui-text-white: var(--on-brand);
+        --ui-bg: var(--bg);
+        --ui-divider: var(--border);
+        --ui-warning: var(--warning);
     }
 
-    .theme-colors-transition,
-    .theme-colors-transition::before {
-      transition:
-        background-color var(--theme-transition-duration)
-          var(--theme-transition-easing),
-        color var(--theme-transition-duration) var(--theme-transition-easing),
-        border-color var(--theme-transition-duration)
-          var(--theme-transition-easing),
-        fill var(--theme-transition-duration) var(--theme-transition-easing),
-        stroke var(--theme-transition-duration) var(--theme-transition-easing);
-    }
-  }
-
-  .text-secondary {
-    @apply text-secondary;
-  }
-
-  .liquid-wheel {
-    position: relative;
-    overflow: hidden;
-    isolation: isolate;
-  }
-
-  .liquid-wheel::before {
-    content: "";
-    position: absolute;
-    top: -20%;
-    left: -20%;
-    width: 180%;
-    height: 210%;
-    background:
-      radial-gradient(
-        circle at 20% 50%,
-        rgba(237, 0, 228, 1) 0%,
-        transparent 80%
-      ),
-      radial-gradient(
-        circle at 80% 80%,
-        rgba(9, 0, 237, 1) 0%,
-        transparent 50%
-      ),
-      radial-gradient(
-        circle at 40% 40%,
-        rgba(0, 66, 237, 0.9) 0%,
-        transparent 70%
-      ),
-      radial-gradient(
-        circle at 60% 70%,
-        rgba(255, 0, 128, 1) 0%,
-        transparent 74%
-      ),
-      radial-gradient(
-        circle at 90% 30%,
-        rgba(237, 9, 238, 1) 0%,
-        transparent 74%
-      );
-    animation: liquidFlow 8s ease-in-out infinite;
-    border-radius: inherit;
-    z-index: -1;
-  }
-
-  .liquid-wheel::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    top: -30%;
-    left: -30%;
-    width: 195%;
-    height: 200%;
-    background:
-      radial-gradient(circle at 70% 20%, rgb(255, 0, 136) 0%, transparent 60%),
-      radial-gradient(circle at 30% 80%, rgb(255, 0, 119) 0%, transparent 60%),
-      radial-gradient(
-        circle at 50% 50%,
-        rgba(0, 128, 255, 0.8) 0%,
-        transparent 50%
-      );
-    animation: liquidFlow 7s ease-in-out infinite reverse;
-    border-radius: inherit;
-    z-index: -1;
-  }
-
-  .liquid-wheel span {
-    color: white !important;
-    font-weight: 700 !important;
-    text-shadow:
-      1px 1px 2px rgba(0, 0, 0, 0.9),
-      -1px -1px 2px rgba(0, 0, 0, 0.9),
-      1px -1px 2px rgba(0, 0, 0, 0.9),
-      -1px 1px 2px rgba(0, 0, 0, 0.9) !important;
-  }
-
-  @keyframes liquidFlow {
-    0%,
-    100% {
-      transform: translate(0, 0) rotate(0deg);
+    a {
+        @apply text-primary underline-offset-2 hover:underline focus-visible:ring focus-visible:outline-none;
     }
 
-    25% {
-      transform: translate(-2%, 2%) rotate(60deg);
+    legend {
+        @apply font-medium text-accessible-blue pb-1;
     }
 
-    50% {
-      transform: translate(-2%, 2%) rotate(30deg);
+    ::selection {
+        background-color: var(--selection-bg);
+        color: var(--selection-fg);
     }
 
-    75% {
-      transform: translate(-2%, 2%) rotate(2eg);
+    ::-moz-selection {
+        background-color: var(--selection-bg);
+        color: var(--selection-fg);
     }
-  }
+
+    @media (prefers-reduced-motion: no-preference) {
+        html,
+        body,
+        #__nuxt {
+            transition:
+                background-color var(--theme-transition-duration) var(--theme-transition-easing),
+                color var(--theme-transition-duration) var(--theme-transition-easing),
+                border-color var(--theme-transition-duration) var(--theme-transition-easing),
+                fill var(--theme-transition-duration) var(--theme-transition-easing),
+                stroke var(--theme-transition-duration) var(--theme-transition-easing);
+        }
+
+        .theme-colors-transition,
+        .theme-colors-transition::before {
+            transition:
+                background-color var(--theme-transition-duration) var(--theme-transition-easing),
+                color var(--theme-transition-duration) var(--theme-transition-easing),
+                border-color var(--theme-transition-duration) var(--theme-transition-easing),
+                fill var(--theme-transition-duration) var(--theme-transition-easing),
+                stroke var(--theme-transition-duration) var(--theme-transition-easing);
+        }
+    }
+}
+
+@layer components {
+    .liquid-wheel {
+        position: relative;
+        overflow: hidden;
+        isolation: isolate;
+    }
+
+    .liquid-wheel::before {
+        content: '';
+        position: absolute;
+        top: -20%;
+        left: -20%;
+        width: 180%;
+        height: 210%;
+        background:
+            radial-gradient(circle at 20% 50%, rgba(237, 0, 228, 1) 0%, transparent 80%),
+            radial-gradient(circle at 80% 80%, rgba(9, 0, 237, 1) 0%, transparent 50%),
+            radial-gradient(circle at 40% 40%, rgba(0, 66, 237, 0.9) 0%, transparent 70%),
+            radial-gradient(circle at 60% 70%, rgba(255, 0, 128, 1) 0%, transparent 74%),
+            radial-gradient(circle at 90% 30%, rgba(237, 9, 238, 1) 0%, transparent 74%);
+        animation: liquidFlow var(--motion-duration-ambient) ease-in-out infinite;
+        border-radius: inherit;
+        z-index: var(--z-behind);
+    }
+
+    .liquid-wheel::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        top: -30%;
+        left: -30%;
+        width: 195%;
+        height: 200%;
+        background:
+            radial-gradient(circle at 70% 20%, rgb(255, 0, 136) 0%, transparent 60%),
+            radial-gradient(circle at 30% 80%, rgb(255, 0, 119) 0%, transparent 60%),
+            radial-gradient(circle at 50% 50%, rgba(0, 128, 255, 0.8) 0%, transparent 50%);
+        animation: liquidFlow calc(var(--motion-duration-ambient) - 1s) ease-in-out infinite reverse;
+        border-radius: inherit;
+        z-index: var(--z-behind);
+    }
+
+    .liquid-wheel span {
+        color: white !important;
+        font-weight: 700 !important;
+        text-shadow:
+            1px 1px 2px rgba(0, 0, 0, 0.9),
+            -1px -1px 2px rgba(0, 0, 0, 0.9),
+            1px -1px 2px rgba(0, 0, 0, 0.9),
+            -1px 1px 2px rgba(0, 0, 0, 0.9) !important;
+    }
+
+    @keyframes liquidFlow {
+        0%,
+        100% {
+            transform: translate(0, 0) rotate(0deg);
+        }
+
+        25% {
+            transform: translate(-2%, 2%) rotate(60deg);
+        }
+
+        50% {
+            transform: translate(-2%, 2%) rotate(30deg);
+        }
+
+        75% {
+            transform: translate(-2%, 2%) rotate(2deg);
+        }
+    }
+
+    /* Reduced-motion discipline: stop the decorative gradient loop but
+     keep the static gradient styling intact. */
+    @media (prefers-reduced-motion: reduce) {
+        .liquid-wheel::before,
+        .liquid-wheel::after {
+            animation: none;
+        }
+    }
 }

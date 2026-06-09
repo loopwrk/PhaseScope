@@ -1,0 +1,117 @@
+/* ==================================================================
+   PhaseScope Design Tokens - CSS Custom Properties
+
+   Single source of truth for raw design values. Everything else
+   (Tailwind @theme utilities, Nuxt UI --ui-* vars) is derived from
+   these in main.css - never hard-code a colour outside this file.
+
+   Modes:
+     :root   light theme (the default; the app is light-only today)
+     .dark   dark theme (placeholder - to be designed by Claude Design)
+
+   Brand, state, motion and selection tokens are mode-independent and
+   live on :root. Only surface/text/accent tokens vary by mode.
+   ================================================================== */
+
+:root {
+    /* --- Mode-independent brand & state --- */
+    --brand-blue: #5700ed; /* the literal "accessible blue" */
+    --brand-secondary: #a500ed;
+    --warning: #ed3a00;
+    --on-brand: #ffffff; /* text/icon colour on top of brand fills */
+
+    /* --- Selection --- */
+    --selection-bg: #ffc20a;
+    --selection-fg: #000000;
+
+    /* --- Motion scale ----------------------------------------------
+       Reduced-motion policy: colour transitions are applied only under
+       (prefers-reduced-motion: no-preference) in main.css, and
+       decorative animations (e.g. liquid-wheel) are switched off under
+       (prefers-reduced-motion: reduce). New animations should follow
+       the same discipline. */
+    --motion-duration-fast: 150ms;
+    --motion-duration-base: 300ms;
+    --motion-duration-slow: 750ms;
+    --motion-duration-ambient: 8s; /* slow decorative loops (liquid-wheel) */
+    --motion-ease-standard: cubic-bezier(0.2, 0.6, 0.2, 1);
+
+    /* Theme colour-transition (consumed by the global transition rule) */
+    --theme-transition-duration: var(--motion-duration-slow);
+    --theme-transition-easing: var(--motion-ease-standard);
+
+    /* --- Typographic scale -----------------------------------------
+       Raw sizes; mapped to text-* utilities in main.css @theme. */
+    --font-size-caption: 0.6875rem; /* 11px - micro / uppercase labels */
+    --font-size-detail: 0.8125rem; /* 13px - secondary / control labels */
+    --font-size-body: 0.875rem; /* 14px - body copy */
+    --font-size-heading: 1rem; /* 16px - panel / section headings */
+    --font-size-title: 1.25rem; /* 20px - view titles */
+    --font-size-display: 1.75rem; /* 28px - large display text */
+    --label-tracking: 0.08em; /* wide tracking for uppercase labels */
+
+    /* --- Z-index scale --- */
+    --z-behind: -1; /* decorative layers behind content */
+    --z-base: 0;
+    --z-overlay: 10; /* controls overlay on the canvas */
+    --z-popover: 20; /* advanced-options / dropdowns */
+    --z-modal: 30; /* dialogs */
+    --z-toast: 40; /* notifications / toasts */
+
+    /* --- Light theme (default) --- */
+    --accent: var(--brand-blue); /* mode accent - maps to Nuxt UI --ui-primary */
+    --text: #1c1c1c;
+    --bg: #ffffff;
+    --border: #b1b1b1;
+
+    /* ==============================================================
+       PLACEHOLDERS
+
+       Left commented so they stay inert until decided. State and
+       surface tokens will likely be mode-scoped: define dark
+       equivalents in the .dark block when chosen. A "soft" variant is
+       a low-saturation background tint paired with the solid colour.
+
+       Semantic state colours + soft variants
+       (--warning base is already defined above):
+         --success:        ;
+         --success-soft:   ;
+         --warning-soft:   ;
+         --error:          ;
+         --error-soft:     ;
+         --info:           ;
+         --info-soft:      ;
+
+       Surface elevation:
+         --surface:          ;   raised panels above --bg
+         --surface-elevated: ;   popovers / highest layer
+         --surface-sunken:   ;   insets / wells
+
+       Scrim / overlay (glass):
+         --scrim:           ;    dim behind modals
+         --overlay-bg:      ;    translucent panel fill
+         --overlay-blur:    ;    backdrop-filter blur radius
+         --overlay-opacity: ;
+
+       Focus ring:
+         --focus-ring:        ; colour
+         --focus-ring-width:  ;
+         --focus-ring-offset: ;
+
+       Text-selection colour (live values are --selection-bg /
+       --selection-fg above; revisit them here):
+         --selection-bg: ;
+         --selection-fg: ;
+       ============================================================== */
+}
+
+/* --- Dark theme (placeholder) --------------------------------------
+
+     --accent:  <dark accent>;
+     --text:    <dark body text>;
+     --bg:      <dark surface>;
+     --border:  <dark divider>;
+   ------------------------------------------------------------------ */
+.dark {
+    /* TODO: dark-mode surface / text / accent tokens */
+}
