@@ -14,7 +14,7 @@ Status: **draft for review**. No code changed yet.
 | Fonts       | **Install** Space Grotesk + JetBrains Mono; Inclusive Sans.                                                               |
 | Components  | **Recreate React prototypes as Vue / Nuxt UI** (match visuals, not structure).                                            |
 | Logo        | **New simpler mark**: an eye outline (almond) containing a lemniscate (figure-8). Replaces the bundle's proposed reticle. |
-| Prototyping | **Histoire** stories for layouts + components _before_ wiring into the app.                                               |
+| Prototyping | **Storybook** stories for layouts + components _before_ wiring into the app.                                              |
 
 ---
 
@@ -195,8 +195,8 @@ working visualiser.
   rely on them.
 - Install deps: `@fontsource/space-grotesk`, `@fontsource/jetbrains-mono`,
   Inclusive Sans (verify exact `@fontsource` name; fall back to alternative
-  source if unpublished), and Histoire (`histoire`, `@histoire/plugin-vue`,
-  `@histoire/plugin-nuxt`, `@nuxt/test-utils` already present).
+  source if unpublished), and Storybook (`Storybook`, `@Storybook/plugin-vue`,
+  `@Storybook/plugin-nuxt`, `@nuxt/test-utils` already present).
 
 ### Phase 1 — Token foundation (mostly CSS, no UI risk)
 
@@ -216,16 +216,16 @@ working visualiser.
 8. Global `*:focus-visible` → `--focus-glow`; port `.ps-chamfer/.ps-glass/
 .ps-label/.ps-readout` utilities.
 
-### Phase 2 — Histoire setup
+### Phase 2 — Storybook setup
 
-- Add `histoire.config.ts` with `HstVue` (+ `HstNuxt` if it cooperates with
+- Add `Storybook.config.ts` with `HstVue` (+ `HstNuxt` if it cooperates with
   Nuxt 4 — see risks), `story`/`story:build` scripts, and link `styles`/tokens so
   stories render in the real theme. Smoke-test with one trivial story.
 
-### Phase 3 — Component primitives (Vue), prototyped in Histoire first
+### Phase 3 — Component primitives (Vue), prototyped in Storybook first
 
 Recreate visuals; prefer skinning Nuxt UI, build bespoke where there's no
-equivalent. Each gets a Histoire story exercising all states.
+equivalent. Each gets a Storybook story exercising all states.
 
 | Bundle (React) | Our approach                                                                                 |
 | -------------- | -------------------------------------------------------------------------------------------- | ----- | ----------- |
@@ -246,7 +246,7 @@ disabled(0.4) / `focus-visible`(`--focus-glow`); on/off for toggles; variants.
 
 ### Phase 4 — UI-kit layouts, prototyped then integrated
 
-Build in Histoire as the bundle structures them, then integrate into the app:
+Build in Storybook as the bundle structures them, then integrate into the app:
 `AppHeader` (logo + mode toggle), `TransportBar` (play/pause/stop, Load Audio,
 demo select, elapsed `Readout`, live `Badge`), `DisplayPanel` (sliders, topology
 
@@ -283,7 +283,7 @@ demo select, elapsed `Readout`, live `Badge`), `DisplayPanel` (sliders, topology
 
 ### Phase 8 — Final review
 
-- Prettier + ESLint; `npm run dev`/`build`; Histoire visual review; optional
+- Prettier + ESLint; `npm run dev`/`build`; Storybook visual review; optional
   dedicated review subagent for a high-stakes accessibility + diff pass.
 
 ---
@@ -293,7 +293,7 @@ demo select, elapsed `Readout`, live `Badge`), `DisplayPanel` (sliders, topology
 - **New:** `app/assets/css/tokens/palettes.css`, `effects.css`, `fonts.css`
   (or sections in the existing files); `app/composables/usePalette.ts`;
   `app/components/ds/*` (KeyCap, Readout, Panel, PaletteSwitcher, …); UI-kit
-  components; `histoire.config.ts` + `*.story.vue`; `public/phasescope-mark.svg`.
+  components; `Storybook.config.ts` + `*.story.vue`; `public/phasescope-mark.svg`.
 - **Edited:** `app/assets/css/tokens.css`, `main.css`; `nuxt.config.ts`;
   `app/pages/phasescope.vue` (overlay extraction); existing transport components
   (`PlayPauseButton`, `StopButton`, `AudioLoaderButton`, `ColorModeToggle`).
@@ -305,7 +305,7 @@ demo select, elapsed `Readout`, live `Badge`), `DisplayPanel` (sliders, topology
 ## 6. Verification gates (per phase)
 
 ASCII-only + Prettier + balanced braces on CSS; token defined==referenced;
-`npm run dev` boots; Histoire renders each story; WCAG AA contrast pairs pass;
+`npm run dev` boots; Storybook renders each story; WCAG AA contrast pairs pass;
 keyboard-only operation works; reduced-motion honoured. High-stakes phases (1, 7)
 get an explicit double-check.
 
@@ -313,8 +313,8 @@ get an explicit double-check.
 
 ## 7. Risks & open items
 
-- **Histoire + Nuxt 4.** `@histoire/plugin-nuxt` is beta and officially targets
-  Nuxt 3. If it won't run under Nuxt 4 we either (a) run Histoire against Vue
+- **Storybook + Nuxt 4.** `@Storybook/plugin-nuxt` is beta and officially targets
+  Nuxt 3. If it won't run under Nuxt 4 we either (a) run Storybook against Vue
   components with Nuxt auto-imports mocked, or (b) fall back to Storybook for Vue.
   Decide at Phase 2.
 - **Inclusive Sans on `@fontsource`.** Verify the package exists; if not,
@@ -332,6 +332,6 @@ get an explicit double-check.
 
 ## 8. Suggested sequence summary
 
-0 Prep/audit/install → 1 Tokens+fonts+dark-default (CSS) → 2 Histoire →
+0 Prep/audit/install → 1 Tokens+fonts+dark-default (CSS) → 2 Storybook →
 3 Primitives (story-first) → 4 Layouts → integrate into `phasescope.vue` →
 5 Logo → 6 Palette switcher → 7 A11y/contrast → 8 Review.
