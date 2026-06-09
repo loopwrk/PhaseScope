@@ -1,0 +1,86 @@
+/* ==================================================================
+   PhaseScope - Effects: shape, focus, glass, shadow, striation
+
+   Signature shape language: FLAT CHAMFERED corners (clip-path), not
+   rounded radii. The luminous focus ring is the brand's hero detail.
+   (Motion tokens live in tokens.css.)
+   ================================================================== */
+
+:root {
+    /* --- Shape: chamfer geometry --- */
+    --chamfer-sm: 5px;
+    --chamfer-md: 9px;
+    --chamfer-lg: 14px;
+    --radius-pill: 999px; /* reserved for the rare true-pill (toggle thumb) */
+
+    --clip-chamfer-sm: polygon(
+        5px 0,
+        calc(100% - 5px) 0,
+        100% 5px,
+        100% calc(100% - 5px),
+        calc(100% - 5px) 100%,
+        5px 100%,
+        0 calc(100% - 5px),
+        0 5px
+    );
+    --clip-chamfer-md: polygon(
+        9px 0,
+        calc(100% - 9px) 0,
+        100% 9px,
+        100% calc(100% - 9px),
+        calc(100% - 9px) 100%,
+        9px 100%,
+        0 calc(100% - 9px),
+        0 9px
+    );
+    --clip-chamfer-lg: polygon(
+        14px 0,
+        calc(100% - 14px) 0,
+        100% 14px,
+        100% calc(100% - 14px),
+        calc(100% - 14px) 100%,
+        14px 100%,
+        0 calc(100% - 14px),
+        0 14px
+    );
+    /* Single cut - top-left + bottom-right only (tab / readout strips) */
+    --clip-notch: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+
+    /* --- Focus ring ---
+       A luminous double ring: a crisp accent outline plus an outer glow.
+       Applied via box-shadow on :focus-visible (see main.css) so it
+       follows the chamfered clip-path silhouette rather than a rectangle. */
+    --focus-ring: var(--brand-blue);
+    --focus-ring-width: 2px;
+    --focus-ring-offset: 2px;
+    --focus-glow:
+        0 0 0 var(--focus-ring-width) var(--focus-ring),
+        0 0 0 calc(var(--focus-ring-width) + 2px) color-mix(in oklch, var(--focus-ring) 30%, transparent),
+        0 0 18px color-mix(in oklch, var(--focus-ring) 55%, transparent);
+
+    /* --- Glass / overlay --- */
+    --overlay-blur: 14px;
+    --overlay-opacity: 0.6;
+    --overlay-border: color-mix(in oklch, var(--brand-blue) 16%, var(--border));
+
+    /* --- Shadows ---
+       Soft on light; on dark, shadow is mostly an accent-tinted glow
+       plus a subtle inner top-light hairline. */
+    --shadow-sm: 0 1px 2px color-mix(in oklch, oklch(0 0 0) 18%, transparent); /* #000 */
+    --shadow-md:
+        0 6px 20px color-mix(in oklch, oklch(0 0 0) 28%, transparent),
+        inset 0 1px 0 color-mix(in oklch, oklch(1 0 0) 6%, transparent); /* #000 / #fff */
+    --shadow-glow-accent: 0 0 24px color-mix(in oklch, var(--brand-blue) 38%, transparent);
+    --shadow-glow-live: 0 0 20px color-mix(in oklch, var(--scope-magenta) 45%, transparent);
+
+    /* --- Striation / texture ---
+       A faint repeating scanline, used sparingly on panel headers and
+       readouts. Layer over a surface via background-image (.ps-striation). */
+    --striation: repeating-linear-gradient(
+        0deg,
+        color-mix(in oklch, currentColor 7%, transparent) 0,
+        color-mix(in oklch, currentColor 7%, transparent) 1px,
+        transparent 1px,
+        transparent 4px
+    );
+}

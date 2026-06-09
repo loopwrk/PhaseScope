@@ -1,25 +1,67 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
+@import './tokens/fonts.css';
+@import './tokens/palettes.css';
 @import './tokens.css';
+@import './tokens/effects.css';
+@import './tokens/utilities.css';
 
 @source "../../../content/**/*";
 
 /* ==================================================================
    Token -> Tailwind bridge
 
-   Exposes the semantic tokens (tokens.css) as Tailwind theme values
-   so utilities like `bg-accessible-blue`, `text-secondary`,
-   `text-warning` and the `xs:` breakpoint keep working - but their
-   source of truth is now the token layer.
+   Exposes the semantic tokens as Tailwind theme values so utilities
+   (bg-accessible-blue, text-secondary, text-warning, font-display,
+   text-caption, tracking-label, the xs: breakpoint, ...) keep working -
+   but their source of truth is the token layer.
    ================================================================== */
 @theme {
+    /* Font families - mirror the single-source stacks in tokens.css
+       (--ff-*) so Tailwind generates font-sans/-display/-mono utilities
+       and sets the default body font. */
+    --font-sans: var(--ff-sans);
+    --font-display: var(--ff-display);
+    --font-mono: var(--ff-mono);
+
+    /* Type scale -> text-* utilities */
+    --text-caption: var(--font-size-caption);
+    --text-detail: var(--font-size-detail);
+    --text-body: var(--font-size-body);
+    --text-heading: var(--font-size-heading);
+    --text-title: var(--font-size-title);
+    --text-display: var(--font-size-display);
+    --text-mega: var(--font-size-mega);
+
+    /* Letter-spacing -> tracking-* utilities */
+    --tracking-label: var(--label-tracking);
+    --tracking-label-wide: var(--label-tracking-wide);
+    --tracking-display: var(--display-tracking);
+
+    --breakpoint-xs: 30rem;
+
     /* Bare brand utilities (kept for back-compat: bg-accessible-blue, etc.) */
     --color-accessible-blue: var(--brand-blue);
     --color-secondary: var(--brand-secondary);
     --color-white: var(--on-brand);
     --color-warning: var(--warning);
 
-    /* Primary brand - "accessible blue" */
+    /* Spectrum accents (data / live-signal cues only) */
+    --color-scope-magenta: var(--scope-magenta);
+    --color-scope-cyan: var(--scope-cyan);
+    --color-scope-amber: var(--scope-amber);
+
+    /* Semantic state utilities */
+    --color-success: var(--success);
+    --color-error: var(--error);
+    --color-info: var(--info);
+
+    /* --- Derived 50-950 shade ramps --------------------------------------
+     Generated from each base token (the 500 anchor) with
+     color-mix(in oklch, ...): lighter steps mix toward white, darker
+     steps toward black. */
+
+    /* Primary brand - "accessible blue" (azure) */
     --color-accessible-blue-50: color-mix(in oklch, var(--brand-blue) 6%, white);
     --color-accessible-blue-100: color-mix(in oklch, var(--brand-blue) 12%, white);
     --color-accessible-blue-200: color-mix(in oklch, var(--brand-blue) 28%, white);
@@ -32,7 +74,7 @@
     --color-accessible-blue-900: color-mix(in oklch, var(--brand-blue) 46%, black);
     --color-accessible-blue-950: color-mix(in oklch, var(--brand-blue) 30%, black);
 
-    /* Secondary brand - violet */
+    /* Secondary brand - magenta-violet */
     --color-secondary-50: color-mix(in oklch, var(--brand-secondary) 6%, white);
     --color-secondary-100: color-mix(in oklch, var(--brand-secondary) 12%, white);
     --color-secondary-200: color-mix(in oklch, var(--brand-secondary) 28%, white);
@@ -57,52 +99,48 @@
     --color-warning-800: color-mix(in oklch, var(--warning) 60%, black);
     --color-warning-900: color-mix(in oklch, var(--warning) 46%, black);
     --color-warning-950: color-mix(in oklch, var(--warning) 30%, black);
-
-    --breakpoint-xs: 30rem;
-    --font-sans: 'Inclusive Sans', sans-serif;
-
-    /* Typographic scale -> text-* utilities (e.g. text-caption, text-body) */
-    --text-caption: var(--font-size-caption);
-    --text-detail: var(--font-size-detail);
-    --text-body: var(--font-size-body);
-    --text-heading: var(--font-size-heading);
-    --text-title: var(--font-size-title);
-    --text-display: var(--font-size-display);
-
-    /* Letter-spacing -> tracking-label utility */
-    --tracking-label: var(--label-tracking);
 }
 
 @layer base {
     /* Token -> Nuxt UI bridge.
-     Maps semantic tokens onto Nuxt UI's --ui-* variables. The
-     surface/text/accent tokens are mode-scoped in tokens.css, so this
-     mapping follows the active theme automatically.
-
-     When dark mode is built (tokens added to the .dark block in
-     tokens.css), add an `html.dark { ... }` block here that re-asserts
-     these same --ui-* mappings at higher specificity, so they win over
-     Nuxt UI v4's built-in dark scheme:
-
-       html.dark {
-         --ui-primary: var(--accent);
-         --ui-text: var(--text);
-         --ui-bg: var(--bg);
-         --ui-divider: var(--border);
-       }
-  */
+     Maps semantic tokens onto Nuxt UI's --ui-* variables. Surface/text/
+     accent tokens are mode-scoped in tokens.css (:root = dark default,
+     .light = light), so this mapping follows the active theme. The
+     html.dark block re-asserts the mapping at higher specificity so it
+     wins over Nuxt UI v4's built-in dark scheme. */
     :root {
         --ui-primary: var(--accent);
         --ui-secondary: var(--brand-secondary);
         --ui-text: var(--text);
+        --ui-text-muted: var(--text-muted);
+        --ui-text-highlighted: var(--text);
+        --ui-text-inverted: var(--on-brand);
         --ui-text-white: var(--on-brand);
         --ui-bg: var(--bg);
+        --ui-bg-elevated: var(--surface);
+        --ui-bg-accented: var(--surface-elevated);
+        --ui-border: var(--border);
+        --ui-border-accented: var(--border-strong);
         --ui-divider: var(--border);
         --ui-warning: var(--warning);
+        --ui-success: var(--success);
+        --ui-error: var(--error);
+        --ui-info: var(--info);
+    }
+
+    html.dark {
+        --ui-primary: var(--accent);
+        --ui-text: var(--text);
+        --ui-text-muted: var(--text-muted);
+        --ui-bg: var(--bg);
+        --ui-bg-elevated: var(--surface);
+        --ui-bg-accented: var(--surface-elevated);
+        --ui-border: var(--border);
+        --ui-divider: var(--border);
     }
 
     a {
-        @apply text-primary underline-offset-2 hover:underline focus-visible:ring focus-visible:outline-none;
+        @apply text-primary underline-offset-2 hover:underline;
     }
 
     legend {
@@ -117,6 +155,13 @@
     ::-moz-selection {
         background-color: var(--selection-bg);
         color: var(--selection-fg);
+    }
+
+    /* Luminous focus ring - on every interactive element.
+     box-shadow (not outline) so it follows chamfered clip-path edges. */
+    *:focus-visible {
+        outline: none;
+        box-shadow: var(--focus-glow);
     }
 
     @media (prefers-reduced-motion: no-preference) {
