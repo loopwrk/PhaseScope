@@ -19,11 +19,11 @@ const variantMap: Record<Variant, { color: 'primary' | 'neutral' | 'error'; vari
     };
 
 const baseClass = [
-    'font-display font-semibold tracking-[var(--label-tracking)]',
+    'font-display font-semibold tracking-(--label-tracking)',
     'rounded-none [clip-path:var(--clip-chamfer-md)]',
     'transition-[transform,box-shadow] duration-150',
-    'focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-[var(--focus-glow)]',
-    'hover:shadow-[var(--shadow-glow-accent)]',
+    'focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-(--focus-glow)',
+    'hover:shadow-(--shadow-glow-accent)',
     'active:translate-y-px',
     'disabled:opacity-40 disabled:pointer-events-none disabled:shadow-none',
 ].join(' ');
