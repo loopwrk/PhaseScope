@@ -32,21 +32,21 @@ focus ring** is the signature detail. Dark "spaceship-dashboard" first.
 
 ### 2.2 Colour — mode-independent anchors
 
-- `--brand-blue: #3D7BFF` (accent, focus, primary fills — the 500 anchor)
+- `--brand-primary: #3D7BFF` (accent, focus, primary fills — the 500 anchor)
 - `--brand-secondary: #B327C9` (magenta-violet, used rarely)
 - `--warning: #ED3A00` (unchanged)
 - `--on-brand: #FFFFFF`
 - **Spectrum trio (DATA / live cues only, never ordinary chrome):**
   `--scope-magenta #FF2D9B`, `--scope-cyan #2FD4E6`, `--scope-amber #FF9D2E`
 - **Semantic state anchors:** `--success #22C58B`, `--error #FF3B5C`,
-  `--info: var(--brand-blue)` (`--warning` as above)
+  `--info: var(--brand-primary)` (`--warning` as above)
 - **Selection:** `--selection-bg #FFC20A`, `--selection-fg #000000` (unchanged)
 
 ### 2.3 Colour — per-mode (dark = primary, light = coherent)
 
 | Token                | Dark                            | Light                           |
 | -------------------- | ------------------------------- | ------------------------------- |
-| `--accent`           | `var(--brand-blue)`             | `var(--brand-blue)`             |
+| `--accent`           | `var(--brand-primary)`          | `var(--brand-primary)`          |
 | `--bg`               | `#06080F`                       | `#FFFFFF`                       |
 | `--surface`          | `#0C0F18`                       | `#F5F6F9`                       |
 | `--surface-elevated` | `#12161F`                       | `#FFFFFF`                       |
@@ -75,7 +75,7 @@ the clipped silhouette.
 *:focus-visible { outline: none; box-shadow: var(--focus-glow); }
 ```
 
-`--focus-ring: var(--brand-blue)`, width `2px`, offset `2px`. Same on every
+`--focus-ring: var(--brand-primary)`, width `2px`, offset `2px`. Same on every
 interactive element. **Never removed.**
 
 ### 2.5 Glass / overlay
@@ -144,7 +144,7 @@ families/weights/line-heights.
 ## 3. Swatch / palette architecture ("easy add + toggle" requirement)
 
 **Principle:** a _palette_ is just the set of **mode-independent brand anchors**
-(`--brand-blue`, `--brand-secondary`, optionally the `--scope-*` trio). Because
+(`--brand-primary`, `--brand-secondary`, optionally the `--scope-*` trio). Because
 our 50–950 ramps and the `--ui-*` bridge all derive from these anchors via
 `color-mix`, swapping the anchors reskins the entire app automatically. Palette
 and light/dark mode are **orthogonal** (mode controls surfaces/text; palette
@@ -157,11 +157,11 @@ controls brand anchors).
     ```css
     :root,
     [data-palette='azure'] {
-        --brand-blue: #3d7bff;
+        --brand-primary: #3d7bff;
         --brand-secondary: #b327c9; /* … */
     }
     [data-palette='magenta'] {
-        --brand-blue: #ff2d9b;
+        --brand-primary: #ff2d9b;
         --brand-secondary: #7a1fd0; /* … */
     }
     ```
@@ -173,7 +173,7 @@ swatch }]`.
   the whole contract; documented at the top of `palettes.css`.
 
 > The brand-blue **value** change and palette mechanism are compatible: azure is
-> simply the default palette's `--brand-blue`.
+> simply the default palette's `--brand-primary`.
 
 **Naming note (minor):** the existing Tailwind utility is `accessible-blue`; its
 value becomes azure. We keep the utility name (no template churn) but its meaning

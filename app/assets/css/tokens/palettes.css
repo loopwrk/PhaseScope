@@ -2,7 +2,7 @@
    PhaseScope - Palettes (swappable brand anchors)
 
    A "palette" is just the mode-independent BRAND anchors: the accent
-   (--brand-blue), the secondary, and the visualiser spectrum trio.
+   (--brand-primary), the secondary, and the visualiser spectrum trio.
    Because the 50-950 ramps and the Nuxt UI --ui-* bridge in main.css
    all derive from these anchors via color-mix, swapping a palette
    reskins the whole app automatically. Palette is orthogonal to
@@ -11,7 +11,7 @@
    Colours are oklch; the hex equivalent is noted in a comment.
 
    HOW TO ADD A PALETTE:
-     1. Add one block:  [data-palette="my-name"] { --brand-blue: ...; ... }
+     1. Add one block:  [data-palette="my-name"] { --brand-primary: ...; ... }
      2. Register it in app/composables/usePalette.ts (id + label).
    Toggle at runtime by setting <html data-palette="my-name">.
    The default (no attribute) is "azure".
@@ -19,11 +19,13 @@
 
 :root,
 [data-palette='azure'] {
-    --brand-blue: oklch(0.6159 0.2071 262.88); /* #3d7bff - luminous azure, signature accent + focus ring */
-    --brand-secondary: oklch(0.5667 0.2437 321.63); /* #b327c9 - magenta-violet */
+    --brand-primary: oklch(0.67 0.26 25.5); /* #3d7bff - luminous azure, signature accent + focus ring */
+    --brand-secondary: oklch(0.7981 0.1284 206.4); /* #b327c9 - magenta-violet */
 
     /* Spectrum trio - data / live-signal cues ONLY (never chrome) */
     --scope-magenta: oklch(0.6675 0.2514 355.4); /* #ff2d9b */
+    /* --scope-magenta: oklch(0.6675 0.2514 355.4);  */
+    /* --scope-cyan: oklch(0.7981 0.1284 206.4);  */
     --scope-cyan: oklch(0.7981 0.1284 206.4); /* #2fd4e6 */
     --scope-amber: oklch(0.7802 0.1633 63.2); /* #ff9d2e */
 }
@@ -31,7 +33,7 @@
 /* --- Example alternate palettes (starting points; tune freely) ------ */
 
 [data-palette='magenta'] {
-    --brand-blue: oklch(0.6675 0.2514 355.4); /* #ff2d9b - hot-pink accent */
+    --brand-primary: oklch(0.6675 0.2514 355.4); /* #ff2d9b - hot-pink accent */
     --brand-secondary: oklch(0.599 0.2299 286.2); /* #7c5cff */
     --scope-magenta: oklch(0.6675 0.2514 355.4); /* #ff2d9b */
     --scope-cyan: oklch(0.7981 0.1284 206.4); /* #2fd4e6 */
@@ -39,7 +41,7 @@
 }
 
 [data-palette='violet'] {
-    --brand-blue: oklch(0.599 0.2299 286.2); /* #7c5cff - electric violet accent */
+    --brand-primary: oklch(0.599 0.2299 286.2); /* #7c5cff - electric violet accent */
     --brand-secondary: oklch(0.5667 0.2437 321.63); /* #b327c9 */
     --scope-magenta: oklch(0.6675 0.2514 355.4); /* #ff2d9b */
     --scope-cyan: oklch(0.7981 0.1284 206.4); /* #2fd4e6 */
@@ -47,7 +49,7 @@
 }
 
 [data-palette='rhuby'] {
-    --brand-blue: oklch(0.44 0.154 351.4); /* #8c205c */
+    --brand-primary: oklch(0.44 0.154 351.4); /* #8c205c */
     --brand-secondary: oklch(0.328 0.11 344.6); /* #591642 */
     --scope-magenta: oklch(0.197 0.058 318.3); /* #200b26 */
     --scope-cyan: oklch(0.184 0.054 301.8); /* #170b26 */
@@ -55,7 +57,7 @@
 }
 
 [data-palette='morpheus'] {
-    --brand-blue: oklch(0.495 0.109 151.6); /* #267341 */
+    --brand-primary: oklch(0.495 0.109 151.6); /* #267341 */
     --brand-secondary: oklch(0.331 0.064 167.6); /* #05402f */
     --scope-magenta: oklch(0.411 0.095 153.4); /* #125931 */
     --scope-cyan: oklch(0.189 0.033 232.8); /* #031620 */
@@ -63,7 +65,7 @@
 }
 
 [data-palette='blink'] {
-    --brand-blue: oklch(0.442 0.185 336.9); /* #8c0f77 */
+    --brand-primary: oklch(0.442 0.185 336.9); /* #8c0f77 */
     --brand-secondary: oklch(0.513 0.22 327.5); /* #a31ba5 */
     --scope-magenta: oklch(0.278 0.084 322.6); /* #3b1740 */
     --scope-cyan: oklch(0.209 0.045 315.8); /* #201126 */

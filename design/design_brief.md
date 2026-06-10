@@ -45,7 +45,7 @@ Form and function go hand in hand, like an outdoor jacket converted for an alien
 
 ## These token slots are waiting to be filled (give values for BOTH light + dark)
 
-Mode-independent: --brand-blue, --brand-secondary, --warning, --on-brand,
+Mode-independent: --brand-primary, --brand-secondary, --warning, --on-brand,
 --selection-bg, --selection-fg
 Per-mode (light :root + dark .dark): --accent, --text, --bg, --border
 Placeholders to define: --success, --success-soft, --warning-soft, --error,

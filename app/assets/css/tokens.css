@@ -20,7 +20,7 @@
     --success: oklch(0.7312 0.1524 162.48); /* #22c58b */
     --warning: oklch(0.8497 0.1755 97.74); /* #ed3a00 */
     --error: oklch(0.66 0.2286 17.47); /* #ff3b5c */
-    --info: var(--brand-blue);
+    --info: var(--brand-primary);
     --on-brand: oklch(1 0 0); /* #ffffff - text/icon colour on top of brand fills */
 
     /* --- Selection --- */
@@ -111,7 +111,7 @@
        DARK THEME - the primary "spaceship dashboard" aesthetic.
        Near-black cool graphite; the canvas + accent supply the colour.
        ============================================================== */
-    --accent: var(--brand-blue); /* maps to Nuxt UI --ui-primary */
+    --accent: var(--brand-primary); /* maps to Nuxt UI --ui-primary */
 
     --bg: oklch(0.1356 0.0164 269.4); /* #06080f - page / canvas backstop */
     --surface: oklch(0.1699 0.0195 270.01); /* #0c0f18 - raised glass panels */
@@ -138,7 +138,7 @@
    LIGHT THEME (.light)
    ================================================================== */
 .light {
-    --accent: var(--brand-blue);
+    --accent: var(--brand-primary);
 
     --bg: oklch(1 0 0); /* #ffffff */
     --surface: oklch(0.9732 0.0041 271.37); /* #f5f6f9 */

@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import * as THREE from 'three';
 import { toRaw } from 'vue';
-import { analyzeFrequencyBand, freqContentToHz, ampToOscillationRange } from '~/utils/audio/analysis';
+import {
+    analyzeFrequencyBand,
+    analyzeLocalFrequency,
+    freqContentToHz,
+    ampToOscillationRange,
+} from '~/utils/audio/analysis';
 import type { RenderMode } from '~/composables/useCorridorRenderer.client';
 import { useNarrativeTransform } from '~/composables/experimental/useNarrativeTransform';
 import { useMediaQuery, useIntervalFn } from '@vueuse/core';
@@ -51,7 +56,7 @@ const cameraMode = ref<CameraMode>('orbit');
 type TopologyMode = 'corridor' | 'sphere' | 'attractor';
 const topologyMode = ref<TopologyMode>('corridor');
 
-const toast = useToast();
+const { show: showToast } = usePsToast();
 
 // Demo tracks
 const { tracks: demoTracks, loadDemoTrack, isLoading: demoTracksLoading } = useDemoTracks();
@@ -481,23 +486,21 @@ const initLiveSnapshotCorridor = (buffer: AudioBuffer) => {
     corridorState.value.amplitudes = amplitudes;
     corridorState.value.anchorPositions = anchorPositions;
 
+    const topology = TOPOLOGIES[topologyMode.value];
+
     // Attractor topology: pre-compute Lorenz spine and Frenet frames at load time
-    if (topologyMode.value === 'attractor') {
+    if (topology.needsAttractorSpine) {
         const { spine, normals, binormals } = precomputeAttractorSpine(frameCount, ch0, hopSize);
         corridorState.value.attractorSpine = spine;
         corridorState.value.attractorNormals = normals;
         corridorState.value.attractorBinormals = binormals;
     }
 
-    // Create geometries using renderer
-    // Position depends on topology mode
-    const isCorridor = topologyMode.value === 'corridor';
+    // Create geometries using the renderer, at the topology's object-space offsets
     const { positions } = renderer.createGeometry({
         totalPoints,
         renderMode,
-        // Corridor extends along Z; sphere and attractor are centered at origin
-        pointsPosition: isCorridor ? { x: 0, y: 1.7, z: 0.95 } : { x: 0, y: 1.7, z: 0 },
-        linesPosition: isCorridor ? { x: 0, y: 1.7, z: 0 } : { x: 0, y: 1.7, z: 0 },
+        ...topology.geometry,
     });
 
     corridorState.value.pos = positions;
@@ -549,12 +552,7 @@ const handleLoadDemoTrack = async (trackId: string): Promise<boolean> => {
         await loadWavFile(file);
         return true;
     } catch (error) {
-        toast.add({
-            title: 'Failed to load demo track',
-            description: error instanceof Error ? error.message : 'Unknown error',
-            color: 'error',
-            icon: 'i-heroicons-exclamation-triangle',
-        });
+        showToast('error', 'Failed to load demo track', error instanceof Error ? error.message : 'Unknown error');
         return false;
     } finally {
         demoTracksLoading.value = false;
@@ -562,12 +560,7 @@ const handleLoadDemoTrack = async (trackId: string): Promise<boolean> => {
 };
 
 const onAudioLoadError = (error: Error) => {
-    toast.add({
-        title: 'Failed to load audio',
-        description: error.message,
-        color: 'error',
-        icon: 'i-heroicons-exclamation-triangle',
-    });
+    showToast('error', 'Failed to load audio', error.message);
 };
 
 const handlePlay = async () => {
@@ -623,13 +616,19 @@ const handleSelectDemoTrack = (trackId: string) => {
     if (index !== -1) void playAutoTrackAtIndex(index);
 };
 
+// Step to the next (+1) or previous (-1) demo track, wrapping at the ends.
+// Shared by the { } shortcuts, hardware media keys, and auto-advance.
+const playAdjacentTrack = (direction: 1 | -1) => {
+    const count = sortedDemoTracks.value.length;
+    if (count === 0) return;
+    const index = (autoPlayIndex.value + direction + count) % count;
+    void playAutoTrackAtIndex(index);
+};
+
 onTrackEnded(() => {
     // Only auto-advance if a demo track was playing (not a user-loaded file)
     if (autoPlayIndex.value < 0) return;
-    const nextIndex = (autoPlayIndex.value + 1) % sortedDemoTracks.value.length;
-    if (sortedDemoTracks.value.length > 0) {
-        playAutoTrackAtIndex(nextIndex);
-    }
+    playAdjacentTrack(1);
 });
 
 const getTargetFrameForPlayback = () => {
@@ -645,17 +644,184 @@ const getTargetFrameForPlayback = () => {
     return clamp(f, 0, Math.max(0, corridorState.value.frameCount - 1));
 };
 
-const buildOneCorridorFrame = (frameIndex: number) => {
-    // Writes a single frame into the preallocated positions buffer.
-    const { pointsPerFrame, windowSize, hopSize, zStep } = corridorMeta.value;
+/* ---------- Frame building (shared pipeline + per-topology mappers) ----------
+
+   Every topology builds a frame the same way: slice the stereo buffer,
+   analyse the frame's frequency content once (drives the hue), then for
+   each point derive L/R + amplitude, place the point with the topology's
+   mapper, run the narrative transform, and write position / colour /
+   oscillation data / anchors. Only the point placement differs, so each
+   topology contributes a frame-mapper factory: per-frame setup (guards +
+   precomputed values) returning a per-point mapPoint(). Adding a topology
+   = one factory + one TOPOLOGIES entry. */
+
+interface FramePoint {
+    x: number;
+    y: number;
+    z: number;
+}
+
+interface FrameMapper {
+    /** Narrative-transform z anchor (corridor backbone z; 0 elsewhere) */
+    z0: number;
+    mapPoint: (u: number, L: number, R: number, normalizedAmp: number) => FramePoint;
+}
+
+type FrameMapperFactory = (frameIndex: number, raw: CorridorState) => FrameMapper | null;
+
+const corridorFrameMapper: FrameMapperFactory = (frameIndex, raw) => {
+    const { zStep } = corridorMeta.value;
+    const { frameCount, xyScale, ringRadius } = raw;
+    const z0 = (frameIndex - frameCount / 2) * zStep;
+    return {
+        z0,
+        // Ring + Lissajous portrait: each frame is a "floating wreath" you can
+        // walk through; the portrait controls the vertical shape, the ring
+        // wraps it, and z0 strings the frames along the time corridor.
+        mapPoint: (u, L, R) => ({
+            x: Math.cos(u) * ringRadius + L * xyScale,
+            y: R * xyScale,
+            z: Math.sin(u) * ringRadius + z0,
+        }),
+    };
+};
+
+const sphereFrameMapper: FrameMapperFactory = (frameIndex, raw) => {
+    const { frameCount } = raw;
+    const baseRadius = 5.0;
+    const displacementScale = 1.5;
+    // Frame index -> polar angle (phi): time evolves from north to south pole
+    const phi = (frameIndex / frameCount) * Math.PI;
+    const sinPhi = Math.sin(phi);
+    const cosPhi = Math.cos(phi);
+    return {
+        z0: 0,
+        // u is the azimuth; amplitude displaces the surface radially
+        mapPoint: (u, _L, _R, normalizedAmp) => {
+            const r = baseRadius + normalizedAmp * displacementScale;
+            return {
+                x: r * sinPhi * Math.cos(u),
+                y: r * cosPhi,
+                z: r * sinPhi * Math.sin(u),
+            };
+        },
+    };
+};
+
+const attractorFrameMapper: FrameMapperFactory = (frameIndex, raw) => {
+    const { attractorSpine, attractorNormals, attractorBinormals } = raw;
+    if (!attractorSpine || !attractorNormals || !attractorBinormals) return null;
+
+    // Spine position and Frenet frame at this frame
+    const s = frameIndex * 3;
+    const spineX = attractorSpine[s] ?? 0;
+    const spineY = attractorSpine[s + 1] ?? 0;
+    const spineZ = attractorSpine[s + 2] ?? 0;
+    const normX = attractorNormals[s] ?? 0;
+    const normY = attractorNormals[s + 1] ?? 0;
+    const normZ = attractorNormals[s + 2] ?? 0;
+    const binX = attractorBinormals[s] ?? 0;
+    const binY = attractorBinormals[s + 1] ?? 0;
+    const binZ = attractorBinormals[s + 2] ?? 0;
+
+    const baseTubeRadius = 0.15;
+    const audioTubeScale = 0.6;
+
+    return {
+        z0: 0,
+        // Tube cross-section: a ring around the spine in its Frenet frame;
+        // the radius breathes with audio amplitude
+        mapPoint: (u, _L, _R, normalizedAmp) => {
+            const tubeRadius = baseTubeRadius + normalizedAmp * audioTubeScale;
+            const cosU = Math.cos(u);
+            const sinU = Math.sin(u);
+            return {
+                x: spineX + tubeRadius * (cosU * normX + sinU * binX),
+                y: spineY + tubeRadius * (cosU * normY + sinU * binY),
+                z: spineZ + tubeRadius * (cosU * normZ + sinU * binZ),
+            };
+        },
+    };
+};
+
+/* ---------- Topology registry ----------
+   Single home for everything that varies per topology: the frame mapper,
+   the renderer's object-space offsets, whether the Lorenz spine must be
+   pre-computed at load, and the auto-orbit camera parameters (corridor's
+   head-relative orbit/follow cameras are bespoke, so it has no entry). */
+
+interface OrbitParams {
+    radius: number;
+    speed: number;
+    elevCosFreq: number;
+    elevCosAmp: number;
+    elevSinFreq: number;
+    elevSinAmp: number;
+    wobbleFreq: number;
+    wobbleAmp: number;
+}
+
+interface TopologyDef {
+    frameMapper: FrameMapperFactory;
+    geometry: {
+        pointsPosition: { x: number; y: number; z: number };
+        linesPosition: { x: number; y: number; z: number };
+    };
+    needsAttractorSpine?: boolean;
+    orbit?: OrbitParams;
+}
+
+const TOPOLOGIES: Record<TopologyMode, TopologyDef> = {
+    corridor: {
+        frameMapper: corridorFrameMapper,
+        // Corridor extends along Z; sphere and attractor are centred at origin
+        geometry: { pointsPosition: { x: 0, y: 1.7, z: 0.95 }, linesPosition: { x: 0, y: 1.7, z: 0 } },
+    },
+    sphere: {
+        frameMapper: sphereFrameMapper,
+        geometry: { pointsPosition: { x: 0, y: 1.7, z: 0 }, linesPosition: { x: 0, y: 1.7, z: 0 } },
+        orbit: {
+            radius: 12,
+            speed: 0.2,
+            elevCosFreq: 0.13,
+            elevCosAmp: 1.22,
+            elevSinFreq: 0.37,
+            elevSinAmp: 0.35,
+            wobbleFreq: 0.53,
+            wobbleAmp: 1.5,
+        },
+    },
+    attractor: {
+        frameMapper: attractorFrameMapper,
+        geometry: { pointsPosition: { x: 0, y: 1.7, z: 0 }, linesPosition: { x: 0, y: 1.7, z: 0 } },
+        needsAttractorSpine: true,
+        // Wider, slower drift than the sphere to show the full butterfly
+        orbit: {
+            radius: 16,
+            speed: 0.12,
+            elevCosFreq: 0.17,
+            elevCosAmp: 0.9,
+            elevSinFreq: 0.41,
+            elevSinAmp: 0.3,
+            wobbleFreq: 0.47,
+            wobbleAmp: 2.5,
+        },
+    },
+};
+
+const buildOneFrame = (frameIndex: number) => {
+    // Writes a single frame into the preallocated position/colour buffers.
+    const { pointsPerFrame, windowSize, hopSize } = corridorMeta.value;
     // Use toRaw to ensure we write to the actual Float32Arrays, not Vue proxies
     const rawState = toRaw(corridorState.value);
-    const { ch0, ch1, frameCount, xyScale, ringRadius, pos, frequencies, amplitudes, anchorPositions } = rawState;
+    const { ch0, ch1, frameCount, pos, frequencies, amplitudes, anchorPositions } = rawState;
     if (!pos || !ch0 || !ch1 || !renderer.hasGeometry()) return;
     if (!frequencies || !amplitudes || !anchorPositions) return;
 
+    const frame = TOPOLOGIES[topologyMode.value].frameMapper(frameIndex, rawState);
+    if (!frame) return;
+
     const frameStart = frameIndex * hopSize;
-    const z0 = (frameIndex - frameCount / 2) * zStep;
 
     // Each frame occupies a contiguous block.
     let p = frameIndex * pointsPerFrame * 3;
@@ -665,22 +831,19 @@ const buildOneCorridorFrame = (frameIndex: number) => {
     // Reuse a single Color object to avoid allocating one per point
     const color = new THREE.Color();
 
-    // Precompute frequency analysis once per frame (at frame center)
-    // This avoids redundant analysis since frequency content doesn't change
-    // meaningfully within a single frame's time window (~23ms)
-    const analysisWindow = 4096; // Fixed window size for good frequency/time balance
+    // Precompute frequency analysis once per frame (at frame centre): frequency
+    // content doesn't change meaningfully within one frame's window (~23ms)
+    const analysisWindow = 4096; // fixed size for a good frequency/time balance
     const frameCenterSample = clamp(frameStart + windowSize / 2, 0, ch0.length - 1);
     const windowStart = Math.max(0, frameCenterSample - analysisWindow / 2);
     const freqL = analyzeFrequencyBand(ch0, windowStart, analysisWindow);
     const freqR = analyzeFrequencyBand(ch1, windowStart, analysisWindow);
     const freqContent = (freqL + freqR) / 2; // 0 = low freq, 1 = high freq
 
-    // Precompute hue from frequency (same for all points in frame)
-    const reverseSpectrum = useAlternateColors.value;
+    // Hue from frequency (same for all points in the frame)
+    // Default:  bass (0) = BLUE/MAGENTA -> treble (1) = RED; reverse flips it
     const hueRangeMultiplier = 0.75;
-    // Default:  bass (0) = BLUE/MAGENTA → treble (1) = RED
-    // Reversed: bass (0) = RED → treble (1) = BLUE/MAGENTA
-    const hue = reverseSpectrum
+    const hue = useAlternateColors.value
         ? freqContent * hueRangeMultiplier
         : hueRangeMultiplier - freqContent * hueRangeMultiplier;
     const baseSaturation = 0.92;
@@ -694,301 +857,23 @@ const buildOneCorridorFrame = (frameIndex: number) => {
 
         const L = ch0[i] ?? 0;
         const R = ch1[i] ?? 0;
+        const normalizedAmp = clamp(Math.sqrt(L * L + R * R), 0, 1);
 
-        // Core portrait (XY)
-        const x2 = L * xyScale;
-        const y2 = R * xyScale;
-
-        // Calculate amplitude for brightness (varies per point)
-        const amplitude = Math.sqrt(L * L + R * R);
-        const normalizedAmp = clamp(amplitude, 0, 1);
-
-        // Lightweight per-point frequency estimate for oscillation
-        // Uses 8 samples instead of full analysis
-        const microWindow = 8;
-        const halfMicro = microWindow / 2;
-        let localChangeEnergy = 0;
-        let localAmpEnergy = 0;
-        for (let m = -halfMicro; m < halfMicro; m++) {
-            const idx = clamp(i + m, 0, ch0.length - 2);
-            const s0 = (ch0[idx] ?? 0) + (ch1[idx] ?? 0);
-            const s1 = (ch0[idx + 1] ?? 0) + (ch1[idx + 1] ?? 0);
-            const diff = s1 - s0;
-            localChangeEnergy += diff * diff;
-            localAmpEnergy += s0 * s0;
-        }
-        const localTotal = Math.sqrt(localChangeEnergy) + Math.sqrt(localAmpEnergy);
-        const localFreqContent =
-            localTotal > 0.001 ? clamp((Math.sqrt(localChangeEnergy) / localTotal) * 3, 0, 1) : 0.5;
-        const pointFreqHz = freqContentToHz(localFreqContent);
-
-        // Lightness varies per point based on amplitude
-        const lightness = baseLightness + normalizedAmp * amplitudeBrightnessFactor;
-        const saturation = clamp(baseSaturation + normalizedAmp * (1 - baseSaturation), baseSaturation, 1);
-        color.setHSL(hue, saturation, lightness);
-
-        // Stable 3D: wrap around a ring so each frame becomes a "floating wreath" you can walk through
-        const ringX = Math.cos(u) * ringRadius;
-        const ringZ = Math.sin(u) * ringRadius;
-
-        const basePos = {
-            x: ringX + x2,
-            y: y2, // portrait controls vertical shape
-            z: ringZ + z0, // time corridor backbone
-        };
-
-        const transformed = applyNarrativeTransform(basePos, {
+        const transformed = applyNarrativeTransform(frame.mapPoint(u, L, R, normalizedAmp), {
             L,
             R,
             normalizedAmp,
             uAngle: u,
             frameIndex,
             frameCount,
-            z0,
+            z0: frame.z0,
         });
 
         pos[p] = transformed.x;
         pos[p + 1] = transformed.y;
         pos[p + 2] = transformed.z;
 
-        // Set color for this point
-        colors[p] = color.r;
-        colors[p + 1] = color.g;
-        colors[p + 2] = color.b;
-
-        // Store oscillation data for this point
-        const pointIndex = frameIndex * pointsPerFrame + k;
-        frequencies[pointIndex] = pointFreqHz;
-        amplitudes[pointIndex] = ampToOscillationRange(normalizedAmp);
-
-        // Store anchor position (original position before any oscillation)
-        anchorPositions[p] = pos[p] ?? 0;
-        anchorPositions[p + 1] = pos[p + 1] ?? 0;
-        anchorPositions[p + 2] = pos[p + 2] ?? 0;
-
-        const positionIncrement = 3;
-        p += positionIncrement;
-    }
-};
-
-const buildOneSphereFrame = (frameIndex: number) => {
-    // Spherical topology: map audio onto a sphere with surface displacement
-    const { pointsPerFrame, windowSize, hopSize } = corridorMeta.value;
-    const rawState = toRaw(corridorState.value);
-    const { ch0, ch1, frameCount, pos, frequencies, amplitudes, anchorPositions } = rawState;
-    if (!pos || !ch0 || !ch1 || !renderer.hasGeometry()) return;
-    if (!frequencies || !amplitudes || !anchorPositions) return;
-
-    const frameStart = frameIndex * hopSize;
-
-    // Spherical parameters
-    const baseRadius = 5.0;
-    const displacementScale = 1.5;
-
-    // Map frame index to polar angle (phi): time evolution from north to south pole
-    const phi = (frameIndex / frameCount) * Math.PI;
-
-    // Each frame occupies a contiguous block
-    let p = frameIndex * pointsPerFrame * 3;
-    const colors = renderer.getColorArray();
-    if (!colors) return;
-
-    // Reuse a single Color object to avoid allocating one per point
-    const color = new THREE.Color();
-
-    // Precompute frequency analysis once per frame (at frame center)
-    const analysisWindow = 4096;
-    const frameCenterSample = clamp(frameStart + windowSize / 2, 0, ch0.length - 1);
-    const windowStart = Math.max(0, frameCenterSample - analysisWindow / 2);
-    const freqL = analyzeFrequencyBand(ch0, windowStart, analysisWindow);
-    const freqR = analyzeFrequencyBand(ch1, windowStart, analysisWindow);
-    const freqContent = (freqL + freqR) / 2;
-
-    // Precompute hue from frequency (same for all points in frame)
-    const reverseSpectrum = useAlternateColors.value;
-    const hueRangeMultiplier = 0.75;
-    const hue = reverseSpectrum
-        ? freqContent * hueRangeMultiplier
-        : hueRangeMultiplier - freqContent * hueRangeMultiplier;
-    const baseSaturation = 0.92;
-    const baseLightness = 0.35;
-    const amplitudeBrightnessFactor = 0.35;
-
-    for (let k = 0; k < pointsPerFrame; k++) {
-        // Map point index to azimuth angle (theta): full rotation around sphere
-        const theta = (k / pointsPerFrame) * Math.PI * 2;
-
-        const sampleIndex = frameStart + Math.floor((k / pointsPerFrame) * windowSize);
-        const i = clamp(sampleIndex, 0, ch0.length - 1);
-
-        const L = ch0[i] ?? 0;
-        const R = ch1[i] ?? 0;
-
-        // Calculate amplitude for radial displacement
-        const amplitude = Math.sqrt(L * L + R * R);
-        const normalizedAmp = clamp(amplitude, 0, 1);
-
-        // Radial displacement based on amplitude
-        const displacement = normalizedAmp * displacementScale;
-        const r = baseRadius + displacement;
-
-        // Spherical to Cartesian conversion
-        const x = r * Math.sin(phi) * Math.cos(theta);
-        const y = r * Math.cos(phi);
-        const z = r * Math.sin(phi) * Math.sin(theta);
-
-        // Lightness varies per point based on amplitude
-        const lightness = baseLightness + normalizedAmp * amplitudeBrightnessFactor;
-        const saturation = clamp(baseSaturation + normalizedAmp * (1 - baseSaturation), baseSaturation, 1);
-        color.setHSL(hue, saturation, lightness);
-
-        const basePos = { x, y, z };
-
-        const transformed = applyNarrativeTransform(basePos, {
-            L,
-            R,
-            normalizedAmp,
-            uAngle: theta,
-            frameIndex,
-            frameCount,
-            z0: 0,
-        });
-
-        // Set position
-        pos[p] = transformed.x;
-        pos[p + 1] = transformed.y;
-        pos[p + 2] = transformed.z;
-
-        // Set color
-        colors[p] = color.r;
-        colors[p + 1] = color.g;
-        colors[p + 2] = color.b;
-
-        // Lightweight per-point frequency estimate for oscillation
-        const microWindow = 8;
-        const halfMicro = microWindow / 2;
-        let localChangeEnergy = 0;
-        let localAmpEnergy = 0;
-        for (let m = -halfMicro; m < halfMicro; m++) {
-            const idx = clamp(i + m, 0, ch0.length - 2);
-            const s0 = (ch0[idx] ?? 0) + (ch1[idx] ?? 0);
-            const s1 = (ch0[idx + 1] ?? 0) + (ch1[idx + 1] ?? 0);
-            const diff = s1 - s0;
-            localChangeEnergy += diff * diff;
-            localAmpEnergy += s0 * s0;
-        }
-        const localTotal = Math.sqrt(localChangeEnergy) + Math.sqrt(localAmpEnergy);
-        const localFreqContent =
-            localTotal > 0.001 ? clamp((Math.sqrt(localChangeEnergy) / localTotal) * 3, 0, 1) : 0.5;
-        const pointFreqHz = freqContentToHz(localFreqContent);
-
-        // Store oscillation data for this point
-        const pointIndex = frameIndex * pointsPerFrame + k;
-        frequencies[pointIndex] = pointFreqHz;
-        amplitudes[pointIndex] = ampToOscillationRange(normalizedAmp);
-
-        // Store anchor position (original position before any oscillation)
-        anchorPositions[p] = pos[p] ?? 0;
-        anchorPositions[p + 1] = pos[p + 1] ?? 0;
-        anchorPositions[p + 2] = pos[p + 2] ?? 0;
-
-        const positionIncrement = 3;
-        p += positionIncrement;
-    }
-};
-
-const buildOneAttractorFrame = (frameIndex: number) => {
-    const { pointsPerFrame, windowSize, hopSize } = corridorMeta.value;
-    const rawState = toRaw(corridorState.value);
-    const {
-        ch0,
-        ch1,
-        frameCount,
-        pos,
-        frequencies,
-        amplitudes,
-        anchorPositions,
-        attractorSpine,
-        attractorNormals,
-        attractorBinormals,
-    } = rawState;
-    if (!pos || !ch0 || !ch1 || !renderer.hasGeometry()) return;
-    if (!frequencies || !amplitudes || !anchorPositions) return;
-    if (!attractorSpine || !attractorNormals || !attractorBinormals) return;
-
-    const frameStart = frameIndex * hopSize;
-
-    // Spine position and Frenet frame at this frame
-    const spineX = attractorSpine[frameIndex * 3] ?? 0;
-    const spineY = attractorSpine[frameIndex * 3 + 1] ?? 0;
-    const spineZ = attractorSpine[frameIndex * 3 + 2] ?? 0;
-    const normX = attractorNormals[frameIndex * 3] ?? 0;
-    const normY = attractorNormals[frameIndex * 3 + 1] ?? 0;
-    const normZ = attractorNormals[frameIndex * 3 + 2] ?? 0;
-    const binX = attractorBinormals[frameIndex * 3] ?? 0;
-    const binY = attractorBinormals[frameIndex * 3 + 1] ?? 0;
-    const binZ = attractorBinormals[frameIndex * 3 + 2] ?? 0;
-
-    const baseTubeRadius = 0.15;
-    const audioTubeScale = 0.6;
-
-    let p = frameIndex * pointsPerFrame * 3;
-    const colors = renderer.getColorArray();
-    if (!colors) return;
-    const color = new THREE.Color();
-
-    // Frame-level frequency analysis (identical pattern to corridor/sphere)
-    const analysisWindow = 4096;
-    const frameCenterSample = clamp(frameStart + windowSize / 2, 0, ch0.length - 1);
-    const windowStart = Math.max(0, frameCenterSample - analysisWindow / 2);
-    const freqL = analyzeFrequencyBand(ch0, windowStart, analysisWindow);
-    const freqR = analyzeFrequencyBand(ch1, windowStart, analysisWindow);
-    const freqContent = (freqL + freqR) / 2;
-
-    const reverseSpectrum = useAlternateColors.value;
-    const hueRangeMultiplier = 0.75;
-    const hue = reverseSpectrum
-        ? freqContent * hueRangeMultiplier
-        : hueRangeMultiplier - freqContent * hueRangeMultiplier;
-    const baseSaturation = 0.92;
-    const baseLightness = 0.35;
-    const amplitudeBrightnessFactor = 0.35;
-
-    for (let k = 0; k < pointsPerFrame; k++) {
-        const u = (k / pointsPerFrame) * Math.PI * 2;
-        const sampleIndex = frameStart + Math.floor((k / pointsPerFrame) * windowSize);
-        const i = clamp(sampleIndex, 0, ch0.length - 1);
-
-        const L = ch0[i] ?? 0;
-        const R = ch1[i] ?? 0;
-        const amplitude = Math.sqrt(L * L + R * R);
-        const normalizedAmp = clamp(amplitude, 0, 1);
-
-        // Tube cross-section: ring around spine, radius breathes with audio amplitude
-        const tubeRadius = baseTubeRadius + normalizedAmp * audioTubeScale;
-        const cosU = Math.cos(u);
-        const sinU = Math.sin(u);
-
-        const basePos = {
-            x: spineX + tubeRadius * (cosU * normX + sinU * binX),
-            y: spineY + tubeRadius * (cosU * normY + sinU * binY),
-            z: spineZ + tubeRadius * (cosU * normZ + sinU * binZ),
-        };
-
-        const transformed = applyNarrativeTransform(basePos, {
-            L,
-            R,
-            normalizedAmp,
-            uAngle: u,
-            frameIndex,
-            frameCount,
-            z0: 0,
-        });
-
-        pos[p] = transformed.x;
-        pos[p + 1] = transformed.y;
-        pos[p + 2] = transformed.z;
-
+        // Lightness/saturation vary per point with amplitude
         const lightness = baseLightness + normalizedAmp * amplitudeBrightnessFactor;
         const saturation = clamp(baseSaturation + normalizedAmp * (1 - baseSaturation), baseSaturation, 1);
         color.setHSL(hue, saturation, lightness);
@@ -996,28 +881,12 @@ const buildOneAttractorFrame = (frameIndex: number) => {
         colors[p + 1] = color.g;
         colors[p + 2] = color.b;
 
-        // Lightweight per-point frequency estimate for oscillation
-        const microWindow = 8;
-        const halfMicro = microWindow / 2;
-        let localChangeEnergy = 0,
-            localAmpEnergy = 0;
-        for (let m = -halfMicro; m < halfMicro; m++) {
-            const idx = clamp(i + m, 0, ch0.length - 2);
-            const s0 = (ch0[idx] ?? 0) + (ch1[idx] ?? 0);
-            const s1 = (ch0[idx + 1] ?? 0) + (ch1[idx + 1] ?? 0);
-            const diff = s1 - s0;
-            localChangeEnergy += diff * diff;
-            localAmpEnergy += s0 * s0;
-        }
-        const localTotal = Math.sqrt(localChangeEnergy) + Math.sqrt(localAmpEnergy);
-        const localFreqContent =
-            localTotal > 0.001 ? clamp((Math.sqrt(localChangeEnergy) / localTotal) * 3, 0, 1) : 0.5;
-        const pointFreqHz = freqContentToHz(localFreqContent);
-
+        // Store oscillation data for this point
         const pointIndex = frameIndex * pointsPerFrame + k;
-        frequencies[pointIndex] = pointFreqHz;
+        frequencies[pointIndex] = freqContentToHz(analyzeLocalFrequency(ch0, ch1, i));
         amplitudes[pointIndex] = ampToOscillationRange(normalizedAmp);
 
+        // Store anchor position (original position before any oscillation)
         anchorPositions[p] = pos[p] ?? 0;
         anchorPositions[p + 1] = pos[p + 1] ?? 0;
         anchorPositions[p + 2] = pos[p + 2] ?? 0;
@@ -1039,15 +908,7 @@ const updateLiveSnapshotCorridor = () => {
     const toBuild = Math.min(remaining, MAX_FRAMES_PER_TICK);
 
     for (let i = 0; i < toBuild; i++) {
-        const f = corridorState.value.builtFrames;
-        // Dispatch to the appropriate builder based on topology mode
-        if (topologyMode.value === 'sphere') {
-            buildOneSphereFrame(f);
-        } else if (topologyMode.value === 'attractor') {
-            buildOneAttractorFrame(f);
-        } else {
-            buildOneCorridorFrame(f);
-        }
+        buildOneFrame(corridorState.value.builtFrames);
         corridorState.value.builtFrames++;
     }
 
@@ -1069,24 +930,18 @@ const updateAutoFollowCamera = (time: number) => {
     let targetPos: { x: number; y: number; z: number };
     let lookTarget: THREE.Vector3;
 
-    if (topologyMode.value === 'sphere') {
-        const sphereCenter = new THREE.Vector3(0, galleryY, 0);
-        const orbitRadius = 12;
-        const orbitSpeed = 0.2;
-
-        const elapsed = time - sphereOrbitStartTime.value;
-        const t = elapsed * orbitSpeed;
-
-        // Horizontal angle, slow rotation around the sphere
+    const orbit = TOPOLOGIES[topologyMode.value].orbit;
+    if (orbit) {
+        // Centre-orbiting topologies (sphere, attractor): a Lissajous-like
+        // path around the origin whose constants come from the registry.
+        // Elevation starts at the top (cos term = 1) and naturally drifts
+        // down; the second sine term varies the path so it never repeats,
+        // and the radius wobble keeps the viewing distance alive.
+        const t = (time - sphereOrbitStartTime.value) * orbit.speed;
         const horizontalAngle = t;
-
-        // Elevation: starts at π/2 (directly above) and slowly descends
-        // cos(t * 0.13) starts at 1 (top) and naturally drifts down
-        // Second term adds variety so the path never repeats
-        const elevationAngle = Math.cos(t * 0.13) * 1.22 + Math.sin(t * 0.37) * 0.35;
-
-        // Slight radius variation
-        const r = orbitRadius + Math.sin(t * 0.53) * 1.5;
+        const elevationAngle =
+            Math.cos(t * orbit.elevCosFreq) * orbit.elevCosAmp + Math.sin(t * orbit.elevSinFreq) * orbit.elevSinAmp;
+        const r = orbit.radius + Math.sin(t * orbit.wobbleFreq) * orbit.wobbleAmp;
 
         targetPos = {
             x: Math.cos(horizontalAngle) * Math.cos(elevationAngle) * r,
@@ -1094,28 +949,7 @@ const updateAutoFollowCamera = (time: number) => {
             z: Math.sin(horizontalAngle) * Math.cos(elevationAngle) * r,
         };
 
-        lookTarget = sphereCenter;
-    } else if (topologyMode.value === 'attractor') {
-        // Orbit the Lorenz butterfly — wider radius, slower drift to show the full structure
-        const attractorCenter = new THREE.Vector3(0, galleryY, 0);
-        const orbitRadius = 16;
-        const orbitSpeed = 0.12;
-
-        const elapsed = time - sphereOrbitStartTime.value;
-        const t = elapsed * orbitSpeed;
-
-        // Lissajous-like path gives varied viewing angles of the butterfly
-        const horizontalAngle = t;
-        const elevationAngle = Math.cos(t * 0.17) * 0.9 + Math.sin(t * 0.41) * 0.3;
-        const r = orbitRadius + Math.sin(t * 0.47) * 2.5;
-
-        targetPos = {
-            x: Math.cos(horizontalAngle) * Math.cos(elevationAngle) * r,
-            y: galleryY + Math.sin(elevationAngle) * r,
-            z: Math.sin(horizontalAngle) * Math.cos(elevationAngle) * r,
-        };
-
-        lookTarget = attractorCenter;
+        lookTarget = new THREE.Vector3(0, galleryY, 0);
     } else {
         // Corridor mode
         const headFrameIndex = corridorState.value.builtFrames - 1;
@@ -1296,31 +1130,15 @@ const onDreamBgToggle = () => {
 const onHeavenlyBgToggle = () => {
     if (heavenlyBg.enabled.value) dreamBg.enabled.value = false;
 };
-shortcuts.register('{', () => {
-    if (sortedDemoTracks.value.length === 0) return;
-    const prevIndex = (autoPlayIndex.value - 1 + sortedDemoTracks.value.length) % sortedDemoTracks.value.length;
-    playAutoTrackAtIndex(prevIndex);
-});
-shortcuts.register('}', () => {
-    if (sortedDemoTracks.value.length === 0) return;
-    const nextIndex = (autoPlayIndex.value + 1) % sortedDemoTracks.value.length;
-    playAutoTrackAtIndex(nextIndex);
-});
+shortcuts.register('{', () => playAdjacentTrack(-1));
+shortcuts.register('}', () => playAdjacentTrack(1));
 
 // Media Session API — handles hardware media keys on macOS (and other OSes)
 // Registered in onMounted to avoid SSR access to navigator
 const initMediaSessionHandlers = () => {
     if (!('mediaSession' in navigator)) return;
-    navigator.mediaSession.setActionHandler('nexttrack', () => {
-        if (sortedDemoTracks.value.length === 0) return;
-        const nextIndex = (autoPlayIndex.value + 1) % sortedDemoTracks.value.length;
-        playAutoTrackAtIndex(nextIndex);
-    });
-    navigator.mediaSession.setActionHandler('previoustrack', () => {
-        if (sortedDemoTracks.value.length === 0) return;
-        const prevIndex = (autoPlayIndex.value - 1 + sortedDemoTracks.value.length) % sortedDemoTracks.value.length;
-        playAutoTrackAtIndex(prevIndex);
-    });
+    navigator.mediaSession.setActionHandler('nexttrack', () => playAdjacentTrack(1));
+    navigator.mediaSession.setActionHandler('previoustrack', () => playAdjacentTrack(-1));
 };
 
 onMounted(() => {

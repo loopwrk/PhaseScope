@@ -50,7 +50,7 @@
        A luminous double ring: a crisp accent outline plus an outer glow.
        Applied via box-shadow on :focus-visible (see main.css) so it
        follows the chamfered clip-path silhouette rather than a rectangle. */
-    --focus-ring: var(--brand-blue);
+    --focus-ring: var(--brand-primary);
     --focus-ring-width: 2px;
     --focus-ring-offset: 2px;
     --focus-glow:
@@ -61,7 +61,7 @@
     /* --- Glass / overlay --- */
     --overlay-blur: 14px;
     --overlay-opacity: 0.6;
-    --overlay-border: color-mix(in oklch, var(--brand-blue) 16%, var(--border));
+    --overlay-border: color-mix(in oklch, var(--brand-primary) 16%, var(--border));
 
     /* --- Shadows ---
        Soft on light; on dark, shadow is mostly an accent-tinted glow
@@ -70,7 +70,7 @@
     --shadow-md:
         0 6px 20px color-mix(in oklch, oklch(0 0 0) 28%, transparent),
         inset 0 1px 0 color-mix(in oklch, oklch(1 0 0) 6%, transparent); /* #000 / #fff */
-    --shadow-glow-accent: 0 0 24px color-mix(in oklch, var(--brand-blue) 38%, transparent);
+    --shadow-glow-accent: 0 0 24px color-mix(in oklch, var(--brand-primary) 38%, transparent);
     --shadow-glow-live: 0 0 20px color-mix(in oklch, var(--scope-magenta) 45%, transparent);
 
     /* --- Striation / texture ---

@@ -20,7 +20,7 @@ const brandHex: Record<PaletteId, { blue: string; secondary: string }> = {
 };
 
 const brand = computed(() => [
-    { name: 'brand-blue', varName: '--brand-blue', hex: brandHex[props.palette].blue, fg: 'var(--on-brand)' },
+    { name: 'brand-blue', varName: '--brand-primary', hex: brandHex[props.palette].blue, fg: 'var(--on-brand)' },
     { name: 'brand-secondary', varName: '--brand-secondary', hex: brandHex[props.palette].secondary, fg: '#fff' },
     { name: 'on-brand', varName: '--on-brand', hex: '#FFFFFF', fg: '#111' },
 ]);

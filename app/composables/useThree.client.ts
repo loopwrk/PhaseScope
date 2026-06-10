@@ -1,138 +1,117 @@
-import * as THREE from "three";
-import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
+import * as THREE from 'three';
+import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 
 export function useThree(canvasContainer: Ref<HTMLDivElement | null>) {
-  if (import.meta.server) {
     const scene = markRaw(new THREE.Scene());
-    return {
-      scene,
-      camera: shallowRef<THREE.PerspectiveCamera | null>(null),
-      renderer: shallowRef<THREE.WebGLRenderer | null>(null),
-      controls: shallowRef<PointerLockControls | null>(null),
-      isFullscreen: ref(false),
-      init: () => {},
-      dispose: () => {},
-      updateRendererSize: () => {},
-      toggleFullscreen: async () => {},
+    const camera = shallowRef<THREE.PerspectiveCamera | null>(null);
+    const renderer = shallowRef<THREE.WebGLRenderer | null>(null);
+    const controls = shallowRef<PointerLockControls | null>(null);
+    const isFullscreen = ref(false);
+
+    const updateRendererSize = () => {
+        const r = renderer.value;
+        const c = camera.value;
+        if (!canvasContainer.value || !r || !c) return;
+
+        const width = canvasContainer.value.clientWidth;
+        const height = canvasContainer.value.clientHeight;
+
+        r.setSize(width, height);
+        c.aspect = width / height;
+        c.updateProjectionMatrix();
     };
-  }
 
-  const scene = markRaw(new THREE.Scene());
-  const camera = shallowRef<THREE.PerspectiveCamera | null>(null);
-  const renderer = shallowRef<THREE.WebGLRenderer | null>(null);
-  const controls = shallowRef<PointerLockControls | null>(null);
-  const isFullscreen = ref(false);
+    const onFullscreenChange = () => {
+        isFullscreen.value = !!document.fullscreenElement;
+        updateRendererSize();
+    };
 
-  const updateRendererSize = () => {
-    const r = renderer.value;
-    const c = camera.value;
-    if (!canvasContainer.value || !r || !c) return;
+    const toggleFullscreen = async () => {
+        if (!canvasContainer.value) return;
 
-    const width = canvasContainer.value.clientWidth;
-    const height = canvasContainer.value.clientHeight;
+        try {
+            if (!document.fullscreenElement) {
+                await canvasContainer.value.requestFullscreen();
+                isFullscreen.value = true;
+            } else {
+                await document.exitFullscreen();
+                isFullscreen.value = false;
+            }
+        } catch (err) {
+            console.error('Error toggling fullscreen:', err);
+        }
+    };
 
-    r.setSize(width, height);
-    c.aspect = width / height;
-    c.updateProjectionMatrix();
-  };
+    const init = () => {
+        // Camera
+        const cameraFOV = 70;
+        const nearClip = 0.01;
+        const farClip = 200;
 
-  const onFullscreenChange = () => {
-    isFullscreen.value = !!document.fullscreenElement;
-    updateRendererSize();
-  };
+        const c = markRaw(new THREE.PerspectiveCamera(cameraFOV, 1, nearClip, farClip));
+        c.position.set(0, 1.6, 6);
+        camera.value = c;
 
-  const toggleFullscreen = async () => {
-    if (!canvasContainer.value) return;
+        // Renderer
+        const r = markRaw(new THREE.WebGLRenderer({ antialias: true }));
+        renderer.value = r;
 
-    try {
-      if (!document.fullscreenElement) {
-        await canvasContainer.value.requestFullscreen();
-        isFullscreen.value = true;
-      } else {
-        await document.exitFullscreen();
-        isFullscreen.value = false;
-      }
-    } catch (err) {
-      console.error("Error toggling fullscreen:", err);
-    }
-  };
+        if (canvasContainer.value) {
+            canvasContainer.value.appendChild(r.domElement);
+            updateRendererSize();
+        }
 
-  const init = () => {
-    // Camera
-    const cameraFOV = 70;
-    const nearClip = 0.01;
-    const farClip = 200;
+        // Lights
+        const ambient = markRaw(new THREE.AmbientLight(0xffffff, 0.35));
+        scene.add(ambient);
 
-    const c = markRaw(
-      new THREE.PerspectiveCamera(cameraFOV, 1, nearClip, farClip)
-    );
-    c.position.set(0, 1.6, 6);
-    camera.value = c;
+        const point = markRaw(new THREE.PointLight(0xffffff, 0.9));
+        point.position.set(3, 6, 4);
+        scene.add(point);
 
-    // Renderer
-    const r = markRaw(new THREE.WebGLRenderer({ antialias: true }));
-    renderer.value = r;
+        // Controls
+        const ctl = markRaw(new PointerLockControls(c, r.domElement));
+        controls.value = ctl;
+        // PointerLockControls exposes the camera via the 'object' property
+        scene.add(ctl.object);
 
-    if (canvasContainer.value) {
-      canvasContainer.value.appendChild(r.domElement);
-      r.domElement.style.borderRadius = "0.5rem";
-      updateRendererSize();
-    }
+        // Fog (obscures head and tail)
+        scene.fog = markRaw(new THREE.Fog(0x000000, 200, 200));
 
-    // Lights
-    const ambient = markRaw(new THREE.AmbientLight(0xffffff, 0.35));
-    scene.add(ambient);
+        // Events
+        window.addEventListener('resize', updateRendererSize);
+        document.addEventListener('fullscreenchange', onFullscreenChange);
+    };
 
-    const point = markRaw(new THREE.PointLight(0xffffff, 0.9));
-    point.position.set(3, 6, 4);
-    scene.add(point);
+    const dispose = () => {
+        window.removeEventListener('resize', updateRendererSize);
+        document.removeEventListener('fullscreenchange', onFullscreenChange);
 
+        if (controls.value) {
+            controls.value.dispose();
+            scene.remove(controls.value.object);
+        }
 
-    // Controls
-    const ctl = markRaw(new PointerLockControls(c, r.domElement));
-    controls.value = ctl;
-    // PointerLockControls exposes the camera via the 'object' property
-    scene.add(ctl.object);
+        if (renderer.value) {
+            const el = renderer.value.domElement;
+            renderer.value.dispose();
+            if (el && el.parentElement) el.parentElement.removeChild(el);
+            renderer.value = null;
+        }
 
-    // Fog (obscures head and tail)
-    scene.fog = markRaw(new THREE.Fog(0x000000, 200, 200));
+        camera.value = null;
+        controls.value = null;
+    };
 
-    // Events
-    window.addEventListener("resize", updateRendererSize);
-    document.addEventListener("fullscreenchange", onFullscreenChange);
-  };
-
-  const dispose = () => {
-    window.removeEventListener("resize", updateRendererSize);
-    document.removeEventListener("fullscreenchange", onFullscreenChange);
-
-    if (controls.value) {
-      controls.value.dispose();
-      scene.remove(controls.value.object);
-    }
-
-
-    if (renderer.value) {
-      const el = renderer.value.domElement;
-      renderer.value.dispose();
-      if (el && el.parentElement) el.parentElement.removeChild(el);
-      renderer.value = null;
-    }
-
-    camera.value = null;
-    controls.value = null;
-  };
-
-
-  return {
-    scene,
-    camera,
-    renderer,
-    controls,
-    isFullscreen,
-    init,
-    dispose,
-    updateRendererSize,
-    toggleFullscreen,
-  };
+    return {
+        scene,
+        camera,
+        renderer,
+        controls,
+        isFullscreen,
+        init,
+        dispose,
+        updateRendererSize,
+        toggleFullscreen,
+    };
 }

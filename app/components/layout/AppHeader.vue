@@ -18,14 +18,16 @@ defineEmits<{ toggleControls: []; toggleSettings: []; toggleFullscreen: [] }>();
     <header class="flex items-start justify-between gap-4">
         <div class="flex items-center gap-3">
             <Logo
-                :size="34"
+                :size="64"
                 class="shrink-0 text-(--text) drop-shadow-[0_0_10px_color-mix(in_oklch,var(--scope-cyan)_30%,transparent)]"
             />
             <div class="hidden sm:block">
                 <p class="font-display text-title font-semibold leading-none tracking-display">
                     Phase<span class="text-(--accent)">Scope</span>
                 </p>
-                <p class="mt-1 font-mono text-caption uppercase tracking-label-wide text-(--text-muted)">
+                <p
+                    class="mt-1 font-mono text-caption uppercase tracking-label-wide text-(--brand-secondary) ps-weight-bold"
+                >
                     Phase-space audio visualiser
                 </p>
             </div>

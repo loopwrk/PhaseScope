@@ -4,6 +4,7 @@
 @import './tokens/palettes.css';
 @import './tokens.css';
 @import './tokens/effects.css';
+@import './tokens/typography.css';
 @import './tokens/utilities.css';
 
 @source "../../../content/**/*";
@@ -46,7 +47,7 @@
     --breakpoint-xs: 30rem;
 
     /* Bare brand utilities (kept for back-compat: bg-accessible-blue, etc.) */
-    --color-accessible-blue: var(--brand-blue);
+    --color-accessible-blue: var(--brand-primary);
     --color-secondary: var(--brand-secondary);
     --color-white: var(--on-brand);
     --color-warning: var(--warning);
@@ -67,17 +68,17 @@
      steps toward black. */
 
     /* Primary brand - "accessible blue" (azure) */
-    --color-accessible-blue-50: color-mix(in oklch, var(--brand-blue) 6%, white);
-    --color-accessible-blue-100: color-mix(in oklch, var(--brand-blue) 12%, white);
-    --color-accessible-blue-200: color-mix(in oklch, var(--brand-blue) 28%, white);
-    --color-accessible-blue-300: color-mix(in oklch, var(--brand-blue) 46%, white);
-    --color-accessible-blue-400: color-mix(in oklch, var(--brand-blue) 70%, white);
-    --color-accessible-blue-500: var(--brand-blue);
-    --color-accessible-blue-600: color-mix(in oklch, var(--brand-blue) 88%, black);
-    --color-accessible-blue-700: color-mix(in oklch, var(--brand-blue) 74%, black);
-    --color-accessible-blue-800: color-mix(in oklch, var(--brand-blue) 60%, black);
-    --color-accessible-blue-900: color-mix(in oklch, var(--brand-blue) 46%, black);
-    --color-accessible-blue-950: color-mix(in oklch, var(--brand-blue) 30%, black);
+    --color-accessible-blue-50: color-mix(in oklch, var(--brand-primary) 6%, white);
+    --color-accessible-blue-100: color-mix(in oklch, var(--brand-primary) 12%, white);
+    --color-accessible-blue-200: color-mix(in oklch, var(--brand-primary) 28%, white);
+    --color-accessible-blue-300: color-mix(in oklch, var(--brand-primary) 46%, white);
+    --color-accessible-blue-400: color-mix(in oklch, var(--brand-primary) 70%, white);
+    --color-accessible-blue-500: var(--brand-primary);
+    --color-accessible-blue-600: color-mix(in oklch, var(--brand-primary) 88%, black);
+    --color-accessible-blue-700: color-mix(in oklch, var(--brand-primary) 74%, black);
+    --color-accessible-blue-800: color-mix(in oklch, var(--brand-primary) 60%, black);
+    --color-accessible-blue-900: color-mix(in oklch, var(--brand-primary) 46%, black);
+    --color-accessible-blue-950: color-mix(in oklch, var(--brand-primary) 30%, black);
 
     /* Primary - the one luminous accent (azure by default; follows the
        active palette + mode via --accent). Registered as Nuxt UI's

@@ -1,5 +1,3 @@
-import type { Ref } from 'vue';
-
 export type OscillationMode = 'per-point' | 'per-frame' | 'wave';
 
 interface OscillationState {
@@ -19,20 +17,55 @@ interface UseOscillationOptions {
     onUpdate?: () => void;
 }
 
-export function useOscillation(options: UseOscillationOptions = {}) {
-    if (import.meta.server) {
-        return {
-            enabled: ref(false),
-            mode: ref<OscillationMode>('wave'),
-            oscillate: () => {},
-            restoreAnchorPositions: () => {},
-        };
-    }
+/* All modes displace points from their anchors along the same three-axis
+   sine, with phase offsets per axis to create 3D motion. They differ only
+   in what drives the phase/amplitude: per-point (each point's own
+   frequency), per-frame (frame averages), or wave (spatial phase rippling
+   back from the corridor head). */
+const PHASE_SHIFT_Y = Math.PI / 3; // 60 deg
+const PHASE_SHIFT_Z = (2 * Math.PI) / 3; // 120 deg
+const STRIDE = 3; // x, y, z
 
+export function useOscillation(options: UseOscillationOptions = {}) {
     const { onUpdate } = options;
     const enabled = ref(true);
-
     const mode = ref<OscillationMode>('wave');
+
+    /** Write `anchor + sin offset` for `count` points starting at point index `start`. */
+    const displaceRange = (
+        pos: Float32Array,
+        anchors: Float32Array,
+        start: number,
+        count: number,
+        phase: number,
+        amp: number
+    ) => {
+        const oscX = Math.sin(phase) * amp;
+        const oscY = Math.sin(phase + PHASE_SHIFT_Y) * amp;
+        const oscZ = Math.sin(phase + PHASE_SHIFT_Z) * amp;
+        for (let k = 0; k < count; k++) {
+            const p = (start + k) * STRIDE;
+            pos[p] = (anchors[p] ?? 0) + oscX;
+            pos[p + 1] = (anchors[p + 1] ?? 0) + oscY;
+            pos[p + 2] = (anchors[p + 2] ?? 0) + oscZ;
+        }
+    };
+
+    /** Mean frequency / amplitude over one frame's block of points. */
+    const frameAverages = (
+        frequencies: Float32Array,
+        amplitudes: Float32Array,
+        frameStartPoint: number,
+        pointsPerFrame: number
+    ) => {
+        let avgFreq = 0;
+        let avgAmp = 0;
+        for (let k = 0; k < pointsPerFrame; k++) {
+            avgFreq += frequencies[frameStartPoint + k] ?? 0;
+            avgAmp += amplitudes[frameStartPoint + k] ?? 0;
+        }
+        return { avgFreq: avgFreq / pointsPerFrame, avgAmp: avgAmp / pointsPerFrame };
+    };
 
     /**
      * Apply oscillation to all built points based on their stored frequency data.
@@ -43,149 +76,43 @@ export function useOscillation(options: UseOscillationOptions = {}) {
      */
     const oscillate = (time: number, state: OscillationState, meta: OscillationMeta) => {
         const { pos, frequencies, amplitudes, anchorPositions, builtFrames } = state;
+        const { pointsPerFrame } = meta;
 
         if (!pos || !frequencies || !amplitudes || !anchorPositions) return;
         if (builtFrames === 0) return;
 
-        if (mode.value === 'per-frame') {
-            oscillatePerFrame(time, state, meta);
-        } else if (mode.value === 'wave') {
-            oscillateWave(time, state, meta);
+        if (mode.value === 'per-point') {
+            // Each point oscillates independently at its own frequency.
+            const totalBuiltPoints = builtFrames * pointsPerFrame;
+            for (let i = 0; i < totalBuiltPoints; i++) {
+                const phase = 2 * Math.PI * (frequencies[i] ?? 0) * time;
+                displaceRange(pos, anchorPositions, i, 1, phase, amplitudes[i] ?? 0);
+            }
+        } else if (mode.value === 'per-frame') {
+            // All points in a frame move together at the frame's average
+            // frequency; preserves the ring shape.
+            for (let frame = 0; frame < builtFrames; frame++) {
+                const frameStartPoint = frame * pointsPerFrame;
+                const { avgFreq, avgAmp } = frameAverages(frequencies, amplitudes, frameStartPoint, pointsPerFrame);
+                const phase = 2 * Math.PI * avgFreq * time;
+                displaceRange(pos, anchorPositions, frameStartPoint, pointsPerFrame, phase, avgAmp);
+            }
         } else {
-            oscillatePerPoint(time, state, meta);
+            // Wave: oscillation ripples backward from the corridor head; frame
+            // amplitude modulates intensity, so louder sections make bigger waves.
+            const waveSpeed = 1.5; // cycles per second
+            const waveLength = 15; // frames per wave cycle
+            for (let frame = 0; frame < builtFrames; frame++) {
+                const frameStartPoint = frame * pointsPerFrame;
+                const { avgAmp } = frameAverages(frequencies, amplitudes, frameStartPoint, pointsPerFrame);
+                const distanceFromHead = builtFrames - 1 - frame;
+                const spatialPhase = (distanceFromHead / waveLength) * 2 * Math.PI;
+                const phase = 2 * Math.PI * waveSpeed * time - spatialPhase;
+                displaceRange(pos, anchorPositions, frameStartPoint, pointsPerFrame, phase, avgAmp);
+            }
         }
 
         onUpdate?.();
-    };
-
-    /**
-     * Per-point oscillation: Each point oscillates independently at its own frequency..
-     */
-    const oscillatePerPoint = (time: number, state: OscillationState, meta: OscillationMeta) => {
-        const { pos, frequencies, amplitudes, anchorPositions, builtFrames } = state;
-        const { pointsPerFrame } = meta;
-
-        if (!pos || !frequencies || !amplitudes || !anchorPositions) return;
-
-        const totalBuiltPoints = builtFrames * pointsPerFrame;
-        const positionArrayStride = 3;
-        const phaseCalcMultiplier = 2;
-        const phaseShiftY = Math.PI / 3; // 60° phase offset for Y-axis
-        const phaseShiftZ = (2 * Math.PI) / 3; // 120° phase offset for Z-axis
-
-        for (let i = 0; i < totalBuiltPoints; i++) {
-            const p = i * positionArrayStride;
-            const freq = frequencies[i] ?? 0;
-            const amp = amplitudes[i] ?? 0;
-
-            // Calculate oscillation using sine wave at the point's frequency
-            // Use slight phase offsets for each axis to create 3D motion
-            const phase = phaseCalcMultiplier * Math.PI * freq * time;
-            const oscX = Math.sin(phase) * amp;
-            const oscY = Math.sin(phase + phaseShiftY) * amp;
-            const oscZ = Math.sin(phase + phaseShiftZ) * amp;
-
-            // Update position by adding oscillation to anchor position
-            pos[p] = (anchorPositions[p] ?? 0) + oscX;
-            pos[p + 1] = (anchorPositions[p + 1] ?? 0) + oscY;
-            pos[p + 2] = (anchorPositions[p + 2] ?? 0) + oscZ;
-        }
-    };
-
-    /**
-     * Per-frame oscillation: All points in a frame oscillate together coherently.
-     * Preserves the shape of each ring/slice while still showing frequency characteristics as averages of points in a ring.
-     */
-    const oscillatePerFrame = (time: number, state: OscillationState, meta: OscillationMeta) => {
-        const { pos, frequencies, amplitudes, anchorPositions, builtFrames } = state;
-        const { pointsPerFrame } = meta;
-
-        if (!pos || !frequencies || !amplitudes || !anchorPositions) return;
-
-        const positionArrayStride = 3;
-        const phaseCalcMultiplier = 2;
-        const phaseShiftY = Math.PI / 3;
-        const phaseShiftZ = (2 * Math.PI) / 3;
-
-        for (let frame = 0; frame < builtFrames; frame++) {
-            const frameStartPoint = frame * pointsPerFrame;
-
-            // Calculate average frequency and amplitude for this frame
-            let avgFreq = 0;
-            let avgAmp = 0;
-            for (let k = 0; k < pointsPerFrame; k++) {
-                const pointIndex = frameStartPoint + k;
-                avgFreq += frequencies[pointIndex] ?? 0;
-                avgAmp += amplitudes[pointIndex] ?? 0;
-            }
-            avgFreq /= pointsPerFrame;
-            avgAmp /= pointsPerFrame;
-
-            // Apply the same oscillation to all points in this frame
-            const phase = phaseCalcMultiplier * Math.PI * avgFreq * time;
-            const oscX = Math.sin(phase) * avgAmp;
-            const oscY = Math.sin(phase + phaseShiftY) * avgAmp;
-            const oscZ = Math.sin(phase + phaseShiftZ) * avgAmp;
-
-            for (let k = 0; k < pointsPerFrame; k++) {
-                const pointIndex = frameStartPoint + k;
-                const p = pointIndex * positionArrayStride;
-
-                pos[p] = (anchorPositions[p] ?? 0) + oscX;
-                pos[p + 1] = (anchorPositions[p + 1] ?? 0) + oscY;
-                pos[p + 2] = (anchorPositions[p + 2] ?? 0) + oscZ;
-            }
-        }
-    };
-
-    /**
-     * Wave oscillation: Oscillation ripples outward from the corridor head.
-     * Creates a flowing wave effect where motion propagates through the structure.
-     * Uses frame amplitude to modulate wave intensity. Louder sections create bigger waves.
-     */
-    const oscillateWave = (time: number, state: OscillationState, meta: OscillationMeta) => {
-        const { pos, amplitudes, anchorPositions, builtFrames } = state;
-        const { pointsPerFrame } = meta;
-
-        if (!pos || !amplitudes || !anchorPositions) return;
-
-        const positionArrayStride = 3;
-        const waveSpeed = 1.5; // How fast the wave propagates (cycles per second)
-        const waveLength = 15; // How many frames per wave cycle
-        const phaseShiftY = Math.PI / 3;
-        const phaseShiftZ = (2 * Math.PI) / 3;
-
-        for (let frame = 0; frame < builtFrames; frame++) {
-            const frameStartPoint = frame * pointsPerFrame;
-
-            // Calculate average amplitude for this frame
-            let avgAmp = 0;
-            for (let k = 0; k < pointsPerFrame; k++) {
-                const pointIndex = frameStartPoint + k;
-                avgAmp += amplitudes[pointIndex] ?? 0;
-            }
-            avgAmp /= pointsPerFrame;
-
-            // Calculate phase based on distance from head (builtFrames - 1)
-            // Wave travels backward from head through the corridor
-            const distanceFromHead = builtFrames - 1 - frame;
-            const spatialPhase = (distanceFromHead / waveLength) * 2 * Math.PI;
-
-            // Combine time-based animation with spatial phase for wave propagation
-            const phase = 2 * Math.PI * waveSpeed * time - spatialPhase;
-            const oscX = Math.sin(phase) * avgAmp;
-            const oscY = Math.sin(phase + phaseShiftY) * avgAmp;
-            const oscZ = Math.sin(phase + phaseShiftZ) * avgAmp;
-
-            for (let k = 0; k < pointsPerFrame; k++) {
-                const pointIndex = frameStartPoint + k;
-                const p = pointIndex * positionArrayStride;
-
-                pos[p] = (anchorPositions[p] ?? 0) + oscX;
-                pos[p + 1] = (anchorPositions[p + 1] ?? 0) + oscY;
-                pos[p + 2] = (anchorPositions[p + 2] ?? 0) + oscZ;
-            }
-        }
     };
 
     /**
@@ -198,7 +125,7 @@ export function useOscillation(options: UseOscillationOptions = {}) {
 
         if (!pos || !anchorPositions || builtFrames === 0) return;
 
-        const totalPoints = builtFrames * pointsPerFrame * 3;
+        const totalPoints = builtFrames * pointsPerFrame * STRIDE;
         for (let i = 0; i < totalPoints; i++) {
             pos[i] = anchorPositions[i] ?? 0;
         }

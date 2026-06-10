@@ -22,9 +22,7 @@ withDefaults(defineProps<{ size?: number | string; mono?: boolean }>(), { size: 
         <!-- lemniscate (figure-8) trace -->
         <path
             d="M16 16 C13 12 9 12 9 16 C9 20 13 20 16 16 C19 12 23 12 23 16 C23 20 19 20 16 16 Z"
-            :stroke="mono ? 'currentColor' : 'var(--scope-cyan)'"
+            :stroke="mono ? 'currentColor' : 'var(--brand-primary)'"
         />
-        <!-- phosphor dot on the trace -->
-        <circle v-if="!mono" cx="23" cy="16" r="1.5" fill="var(--scope-magenta)" stroke="none" />
     </svg>
 </template>

@@ -1,0 +1,27 @@
+/* ==================================================================
+   PhaseScope - Typography utilities
+
+   Token-driven weight classes. The raw weight values live in
+   tokens.css (--font-weight-*); change them there and every consumer
+   - these classes AND any component reading the tokens directly -
+   follows. Use these when you want to retune weight from markup
+   without reaching for Tailwind's hard-coded font-* utilities
+   (font-medium etc. are fixed numbers, not tokens).
+
+   Pairs with the family/scale/tracking utilities Tailwind generates
+   from the @theme bridge in main.css (font-display, text-detail,
+   tracking-label-wide, ...).
+   ================================================================== */
+
+.ps-weight-regular {
+    font-weight: var(--font-weight-regular); /* 400 - body copy */
+}
+.ps-weight-medium {
+    font-weight: var(--font-weight-medium); /* 500 - labels, keycaps */
+}
+.ps-weight-semibold {
+    font-weight: var(--font-weight-semibold); /* 600 - legends, buttons, readout values */
+}
+.ps-weight-bold {
+    font-weight: var(--font-weight-bold); /* 700 - rare emphasis */
+}

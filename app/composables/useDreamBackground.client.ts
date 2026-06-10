@@ -1,36 +1,12 @@
-import * as THREE from 'three';
+import type * as THREE from 'three';
+import { createSkyboxBackground, skyboxNoiseGlsl } from './createSkyboxBackground.client';
 
-const vertexShader = /* glsl */`
-  varying vec3 vDir;
-  void main() {
-    vDir = position;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
-
-// Value noise + domain-warped FBM for soft organic cloud forms
-const fragmentShader = /* glsl */`
+// Domain-warped FBM over the shared value noise: soft organic cloud forms
+const fragmentShader = /* glsl */ `
   uniform float uTime;
   varying vec3 vDir;
 
-  float hash(vec3 p) {
-    p = fract(p * 0.3183099 + 0.1);
-    p *= 17.0;
-    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
-  }
-
-  float noise(vec3 p) {
-    vec3 i = floor(p);
-    vec3 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(
-      mix(mix(hash(i),               hash(i + vec3(1,0,0)), f.x),
-          mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
-      mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
-          mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y),
-      f.z
-    );
-  }
+  ${skyboxNoiseGlsl}
 
   float fbm(vec3 p) {
     float v = 0.0;
@@ -53,10 +29,10 @@ const fragmentShader = /* glsl */`
     float warp = fbm(q);
     float cloud = fbm(q + vec3(warp * 1.6) + vec3(t * 0.04, 0.0, t * 0.02));
 
-    // Soft threshold — wispy edges, not hard clouds
+    // Soft threshold - wispy edges, not hard clouds
     float veil = smoothstep(0.18, 0.52, cloud);
 
-    // Temple palette — dusty rose, warm cream, muted sage
+    // Temple palette - dusty rose, warm cream, muted sage
     vec3 dustyRose = vec3(0.75, 0.52, 0.56);
     vec3 warmCream  = vec3(0.88, 0.82, 0.73);
     vec3 mutedSage  = vec3(0.54, 0.67, 0.57);
@@ -80,46 +56,5 @@ const fragmentShader = /* glsl */`
 `;
 
 export function useDreamBackground(scene: THREE.Scene) {
-    const enabled = ref(false);
-    let mesh: THREE.Mesh | null = null;
-
-    const create = () => {
-        const geometry = markRaw(new THREE.SphereGeometry(180, 48, 32));
-        const material = markRaw(new THREE.ShaderMaterial({
-            vertexShader,
-            fragmentShader,
-            uniforms: { uTime: { value: 0 } },
-            side: THREE.BackSide,
-            depthWrite: false,
-            depthTest: false,
-        }));
-        mesh = markRaw(new THREE.Mesh(geometry, material));
-        mesh.renderOrder = -100;
-        mesh.frustumCulled = false;
-        scene.add(mesh);
-    };
-
-    const destroy = () => {
-        if (!mesh) return;
-        scene.remove(mesh);
-        mesh.geometry.dispose();
-        (mesh.material as THREE.ShaderMaterial).dispose();
-        mesh = null;
-    };
-
-    const update = (time: number, cameraPosition?: THREE.Vector3) => {
-        if (!mesh) return;
-        // Track camera so the sphere always surrounds it (avoids far-clip issues)
-        if (cameraPosition) mesh.position.copy(cameraPosition);
-        (mesh.material as THREE.ShaderMaterial).uniforms.uTime!.value = time;
-    };
-
-    watch(enabled, (val) => {
-        if (val) create();
-        else destroy();
-    });
-
-    const dispose = () => destroy();
-
-    return { enabled, update, dispose };
+    return createSkyboxBackground(scene, fragmentShader);
 }
