@@ -1307,216 +1307,35 @@ onUnmounted(async () => {
         />
 
         <ProseH3>Display settings</ProseH3>
-        <div class="border-accessible-blue w-full border-1 rounded-md py-4 px-6 mb-6">
-            <div class="flex gap-16">
-                <!-- Left Column -->
-                <div class="flex-1 space-y-4">
-                    <div class="mb-6" :class="{ 'opacity-40': audio.started || !wavLoaded }">
-                        <label class="block font-bold text-primary text-lg mb-2">
-                            Points Per Frame: <span class="text-secondary">{{ corridorMeta.pointsPerFrame }}</span>
-                        </label>
-                        <USlider
-                            v-model="corridorMeta.pointsPerFrame"
-                            :min="32"
-                            :max="512"
-                            :step="32"
-                            :ui="{ thumb: 'bg-primary' }"
-                            :disabled="audio.started || !wavLoaded"
-                        />
-                    </div>
-                    <div class="mb-6" :class="{ 'opacity-40': audio.started || !wavLoaded }">
-                        <label class="block font-bold text-primary text-lg mb-2">
-                            Track Coverage: <span class="text-secondary">{{ trackCoveragePercent }}%</span>
-                            <span v-if="wavLoaded" class="text-sm font-normal ml-2 text-gray-500">
-                                ({{ formatPointCount(effectiveMaxPoints) }} points)
-                            </span>
-                        </label>
-                        <USlider
-                            v-model="trackCoveragePercent"
-                            :min="10"
-                            :max="100"
-                            :step="5"
-                            :ui="{ thumb: 'bg-primary' }"
-                            :disabled="audio.started || !wavLoaded"
-                        />
-                        <p v-if="!wavLoaded" class="text-sm text-gray-400 mt-1">
-                            Load a WAV file to enable this setting
-                        </p>
-                    </div>
-                    <!-- Points warning -->
-                    <div
-                        v-if="wavLoaded && pointsWarningLevel !== 'none'"
-                        class="p-3 rounded-md mb-4 bg-white border border-[color:var(--ui-warning)]"
-                    >
-                        <div class="flex items-start gap-2">
-                            <UIcon
-                                name="i-heroicons-exclamation-triangle"
-                                class="size-5 mt-0.5 flex-shrink-0 text-[color:var(--ui-warning)]"
-                            />
-                            <div>
-                                <p class="font-semibold text-sm text-[color:var(--ui-warning)]">
-                                    {{
-                                        pointsWarningLevel === 'danger'
-                                            ? 'High Performance Risk'
-                                            : 'Performance Warning'
-                                    }}
-                                </p>
-                                <p class="text-sm text-[color:var(--ui-text)] mt-1">
-                                    {{ formatPointCount(effectiveMaxPoints) }} points may
-                                    {{
-                                        pointsWarningLevel === 'danger'
-                                            ? 'cause significant lag or crashes'
-                                            : 'impact performance'
-                                    }}
-                                    on some devices. Consider reducing track coverage or points per frame.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <USeparator class="py-2" />
-                    <div class="mb-6">
-                        <URadioGroup
-                            v-model="renderMode"
-                            size="xl"
-                            :items="[
-                                { label: 'Points', value: 'points' },
-                                { label: 'Lines', value: 'lines' },
-                            ]"
-                            :ui="{ legend: 'text-lg text-primary font-bold', label: 'text-primary' }"
-                            value-key="value"
-                            orientation="horizontal"
-                        >
-                            <template #legend>
-                                <span class="inline-flex items-center gap-2">
-                                    Render Mode
-                                    <UKbd
-                                        size="md"
-                                        class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default"
-                                    >
-                                        R
-                                    </UKbd>
-                                </span>
-                            </template>
-                        </URadioGroup>
-                    </div>
-                    <USeparator class="py-2" />
-                    <ClientOnly>
-                        <div class="flex items-center gap-3 mb-2">
-                            <UCheckbox v-model="oscillation.enabled.value" id="oscillation-toggle" />
-                            <label
-                                for="oscillation-toggle"
-                                class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2"
-                            >
-                                Enable Point Oscillation
-                                <UKbd
-                                    size="md"
-                                    class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default"
-                                >
-                                    O
-                                </UKbd>
-                            </label>
-                        </div>
-                    </ClientOnly>
-                    <div class="flex items-center gap-3 mb-2">
-                        <UCheckbox v-model="useAlternateColors" id="alt-colors-toggle" />
-                        <label
-                            for="alt-colors-toggle"
-                            class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2"
-                        >
-                            Reverse Colour Spectrum
-                            <UKbd
-                                size="md"
-                                class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default"
-                            >
-                                V
-                            </UKbd>
-                        </label>
-                    </div>
-                    <div class="flex items-center gap-3 mb-2">
-                        <UCheckbox v-model="dreamBg.enabled.value" id="dream-bg-toggle" @change="onDreamBgToggle" />
-                        <label
-                            for="dream-bg-toggle"
-                            class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2"
-                        >
-                            Dream Background
-                            <UKbd
-                                size="md"
-                                class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default"
-                            >
-                                B
-                            </UKbd>
-                        </label>
-                    </div>
-                    <div class="flex items-center gap-3 mb-2">
-                        <UCheckbox
-                            v-model="heavenlyBg.enabled.value"
-                            id="heavenly-bg-toggle"
-                            @change="onHeavenlyBgToggle"
-                        />
-                        <label
-                            for="heavenly-bg-toggle"
-                            class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2"
-                        >
-                            Heavenly Background
-                            <UKbd
-                                size="md"
-                                class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default"
-                            >
-                                N
-                            </UKbd>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Right Column -->
-                <div class="flex-1 space-y-4">
-                    <div class="mb-6" :class="{ 'opacity-40': audio.started }">
-                        <URadioGroup
-                            v-model="topologyMode"
-                            size="xl"
-                            :items="[
-                                { label: 'Corridor', value: 'corridor' },
-                                { label: 'Sphere', value: 'sphere' },
-                                { label: 'Attractor', value: 'attractor' },
-                            ]"
-                            :ui="{ legend: 'text-lg text-primary font-bold', label: 'text-primary' }"
-                            value-key="value"
-                            orientation="horizontal"
-                            :disabled="audio.started"
-                        >
-                            <template #legend> Topology </template>
-                        </URadioGroup>
-                        <p class="text-sm text-gray-500 mt-2">
-                            <span v-if="topologyMode === 'corridor'"
-                                >Time unfolds along the Z-axis as a traversable tunnel.</span
-                            >
-                            <span v-else-if="topologyMode === 'sphere'"
-                                >Audio wraps around a sphere from north to south pole.</span
-                            >
-                            <span v-else
-                                >Audio traces a Lorenz strange attractor — amplitude drives the chaos parameter ρ.</span
-                            >
-                        </p>
-                    </div>
-                    <USeparator class="py-2" />
-                    <div class="flex items-center gap-3 mb-2">
-                        <UCheckbox v-model="showControlsOverlay" id="controls-overlay-toggle" />
-                        <label
-                            for="controls-overlay-toggle"
-                            class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2"
-                        >
-                            Show Controls Overlay
-                            <UKbd
-                                size="md"
-                                class="bg-primary text-white text-sm font-semibold ring-0 shadow-none cursor-default"
-                            >
-                                H
-                            </UKbd>
-                        </label>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <LayoutDisplayPanel
+            class="mb-6"
+            v-model:pointsPerFrame="corridorMeta.pointsPerFrame"
+            v-model:coverage="trackCoveragePercent"
+            v-model:renderMode="renderMode"
+            v-model:topology="topologyMode"
+            v-model:oscillation="oscillation.enabled.value"
+            v-model:reverse="useAlternateColors"
+            v-model:controlsOverlay="showControlsOverlay"
+            :dream="dreamBg.enabled.value"
+            :heavenly="heavenlyBg.enabled.value"
+            :wav-loaded="wavLoaded"
+            :settings-disabled="audio.started || !wavLoaded"
+            :topology-disabled="audio.started"
+            :perf-level="pointsWarningLevel"
+            :perf-points="formatPointCount(effectiveMaxPoints)"
+            @update:dream="
+                (v) => {
+                    dreamBg.enabled.value = v;
+                    onDreamBgToggle();
+                }
+            "
+            @update:heavenly="
+                (v) => {
+                    heavenlyBg.enabled.value = v;
+                    onHeavenlyBgToggle();
+                }
+            "
+        />
 
         <div class="flex items-center justify-between mb-2">
             <ProseH3 class="!mb-0">Advanced options</ProseH3>
