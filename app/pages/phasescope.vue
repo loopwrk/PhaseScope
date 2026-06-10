@@ -1476,29 +1476,3 @@ onUnmounted(async () => {
         </div>
     </div>
 </template>
-
-<style scoped>
-.overlay-kbd {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid white;
-    border-radius: 0.25rem;
-}
-
-.overlay-kbd-lg {
-    width: 2rem;
-    height: 2rem;
-    color: white;
-    font-size: 0.875rem;
-    font-family: ui-monospace, monospace;
-}
-
-.overlay-kbd-sm {
-    width: 1.25rem;
-    height: 1.25rem;
-    color: white;
-    font-size: 0.75rem;
-    font-family: ui-monospace, monospace;
-}
-</style>
