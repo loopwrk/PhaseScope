@@ -15,8 +15,13 @@
    (bg-accessible-blue, text-secondary, text-warning, font-display,
    text-caption, tracking-label, the xs: breakpoint, ...) keep working -
    but their source of truth is the token layer.
+
+   Declared `static` so every variable is emitted even when no utility
+   references it - Nuxt UI's generated palette indirection
+   (--ui-color-primary-500: var(--color-primary-500, )) reads these at
+   runtime, which Tailwind's usage-based tree-shaking can't see.
    ================================================================== */
-@theme {
+@theme static {
     /* Font families - mirror the single-source stacks in tokens.css
        (--ff-*) so Tailwind generates font-sans/-display/-mono utilities
        and sets the default body font. */
@@ -74,6 +79,21 @@
     --color-accessible-blue-900: color-mix(in oklch, var(--brand-blue) 46%, black);
     --color-accessible-blue-950: color-mix(in oklch, var(--brand-blue) 30%, black);
 
+    /* Primary - the one luminous accent (azure by default; follows the
+       active palette + mode via --accent). Registered as Nuxt UI's
+       primary colour in app.config.ts (ui.colors.primary). */
+    --color-primary-50: color-mix(in oklch, var(--accent) 6%, white);
+    --color-primary-100: color-mix(in oklch, var(--accent) 12%, white);
+    --color-primary-200: color-mix(in oklch, var(--accent) 28%, white);
+    --color-primary-300: color-mix(in oklch, var(--accent) 46%, white);
+    --color-primary-400: color-mix(in oklch, var(--accent) 70%, white);
+    --color-primary-500: var(--accent);
+    --color-primary-600: color-mix(in oklch, var(--accent) 88%, black);
+    --color-primary-700: color-mix(in oklch, var(--accent) 74%, black);
+    --color-primary-800: color-mix(in oklch, var(--accent) 60%, black);
+    --color-primary-900: color-mix(in oklch, var(--accent) 46%, black);
+    --color-primary-950: color-mix(in oklch, var(--accent) 30%, black);
+
     /* Secondary brand - magenta-violet */
     --color-secondary-50: color-mix(in oklch, var(--brand-secondary) 6%, white);
     --color-secondary-100: color-mix(in oklch, var(--brand-secondary) 12%, white);
@@ -101,44 +121,50 @@
     --color-warning-950: color-mix(in oklch, var(--warning) 30%, black);
 }
 
+/* Token -> Nuxt UI bridge.
+   Maps semantic tokens onto Nuxt UI's --ui-* variables. Surface/text/
+   accent tokens are mode-scoped in tokens.css (:root = dark default,
+   .light = light), so this mapping follows the active theme.
+
+   Deliberately UNLAYERED: Nuxt UI v4 emits its own :root/.dark --ui-*
+   assignments outside any cascade layer, and unlayered declarations
+   beat layered ones - a bridge inside @layer base always loses. These
+   rules sit after the @import '@nuxt/ui' output in source order, so
+   they win. The html.dark block re-asserts the mapping at higher
+   specificity over Nuxt UI's .dark scheme (which would otherwise remap
+   --ui-primary to the lighter 400 shade). */
+:root {
+    --ui-primary: var(--accent);
+    --ui-secondary: var(--brand-secondary);
+    --ui-text: var(--text);
+    --ui-text-muted: var(--text-muted);
+    --ui-text-highlighted: var(--text);
+    --ui-text-inverted: var(--on-brand);
+    --ui-text-white: var(--on-brand);
+    --ui-bg: var(--bg);
+    --ui-bg-elevated: var(--surface);
+    --ui-bg-accented: var(--surface-elevated);
+    --ui-border: var(--border);
+    --ui-border-accented: var(--border-strong);
+    --ui-divider: var(--border);
+    --ui-warning: var(--warning);
+    --ui-success: var(--success);
+    --ui-error: var(--error);
+    --ui-info: var(--info);
+}
+
+html.dark {
+    --ui-primary: var(--accent);
+    --ui-text: var(--text);
+    --ui-text-muted: var(--text-muted);
+    --ui-bg: var(--bg);
+    --ui-bg-elevated: var(--surface);
+    --ui-bg-accented: var(--surface-elevated);
+    --ui-border: var(--border);
+    --ui-divider: var(--border);
+}
+
 @layer base {
-    /* Token -> Nuxt UI bridge.
-     Maps semantic tokens onto Nuxt UI's --ui-* variables. Surface/text/
-     accent tokens are mode-scoped in tokens.css (:root = dark default,
-     .light = light), so this mapping follows the active theme. The
-     html.dark block re-asserts the mapping at higher specificity so it
-     wins over Nuxt UI v4's built-in dark scheme. */
-    :root {
-        --ui-primary: var(--accent);
-        --ui-secondary: var(--brand-secondary);
-        --ui-text: var(--text);
-        --ui-text-muted: var(--text-muted);
-        --ui-text-highlighted: var(--text);
-        --ui-text-inverted: var(--on-brand);
-        --ui-text-white: var(--on-brand);
-        --ui-bg: var(--bg);
-        --ui-bg-elevated: var(--surface);
-        --ui-bg-accented: var(--surface-elevated);
-        --ui-border: var(--border);
-        --ui-border-accented: var(--border-strong);
-        --ui-divider: var(--border);
-        --ui-warning: var(--warning);
-        --ui-success: var(--success);
-        --ui-error: var(--error);
-        --ui-info: var(--info);
-    }
-
-    html.dark {
-        --ui-primary: var(--accent);
-        --ui-text: var(--text);
-        --ui-text-muted: var(--text-muted);
-        --ui-bg: var(--bg);
-        --ui-bg-elevated: var(--surface);
-        --ui-bg-accented: var(--surface-elevated);
-        --ui-border: var(--border);
-        --ui-divider: var(--border);
-    }
-
     a {
         @apply text-primary underline-offset-2 hover:underline;
     }

@@ -1,10 +1,12 @@
 <script setup lang="ts">
-/* TransportBar - floating glass transport. Controlled: the parent owns the
-   audio/engine state and handlers; this component is presentation + events.
+/* TransportBar - floating glass transport dock. Controlled: the parent owns
+   the audio/engine state and handlers; this component is presentation + events.
+   Matches the design comp: play (brand) + stop (solid) | elapsed readout |
+   Load Audio + labelled demo select | playing/paused badge.
      - play/pause + stop (disabled per audioLoaded / started)
      - Load Audio (opens a file picker, emits the chosen File)
      - demo-track select (emits the chosen id)
-     - current track, elapsed readout, live badge while playing */
+     - elapsed readout goes scope-magenta "live" while playing */
 import { ref } from 'vue';
 import IconButton from '../ds/IconButton.vue';
 import Button from '../ds/Button.vue';
@@ -24,7 +26,7 @@ withDefaults(
         tracksLoading?: boolean;
         selectedTrack?: string;
     }>(),
-    { playing: false, audioLoaded: false, started: false, tracks: () => [] }
+    { playing: false, audioLoaded: false, started: false, elapsed: '00:00', tracks: () => [] }
 );
 
 const emit = defineEmits<{
@@ -48,42 +50,60 @@ function onFile(e: Event) {
 </script>
 
 <template>
-    <div class="ps-glass flex flex-wrap items-center justify-center gap-3 px-4 py-2 [clip-path:var(--clip-chamfer-md)]">
+    <div
+        class="ps-glass flex flex-wrap items-center justify-center gap-3.5 px-4 py-3 [clip-path:var(--clip-chamfer-md)]"
+    >
         <IconButton
             :icon="playing ? 'i-mingcute-pause-fill' : 'i-mingcute-play-fill'"
             variant="primary"
+            size="lg"
             :disabled="!audioLoaded"
             :aria-label="playing ? 'Pause' : 'Play'"
             @click="emit('playPause')"
         />
         <IconButton
             icon="i-mingcute-stop-fill"
-            variant="ghost"
+            variant="solid"
+            size="lg"
             :disabled="!started"
             aria-label="Stop"
             @click="emit('stop')"
         />
 
-        <Button variant="secondary" label="Load Audio" @click="pickFile" />
+        <span class="h-8 w-px bg-(--border)" aria-hidden="true" />
+
+        <Readout label="Elapsed" :value="elapsed" :tone="playing ? 'live' : 'cyan'" />
+
+        <span class="h-8 w-px bg-(--border)" aria-hidden="true" />
+
+        <Button variant="secondary" icon="i-lucide-upload" label="Load Audio" @click="pickFile" />
         <input ref="fileInput" type="file" accept="audio/*" class="hidden" @change="onFile" />
 
-        <USelectMenu
-            v-if="tracks.length"
-            :model-value="selectedTrack"
-            :items="tracks"
-            value-key="value"
-            placeholder="Demo track"
-            :loading="tracksLoading"
-            class="w-44 max-w-full"
-            :ui="{ base: 'rounded-none [clip-path:var(--clip-chamfer-sm)]' }"
-            @update:model-value="(v: string) => v && emit('selectTrack', v)"
-        />
+        <label v-if="tracks.length" class="flex flex-col gap-1">
+            <span class="font-mono text-[0.625rem] uppercase tracking-label-wide text-(--text-muted)">Demo</span>
+            <USelectMenu
+                :model-value="selectedTrack"
+                :items="tracks"
+                value-key="value"
+                placeholder="— select demo —"
+                :loading="tracksLoading"
+                class="w-44 max-w-full"
+                :ui="{
+                    base: 'rounded-none [clip-path:var(--clip-chamfer-sm)] focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-(--focus-glow)',
+                }"
+                @update:model-value="(v: string) => v && emit('selectTrack', v)"
+            />
+        </label>
 
         <span v-if="track" class="max-w-[16ch] truncate font-mono text-detail text-(--text-muted)">{{ track }}</span>
 
-        <div class="ml-auto flex items-center gap-3">
-            <Readout v-if="elapsed" :value="elapsed" />
-            <Badge v-if="playing" label="Live" :live="true" variant="outline" />
-        </div>
+        <Badge
+            class="ml-1"
+            color="neutral"
+            :variant="playing ? 'outline' : 'subtle'"
+            :live="playing"
+            dot
+            :label="playing ? 'Playing' : 'Paused'"
+        />
     </div>
 </template>

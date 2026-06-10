@@ -1,7 +1,8 @@
 <script setup lang="ts">
-/* AppHeader - floating glass header: logo/wordmark + chrome tools. The controls
-   and settings buttons reflect the open state of the panel they toggle (accent
-   outline when open). */
+/* AppHeader - transparent floating header over the canvas (no full-width bar,
+   per the design comp): logo lockup (mark + two-tone wordmark + mono tagline)
+   left, a glass tool cluster right. The controls and settings buttons reflect
+   the open state of the panel they toggle (accent fill when open). */
 import IconButton from '../ds/IconButton.vue';
 import Logo from '../ds/Logo.vue';
 
@@ -14,12 +15,22 @@ defineEmits<{ toggleControls: []; toggleSettings: []; toggleFullscreen: [] }>();
 </script>
 
 <template>
-    <header class="ps-glass flex items-center justify-between gap-4 px-4 py-2 [clip-path:var(--clip-chamfer-md)]">
-        <div class="flex items-center gap-2">
-            <Logo :size="35" class="text-(--accent)" />
-            <span class="hidden font-display font-semibold tracking-(--label-tracking) sm:inline">PhaseScope</span>
+    <header class="flex items-start justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <Logo
+                :size="34"
+                class="shrink-0 text-(--text) drop-shadow-[0_0_10px_color-mix(in_oklch,var(--scope-cyan)_30%,transparent)]"
+            />
+            <div class="hidden sm:block">
+                <p class="font-display text-title font-semibold leading-none tracking-display">
+                    Phase<span class="text-(--accent)">Scope</span>
+                </p>
+                <p class="mt-1 font-mono text-caption uppercase tracking-label-wide text-(--text-muted)">
+                    Phase-space audio visualiser
+                </p>
+            </div>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="ps-glass flex items-center gap-1 p-1 [clip-path:var(--clip-chamfer-sm)]">
             <IconButton
                 icon="i-lucide-keyboard"
                 :variant="controlsOpen ? 'secondary' : 'ghost'"

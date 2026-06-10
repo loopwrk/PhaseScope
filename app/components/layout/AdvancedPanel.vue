@@ -1,15 +1,13 @@
 <script setup lang="ts">
-/* AdvancedPanel - collapsible "Advanced options": the oscillation mode and the
-   experimental narrative-visualisation transform (stage / chirality / auto-stage).
+/* AdvancedPanel - the collapsible "Advanced Options" disclosure that lives at
+   the foot of the Display Settings panel (slotted via DisplayPanel's #advanced
+   slot, like the design comp): the oscillation mode and the experimental
+   narrative-visualisation transform (stage / chirality / auto-stage).
    Controlled: every setting is a v-model and the parent owns the engine state. */
-import Panel from '../ds/Panel.vue';
-import IconButton from '../ds/IconButton.vue';
 import Badge from '../ds/Badge.vue';
 import RadioGroup from '../ds/RadioGroup.vue';
 import Slider from '../ds/Slider.vue';
 import Switch from '../ds/Switch.vue';
-
-withDefaults(defineProps<{ variant?: 'solid' | 'glass' | 'elevated' }>(), { variant: 'elevated' });
 
 const open = defineModel<boolean>('open', { default: false });
 const mode = defineModel<string | number>('mode', { default: 'wave' });
@@ -50,25 +48,25 @@ const stageItems = [
 </script>
 
 <template>
-    <Panel :variant="variant" class="flex w-full max-w-[20rem] flex-col gap-4">
-        <div class="flex items-center justify-between">
-            <p class="font-display text-heading">Advanced options</p>
-            <IconButton
-                :icon="open ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                variant="ghost"
-                size="sm"
-                :aria-label="open ? 'Collapse advanced options' : 'Expand advanced options'"
-                @click="open = !open"
-            />
-        </div>
+    <div class="mt-5 border-t border-(--border)">
+        <button
+            type="button"
+            class="flex w-full items-center justify-between gap-2 pb-1 pt-3 font-display text-detail font-semibold transition-[box-shadow] duration-150 focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
+            :aria-expanded="open"
+            @click="open = !open"
+        >
+            <span>Advanced Options</span>
+            <UIcon :name="open ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-4 text-(--text-muted)" />
+        </button>
 
         <div
             class="flex flex-col gap-5 transition-all duration-500 ease-(--motion-ease-out)"
-            :class="open ? 'max-h-[64rem]' : 'max-h-0 overflow-hidden opacity-0'"
+            :class="open ? 'max-h-[64rem] pt-3.5' : 'max-h-0 overflow-hidden opacity-0'"
+            :inert="!open"
         >
             <!-- Oscillation mode -->
-            <div class="flex flex-col gap-2">
-                <span class="ps-label">Oscillation mode</span>
+            <div class="flex flex-col gap-2.5">
+                <span class="font-display text-detail font-semibold text-(--accent)">Oscillation Mode</span>
                 <RadioGroup v-model="mode" :items="oscillationItems" />
             </div>
 
@@ -77,10 +75,10 @@ const stageItems = [
                 <label class="flex items-start justify-between gap-3">
                     <span class="flex flex-col gap-1">
                         <span class="inline-flex items-center gap-2 text-detail">
-                            Narrative visualisation
+                            Narrative Visualisation
                             <Badge color="warning" variant="outline" label="Experimental" />
                         </span>
-                        <span class="text-detail text-(--text-muted)"
+                        <span class="text-caption text-(--text-muted)"
                             >Layers a staged transform over the audio geometry.</span
                         >
                     </span>
@@ -88,15 +86,15 @@ const stageItems = [
                 </label>
 
                 <div class="flex flex-col gap-4" :class="{ 'pointer-events-none opacity-40': !narrative }">
-                    <div v-if="narrative && !autoStage" class="flex flex-col gap-2">
-                        <span class="ps-label">Stage</span>
+                    <div v-if="narrative && !autoStage" class="flex flex-col gap-2.5">
+                        <span class="font-display text-detail font-semibold text-(--accent)">Stage</span>
                         <RadioGroup v-model="stage" :items="stageItems" :disabled="!narrative" />
                     </div>
 
                     <div class="flex flex-col gap-2">
-                        <div class="flex items-center justify-between">
-                            <span class="ps-label">Chirality bias</span>
-                            <span class="font-mono text-detail text-(--text) tabular-nums">{{
+                        <div class="flex items-baseline justify-between gap-2">
+                            <span class="font-display text-detail font-medium">Chirality Bias</span>
+                            <span class="font-mono text-detail tracking-label text-(--accent) tabular-nums">{{
                                 chirality.toFixed(2)
                             }}</span>
                         </div>
@@ -110,5 +108,5 @@ const stageItems = [
                 </div>
             </div>
         </div>
-    </Panel>
+    </div>
 </template>

@@ -78,3 +78,34 @@
     outline: none;
     box-shadow: var(--focus-glow);
 }
+
+/* --- Motion (plan 2.8) ---
+   Entrance rise+fade for floating panels and the live-signal dot pulse.
+   Both decorative, so they only run when the user allows motion. */
+@media (prefers-reduced-motion: no-preference) {
+    .ps-rise {
+        animation: ps-rise var(--motion-duration-slow) var(--motion-ease-out) both;
+    }
+    .ps-pulse-live {
+        animation: ps-pulse-live 2s var(--motion-ease-standard) infinite;
+    }
+}
+@keyframes ps-rise {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+@keyframes ps-pulse-live {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.45;
+    }
+}

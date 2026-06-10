@@ -4,7 +4,7 @@ import { toRaw } from 'vue';
 import { analyzeFrequencyBand, freqContentToHz, ampToOscillationRange } from '~/utils/audio/analysis';
 import type { RenderMode } from '~/composables/useCorridorRenderer.client';
 import { useNarrativeTransform } from '~/composables/experimental/useNarrativeTransform';
-import { useMediaQuery } from '@vueuse/core';
+import { useMediaQuery, useIntervalFn } from '@vueuse/core';
 
 // Full-bleed canvas dashboard - opt out of the default site chrome (header /
 // container / footer); this page paints the whole viewport itself.
@@ -151,6 +151,17 @@ const toggleSettings = () => {
     showSettings.value = !showSettings.value;
     if (!isDesktop.value && showSettings.value) showControlsOverlay.value = false;
 };
+
+// Elapsed-time readout for the transport dock. UI-only: polls the player
+// clock at 2Hz, which is plenty for a mm:ss display and never touches the
+// audio engine itself.
+const elapsedLabel = ref('00:00');
+useIntervalFn(() => {
+    const t = wavLoaded.value ? Math.max(0, getPlaybackTimeSeconds()) : 0;
+    const m = String(Math.floor(t / 60)).padStart(2, '0');
+    const s = String(Math.floor(t % 60)).padStart(2, '0');
+    elapsedLabel.value = `${m}:${s}`;
+}, 500);
 const useAlternateColors = ref(false);
 
 // Track coverage as percentage (0-100)
@@ -1339,18 +1350,52 @@ onUnmounted(async () => {
 
 <template>
     <div class="fixed inset-0 overflow-hidden bg-(--bg) text-(--text)">
-        <!-- Live canvas fills the viewport -->
-        <div ref="canvasContainer" class="absolute inset-0 bg-black"></div>
+        <!-- Live canvas fills the viewport; slow-zooms while playing (plan 2.8,
+             a transform on the container only - the engine is untouched) -->
+        <div
+            ref="canvasContainer"
+            class="absolute inset-0 bg-black motion-safe:transition-transform motion-safe:duration-[6000ms] motion-safe:ease-(--motion-ease-standard)"
+            :class="{ 'motion-safe:scale-[1.04]': !!audio.source }"
+        ></div>
 
-        <!-- Vignette / scrim so the floating glass chrome clears AA over the canvas -->
+        <!-- Vignette + scrim so the floating glass chrome clears AA over the
+             canvas: a radial vignette plus top/bottom linear scrims (per the
+             design comp), with a faint scanline grain blended over the top. -->
         <div
             class="pointer-events-none absolute inset-0 z-0"
-            style="background: radial-gradient(125% 125% at 50% 45%, transparent 48%, var(--scrim))"
+            style="
+                background:
+                    radial-gradient(
+                        120% 90% at 50% 35%,
+                        transparent 0%,
+                        color-mix(in oklch, var(--bg) 72%, transparent) 78%,
+                        var(--bg) 100%
+                    ),
+                    linear-gradient(
+                        to bottom,
+                        color-mix(in oklch, var(--bg) 55%, transparent),
+                        transparent 22%,
+                        transparent 60%,
+                        color-mix(in oklch, var(--bg) 70%, transparent)
+                    );
+            "
         ></div>
+        <div class="ps-striation pointer-events-none absolute inset-0 z-0 opacity-50 mix-blend-overlay"></div>
+
+        <!-- No-audio idle state: a restrained mono hint in the canvas void -->
+        <!-- (nudged below the side panels on desktop so it sits in the void) -->
+        <div
+            v-if="!wavLoaded"
+            class="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 md:translate-y-[16vh]"
+        >
+            <DsLogo :size="56" mono class="text-(--text-faint)" />
+            <p class="ps-label">No signal</p>
+            <p class="text-detail text-(--text-faint)">Load audio or select a demo track to begin</p>
+        </div>
 
         <!-- Top: floating header -->
         <LayoutAppHeader
-            class="absolute inset-x-4 top-4 z-30"
+            class="absolute inset-x-5 top-5 z-30"
             :controls-open="showControlsOverlay"
             :settings-open="showSettings"
             @toggle-controls="toggleControls"
@@ -1358,22 +1403,10 @@ onUnmounted(async () => {
             @toggle-fullscreen="three.toggleFullscreen"
         />
 
-        <!-- Left: live controls HUD -->
-        <LayoutControlsOverlay
-            v-show="showControlsOverlay"
-            class="absolute left-4 top-24 z-20 max-h-[calc(100svh_-_12rem)] overflow-y-auto"
-            :camera-mode="cameraMode"
-            :speed-index="movement.speedIndex.value"
-            :moving="movement.isMoving.value"
-            :disabled="!wavLoaded"
-            @set-camera-mode="setCameraMode"
-            @set-speed="setMovementSpeed"
-        />
-
-        <!-- Right: settings stack -->
+        <!-- Left: display settings (advanced options disclosed in-panel) -->
         <div
-            v-show="showSettings"
-            class="absolute right-4 top-24 z-20 flex max-h-[calc(100svh_-_12rem)] w-[min(100vw_-_2rem,20rem)] flex-col gap-4 overflow-y-auto pr-1"
+            v-if="showSettings"
+            class="ps-rise absolute left-5 top-24 z-20 max-h-[calc(100svh_-_12rem)] w-[min(100vw_-_2.5rem,37.5rem)] overflow-y-auto"
         >
             <LayoutDisplayPanel
                 variant="glass"
@@ -1403,32 +1436,49 @@ onUnmounted(async () => {
                         onHeavenlyBgToggle();
                     }
                 "
-            />
-
-            <LayoutAdvancedPanel
-                variant="glass"
-                v-model:open="advancedOptionsOpen"
-                v-model:mode="oscillation.mode.value"
-                v-model:narrative="narrativeEnabled"
-                v-model:stage="narrativeStage"
-                v-model:chirality="narrativeHandedBias"
-                v-model:auto-stage="narrativeAutoStage"
-            />
+            >
+                <template #advanced>
+                    <LayoutAdvancedPanel
+                        v-model:open="advancedOptionsOpen"
+                        v-model:mode="oscillation.mode.value"
+                        v-model:narrative="narrativeEnabled"
+                        v-model:stage="narrativeStage"
+                        v-model:chirality="narrativeHandedBias"
+                        v-model:auto-stage="narrativeAutoStage"
+                    />
+                </template>
+            </LayoutDisplayPanel>
         </div>
 
-        <!-- Bottom: transport dock -->
-        <LayoutTransportBar
-            class="absolute inset-x-4 bottom-4 z-30 mx-auto w-fit max-w-[calc(100vw_-_2rem)]"
-            :playing="!!audio.source"
-            :audio-loaded="wavLoaded"
-            :started="audio.started"
-            :tracks="sortedDemoTracks.map((t) => ({ label: t.name, value: t.id }))"
-            :tracks-loading="demoTracksLoading"
-            :selected-track="selectedDemoTrackId"
-            @play-pause="handlePlayPause"
-            @stop="handleStop"
-            @load-file="(file: File) => loadWavFile(file).catch(onAudioLoadError)"
-            @select-track="handleSelectDemoTrack"
+        <!-- Right: live controls HUD -->
+        <LayoutControlsOverlay
+            v-if="showControlsOverlay"
+            class="ps-rise absolute right-5 top-24 z-20 max-h-[calc(100svh_-_12rem)] overflow-y-auto"
+            :camera-mode="cameraMode"
+            :speed-index="movement.speedIndex.value"
+            :moving="movement.isMoving.value"
+            :disabled="!wavLoaded"
+            @set-camera-mode="setCameraMode"
+            @set-speed="setMovementSpeed"
+            @close="showControlsOverlay = false"
         />
+
+        <!-- Bottom: transport dock (skip-link target: the primary controls) -->
+        <main id="content" tabindex="-1" class="focus-visible:outline-none">
+            <LayoutTransportBar
+                class="absolute inset-x-4 bottom-5 z-30 mx-auto w-fit max-w-[calc(100vw_-_2rem)]"
+                :playing="!!audio.source"
+                :audio-loaded="wavLoaded"
+                :started="audio.started"
+                :elapsed="elapsedLabel"
+                :tracks="sortedDemoTracks.map((t) => ({ label: t.name, value: t.id }))"
+                :tracks-loading="demoTracksLoading"
+                :selected-track="selectedDemoTrackId"
+                @play-pause="handlePlayPause"
+                @stop="handleStop"
+                @load-file="(file: File) => loadWavFile(file).catch(onAudioLoadError)"
+                @select-track="handleSelectDemoTrack"
+            />
+        </main>
     </div>
 </template>

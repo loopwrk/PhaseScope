@@ -18,7 +18,7 @@
 :root {
     /* --- Semantic state anchors (mode-independent) --- */
     --success: oklch(0.7312 0.1524 162.48); /* #22c58b */
-    --warning: oklch(0.8497 0.1755 97.74); /* #edcd00 */
+    --warning: oklch(0.8497 0.1755 97.74); /* #ed3a00 */
     --error: oklch(0.66 0.2286 17.47); /* #ff3b5c */
     --info: var(--brand-blue);
     --on-brand: oklch(1 0 0); /* #ffffff - text/icon colour on top of brand fills */

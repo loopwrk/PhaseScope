@@ -20,9 +20,9 @@ withDefaults(defineProps<{ min?: number; max?: number; step?: number; disabled?:
         :step="step"
         :disabled="disabled"
         :ui="{
-            track: 'bg-(--surface-sunken) rounded-none [clip-path:var(--clip-chamfer-sm)]',
+            track: 'bg-(--surface-sunken) rounded-none [clip-path:var(--clip-chamfer-sm)] h-2 border border-(--border)',
             range: 'bg-(--accent) rounded-none',
-            thumb: 'rounded-none [clip-path:var(--clip-chamfer-sm)] bg-(--accent) shadow-(--shadow-glow-accent) focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-(--focus-glow)',
+            thumb: 'rounded-none [clip-path:var(--clip-chamfer-sm)] h-5 w-4 bg-(--text) ring-0 border border-(--accent) shadow-(--shadow-glow-accent) focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-(--focus-glow)',
         }"
     />
 </template>

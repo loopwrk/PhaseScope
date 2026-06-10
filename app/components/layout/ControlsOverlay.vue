@@ -4,6 +4,7 @@
    engine state); the lower half is a static keyboard reference. Controlled: the
    parent owns engine state and applies the changes. */
 import KeyCap from '../ds/KeyCap.vue';
+import IconButton from '../ds/IconButton.vue';
 
 type CameraMode = 'free' | 'follow' | 'orbit';
 
@@ -17,7 +18,7 @@ withDefaults(
     { cameraMode: 'orbit', speedIndex: 1, moving: false, disabled: false }
 );
 
-const emit = defineEmits<{ setCameraMode: [mode: CameraMode]; setSpeed: [index: number] }>();
+const emit = defineEmits<{ setCameraMode: [mode: CameraMode]; setSpeed: [index: number]; close: [] }>();
 
 const cameraModes: { label: string; value: CameraMode }[] = [
     { label: 'Free', value: 'free' },
@@ -61,8 +62,11 @@ const sections: { label: string; keys: { k: string; d: string }[] }[] = [
 </script>
 
 <template>
-    <aside class="ps-glass flex w-[min(100vw_-_2rem,18rem)] flex-col gap-4 p-4 [clip-path:var(--clip-chamfer-md)]">
-        <p class="ps-label">Controls</p>
+    <aside class="ps-glass flex w-[min(100vw_-_2rem,17rem)] flex-col gap-4 p-4 [clip-path:var(--clip-chamfer-md)]">
+        <div class="flex items-center justify-between">
+            <p class="ps-label">Controls</p>
+            <IconButton icon="i-lucide-x" variant="ghost" size="sm" aria-label="Hide overlay" @click="emit('close')" />
+        </div>
 
         <!-- Camera mode (live + interactive) -->
         <div class="flex flex-col gap-2" :class="{ 'pointer-events-none opacity-40': disabled }">
@@ -75,6 +79,7 @@ const sections: { label: string; keys: { k: string; d: string }[] }[] = [
                     v-for="m in cameraModes"
                     :key="m.value"
                     type="button"
+                    :disabled="disabled"
                     :class="[segBase, cameraMode === m.value ? segActive : segIdle]"
                     :aria-pressed="cameraMode === m.value"
                     @click="emit('setCameraMode', m.value)"
@@ -95,6 +100,7 @@ const sections: { label: string; keys: { k: string; d: string }[] }[] = [
                     v-for="(s, i) in speeds"
                     :key="s"
                     type="button"
+                    :disabled="disabled"
                     :class="[segBase, speedIndex === i ? segActive : segIdle]"
                     :aria-pressed="speedIndex === i"
                     @click="emit('setSpeed', i)"
