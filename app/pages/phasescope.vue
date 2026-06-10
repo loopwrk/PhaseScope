@@ -1465,15 +1465,13 @@ onUnmounted(async () => {
             <!-- Controls overlay (dark-glass HUD) -->
             <LayoutControlsOverlay v-show="showControlsOverlay" class="absolute top-4 left-4 z-10" />
 
-            <UButton
+            <DsIconButton
                 v-if="showControlsOverlay"
-                class="absolute top-4 right-0 z-10"
-                color="primary"
-                variant="solid"
-                size="xl"
+                class="absolute top-4 right-4 z-10"
+                variant="ghost"
                 :icon="three.isFullscreen ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'"
-                @click="three.toggleFullscreen"
                 :aria-label="three.isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'"
+                @click="three.toggleFullscreen"
             />
         </div>
     </div>

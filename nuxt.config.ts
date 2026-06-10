@@ -44,7 +44,7 @@ export default defineNuxtConfig({
                 lang: 'en',
                 class: 'dark',
             },
-            link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
+            link: [{ rel: 'icon', type: 'image/svg+xml', href: '/phasescope-mark.svg' }],
         },
     },
     colorMode: {
