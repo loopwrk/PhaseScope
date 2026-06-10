@@ -4,6 +4,15 @@ import { toRaw } from 'vue';
 import { analyzeFrequencyBand, freqContentToHz, ampToOscillationRange } from '~/utils/audio/analysis';
 import type { RenderMode } from '~/composables/useCorridorRenderer.client';
 import { useNarrativeTransform } from '~/composables/experimental/useNarrativeTransform';
+import { useMediaQuery } from '@vueuse/core';
+
+// Full-bleed canvas dashboard - opt out of the default site chrome (header /
+// container / footer); this page paints the whole viewport itself.
+definePageMeta({ layout: false });
+
+// Desktop shows the side panels by default; phones start with them collapsed
+// (they overlay the canvas) and the user opens them from the header.
+const isDesktop = useMediaQuery('(min-width: 768px)');
 
 interface CorridorState {
     buffer: AudioBuffer | null;
@@ -117,7 +126,31 @@ const oscillation = useOscillation({
 });
 
 const showControlsOverlay = ref(true);
+const showSettings = ref(true);
 const advancedOptionsOpen = ref(false);
+
+// Floating side panels: both open on desktop, both collapsed on phones (they
+// overlay the canvas). Crossing the breakpoint resets them. `immediate` means
+// this also sets the correct initial state (isDesktop is false during SSR /
+// first paint, so phones start collapsed without depending on mount timing).
+watch(
+    isDesktop,
+    (desktop) => {
+        showControlsOverlay.value = desktop;
+        showSettings.value = desktop;
+    },
+    { immediate: true }
+);
+
+// On phones the two panels are mutually exclusive so they never stack.
+const toggleControls = () => {
+    showControlsOverlay.value = !showControlsOverlay.value;
+    if (!isDesktop.value && showControlsOverlay.value) showSettings.value = false;
+};
+const toggleSettings = () => {
+    showSettings.value = !showSettings.value;
+    if (!isDesktop.value && showSettings.value) showControlsOverlay.value = false;
+};
 const useAlternateColors = ref(false);
 
 // Track coverage as percentage (0-100)
@@ -1194,6 +1227,21 @@ const toggleCameraMode = () => {
     }
 };
 
+// Set a camera mode directly (from the controls overlay). Mirrors the pointer-lock
+// side effect of the cycle handler.
+const setCameraMode = (mode: CameraMode) => {
+    if (!wavLoaded.value) return;
+    cameraMode.value = mode;
+    if (mode !== 'free' && document.pointerLockElement) {
+        document.exitPointerLock();
+    }
+};
+
+// Set movement speed level directly (slow / medium / fast = 0 / 1 / 2).
+const setMovementSpeed = (index: number) => {
+    movement.speedIndex.value = Math.min(2, Math.max(0, index));
+};
+
 // Keyboard shortcuts
 const shortcuts = useKeyboardShortcuts();
 shortcuts.register('r', () => {
@@ -1209,7 +1257,7 @@ shortcuts.register('enter', () => {
     handlePlayPause();
 });
 shortcuts.register('h', () => {
-    showControlsOverlay.value = !showControlsOverlay.value;
+    toggleControls();
 });
 shortcuts.register('c', () => {
     toggleCameraMode();
@@ -1285,15 +1333,87 @@ onUnmounted(async () => {
 </script>
 
 <template>
-    <div>
+    <div class="fixed inset-0 overflow-hidden bg-(--bg) text-(--text)">
+        <!-- Live canvas fills the viewport -->
+        <div ref="canvasContainer" class="absolute inset-0 bg-black"></div>
+
+        <!-- Vignette / scrim so the floating glass chrome clears AA over the canvas -->
+        <div
+            class="pointer-events-none absolute inset-0 z-0"
+            style="background: radial-gradient(125% 125% at 50% 45%, transparent 48%, var(--scrim))"
+        ></div>
+
+        <!-- Top: floating header -->
         <LayoutAppHeader
-            class="mb-6"
-            @toggle-controls="showControlsOverlay = !showControlsOverlay"
+            class="absolute inset-x-4 top-4 z-30"
+            :controls-open="showControlsOverlay"
+            :settings-open="showSettings"
+            @toggle-controls="toggleControls"
+            @toggle-settings="toggleSettings"
             @toggle-fullscreen="three.toggleFullscreen"
         />
 
+        <!-- Left: live controls HUD -->
+        <LayoutControlsOverlay
+            v-show="showControlsOverlay"
+            class="absolute left-4 top-24 z-20 max-h-[calc(100svh_-_12rem)] overflow-y-auto"
+            :camera-mode="cameraMode"
+            :speed-index="movement.speedIndex.value"
+            :moving="movement.isMoving.value"
+            :disabled="!wavLoaded"
+            @set-camera-mode="setCameraMode"
+            @set-speed="setMovementSpeed"
+        />
+
+        <!-- Right: settings stack -->
+        <div
+            v-show="showSettings"
+            class="absolute right-4 top-24 z-20 flex max-h-[calc(100svh_-_12rem)] w-[min(100vw_-_2rem,20rem)] flex-col gap-4 overflow-y-auto pr-1"
+        >
+            <LayoutDisplayPanel
+                variant="glass"
+                v-model:pointsPerFrame="corridorMeta.pointsPerFrame"
+                v-model:coverage="trackCoveragePercent"
+                v-model:renderMode="renderMode"
+                v-model:topology="topologyMode"
+                v-model:oscillation="oscillation.enabled.value"
+                v-model:reverse="useAlternateColors"
+                v-model:controlsOverlay="showControlsOverlay"
+                :dream="dreamBg.enabled.value"
+                :heavenly="heavenlyBg.enabled.value"
+                :wav-loaded="wavLoaded"
+                :settings-disabled="audio.started || !wavLoaded"
+                :topology-disabled="audio.started"
+                :perf-level="pointsWarningLevel"
+                :perf-points="formatPointCount(effectiveMaxPoints)"
+                @update:dream="
+                    (v) => {
+                        dreamBg.enabled.value = v;
+                        onDreamBgToggle();
+                    }
+                "
+                @update:heavenly="
+                    (v) => {
+                        heavenlyBg.enabled.value = v;
+                        onHeavenlyBgToggle();
+                    }
+                "
+            />
+
+            <LayoutAdvancedPanel
+                variant="glass"
+                v-model:open="advancedOptionsOpen"
+                v-model:mode="oscillation.mode.value"
+                v-model:narrative="narrativeEnabled"
+                v-model:stage="narrativeStage"
+                v-model:chirality="narrativeHandedBias"
+                v-model:auto-stage="narrativeAutoStage"
+            />
+        </div>
+
+        <!-- Bottom: transport dock -->
         <LayoutTransportBar
-            class="mb-6"
+            class="absolute inset-x-4 bottom-4 z-30 mx-auto w-fit max-w-[calc(100vw_-_2rem)]"
             :playing="!!audio.source"
             :audio-loaded="wavLoaded"
             :started="audio.started"
@@ -1305,174 +1425,5 @@ onUnmounted(async () => {
             @load-file="(file: File) => loadWavFile(file).catch(onAudioLoadError)"
             @select-track="handleLoadDemoTrack"
         />
-
-        <ProseH3>Display settings</ProseH3>
-        <LayoutDisplayPanel
-            class="mb-6"
-            v-model:pointsPerFrame="corridorMeta.pointsPerFrame"
-            v-model:coverage="trackCoveragePercent"
-            v-model:renderMode="renderMode"
-            v-model:topology="topologyMode"
-            v-model:oscillation="oscillation.enabled.value"
-            v-model:reverse="useAlternateColors"
-            v-model:controlsOverlay="showControlsOverlay"
-            :dream="dreamBg.enabled.value"
-            :heavenly="heavenlyBg.enabled.value"
-            :wav-loaded="wavLoaded"
-            :settings-disabled="audio.started || !wavLoaded"
-            :topology-disabled="audio.started"
-            :perf-level="pointsWarningLevel"
-            :perf-points="formatPointCount(effectiveMaxPoints)"
-            @update:dream="
-                (v) => {
-                    dreamBg.enabled.value = v;
-                    onDreamBgToggle();
-                }
-            "
-            @update:heavenly="
-                (v) => {
-                    heavenlyBg.enabled.value = v;
-                    onHeavenlyBgToggle();
-                }
-            "
-        />
-
-        <div class="flex items-center justify-between mb-2">
-            <ProseH3 class="!mb-0">Advanced options</ProseH3>
-            <button
-                type="button"
-                class="p-1 text-primary hover:text-primary/80 transition-colors cursor-pointer"
-                @click="advancedOptionsOpen = !advancedOptionsOpen"
-                :aria-expanded="advancedOptionsOpen"
-                aria-controls="advanced-options-content"
-            >
-                <UIcon
-                    :name="advancedOptionsOpen ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
-                    class="size-6"
-                />
-            </button>
-        </div>
-        <div
-            id="advanced-options-content"
-            class="w-full border-1 rounded-md py-4 px-6 mb-6 transition-all duration-700 ease-out"
-            :class="
-                advancedOptionsOpen
-                    ? 'max-h-[30rem] border-accessible-blue'
-                    : 'max-h-5 overflow-hidden border-accessible-blue/30 [mask-image:linear-gradient(to_bottom,black_0%,transparent_100%)]'
-            "
-        >
-            <URadioGroup
-                v-model="oscillation.mode.value"
-                size="xl"
-                class="mb-2"
-                :items="[
-                    {
-                        label: 'Wave',
-                        value: 'wave',
-                        description:
-                            'Visualises loudness as a ripple propagating through the structure. Oscillates at a fixed visible speed; wave intensity reflects audio amplitude.',
-                    },
-                    {
-                        label: 'Per-point',
-                        value: 'per-point',
-                        description:
-                            'Visualises local frequency content. Each point oscillates at its own rate derived from the audio at that position.',
-                    },
-                    {
-                        label: 'Per-frame',
-                        value: 'per-frame',
-                        description:
-                            'Visualises average frequency per frame. All points in a frame move together at the same rate. Bass-heavy moments oscillate slower; treble-heavy moments faster.',
-                    },
-                ]"
-                :ui="{
-                    legend: 'text-lg text-primary font-bold',
-                    label: 'text-primary',
-                    description: 'text-gray-500',
-                }"
-                value-key="value"
-                orientation="horizontal"
-            >
-                <template #legend> Oscillation Mode </template>
-            </URadioGroup>
-            <USeparator class="py-2 mb-2" />
-            <div class="mb-6">
-                <div class="flex items-center gap-3">
-                    <UCheckbox v-model="narrativeEnabled" id="narrative-toggle" />
-                    <label
-                        for="narrative-toggle"
-                        class="text-primary text-lg font-bold cursor-pointer inline-flex items-center gap-2"
-                    >
-                        Narrative Visualisation (Experimental)
-                    </label>
-                </div>
-                <p class="text-sm text-gray-500 mt-1">Layers a staged transform over the audio geometry.</p>
-
-                <div class="mt-4 mb-12 space-y-3" :class="{ 'opacity-40': !narrativeEnabled }">
-                    <div v-if="narrativeEnabled && !narrativeAutoStage" class="mb-4">
-                        <URadioGroup
-                            v-model="narrativeStage"
-                            size="xl"
-                            :items="[
-                                { label: 'Channel Bias', value: 'channel-bias' },
-                                { label: 'Tilt', value: 'tilt' },
-                                { label: 'Folding', value: 'folding' },
-                                { label: 'Coils', value: 'coils' },
-                                { label: 'Stabilization', value: 'stabilization' },
-                                { label: 'Z-axis scaling', value: 'z-axis-scaling' },
-                                { label: 'Radial flattening', value: 'radial-flattening' },
-                                { label: 'Radial scaling', value: 'radial-scaling' },
-                            ]"
-                            :ui="{ legend: 'text-primary font-bold', label: 'text-primary' }"
-                            value-key="value"
-                            orientation="horizontal"
-                            :disabled="!narrativeEnabled"
-                        >
-                            <template #legend> Stage </template>
-                        </URadioGroup>
-                    </div>
-
-                    <div class="mb-6" :class="{ 'opacity-40': !narrativeEnabled }">
-                        <label class="block font-bold text-primary mb-2">
-                            Chirality Bias:
-                            <span class="text-secondary">{{ narrativeHandedBias.toFixed(2) }}</span>
-                        </label>
-                        <USlider
-                            v-model="narrativeHandedBias"
-                            :min="0"
-                            :max="0.8"
-                            :step="0.02"
-                            :ui="{ thumb: 'bg-primary' }"
-                            :disabled="!narrativeEnabled"
-                        />
-                    </div>
-
-                    <div class="flex items-center gap-3">
-                        <UCheckbox
-                            v-model="narrativeAutoStage"
-                            id="narrative-autostage"
-                            :disabled="!narrativeEnabled"
-                        />
-                        <label for="narrative-autostage" class="text-primary font-semibold cursor-pointer">
-                            Auto-stage (driven by build progress)
-                        </label>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="relative rounded-lg w-full h-[600px] bg-black" ref="canvasContainer">
-            <!-- Controls overlay (dark-glass HUD) -->
-            <LayoutControlsOverlay v-show="showControlsOverlay" class="absolute top-4 left-4 z-10" />
-
-            <DsIconButton
-                v-if="showControlsOverlay"
-                class="absolute top-4 right-4 z-10"
-                variant="ghost"
-                :icon="three.isFullscreen ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'"
-                :aria-label="three.isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'"
-                @click="three.toggleFullscreen"
-            />
-        </div>
     </div>
 </template>

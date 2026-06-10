@@ -48,7 +48,7 @@ function onFile(e: Event) {
 </script>
 
 <template>
-    <div class="ps-glass flex items-center gap-3 px-4 py-2 [clip-path:var(--clip-chamfer-md)]">
+    <div class="ps-glass flex flex-wrap items-center justify-center gap-3 px-4 py-2 [clip-path:var(--clip-chamfer-md)]">
         <IconButton
             :icon="playing ? 'i-mingcute-pause-fill' : 'i-mingcute-play-fill'"
             variant="primary"
@@ -74,7 +74,7 @@ function onFile(e: Event) {
             value-key="value"
             placeholder="Demo track"
             :loading="tracksLoading"
-            class="w-44"
+            class="w-44 max-w-full"
             :ui="{ base: 'rounded-none [clip-path:var(--clip-chamfer-sm)]' }"
             @update:model-value="(v: string) => v && emit('selectTrack', v)"
         />

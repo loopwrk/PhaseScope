@@ -16,8 +16,16 @@ withDefaults(
         topologyDisabled?: boolean; // topology (disabled while playing)
         perfLevel?: 'none' | 'warning' | 'danger';
         perfPoints?: string;
+        variant?: 'solid' | 'glass' | 'elevated';
     }>(),
-    { wavLoaded: false, settingsDisabled: false, topologyDisabled: false, perfLevel: 'none', perfPoints: '' }
+    {
+        wavLoaded: false,
+        settingsDisabled: false,
+        topologyDisabled: false,
+        perfLevel: 'none',
+        perfPoints: '',
+        variant: 'elevated',
+    }
 );
 
 const pointsPerFrame = defineModel<number>('pointsPerFrame', { default: 512 });
@@ -42,7 +50,7 @@ const topologyItems = [
 </script>
 
 <template>
-    <Panel variant="elevated" class="flex w-80 flex-col gap-5">
+    <Panel :variant="variant" class="flex w-full max-w-[20rem] flex-col gap-5">
         <p class="font-display text-heading">Display Settings</p>
 
         <!-- Points per frame -->
