@@ -6,6 +6,12 @@ import { Vector3 } from 'three';
 // Keys that should have their default browser behavior prevented
 const PREVENT_DEFAULT_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ']);
 
+// Movement must never react to (or steal keys from) text entry - e.g. the
+// demo-track search box: without this, typing "w" flies the camera and
+// space/arrows are swallowed before they reach the field.
+const isTypingTarget = (el: Element | EventTarget | null): boolean =>
+    el instanceof HTMLElement && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+
 interface UseKeyboardMovementOptions {
     slowSpeed?: number;
     mediumSpeed?: number;
@@ -53,6 +59,7 @@ export function useKeyboardMovement(
     const speedLevels = [slowSpeed, mediumSpeed, fastSpeed];
 
     useEventListener(window, 'keydown', (event: KeyboardEvent) => {
+        if (isTypingTarget(event.target)) return;
         if (event.key === '[') {
             speedIndex.value = Math.max(0, speedIndex.value - 1);
         }
@@ -63,24 +70,27 @@ export function useKeyboardMovement(
 
     // Prevent default browser behavior for movement keys (e.g., Space scrolling)
     useEventListener(window, 'keydown', (event: KeyboardEvent) => {
+        if (isTypingTarget(event.target)) return;
         if (PREVENT_DEFAULT_KEYS.has(event.key)) {
             event.preventDefault();
         }
     });
 
-    // Track if any movement key is pressed
+    // Track if any movement key is pressed (never while typing in a field -
+    // this also keeps onMovement from yanking the camera into free mode)
     const isMoving = computed(
         () =>
-            forward.value ||
-            backward.value ||
-            left.value ||
-            right.value ||
-            up.value ||
-            down.value ||
-            space.value ||
-            shift.value ||
-            turnLeft.value ||
-            turnRight.value
+            !isTypingTarget(document.activeElement) &&
+            (forward.value ||
+                backward.value ||
+                left.value ||
+                right.value ||
+                up.value ||
+                down.value ||
+                space.value ||
+                shift.value ||
+                turnLeft.value ||
+                turnRight.value)
     );
 
     // Trigger callback when movement starts
@@ -93,6 +103,7 @@ export function useKeyboardMovement(
     const update = (deltaTime: number) => {
         const ctl = controls.value;
         if (!ctl) return;
+        if (isTypingTarget(document.activeElement)) return;
 
         const speed = speedLevels[speedIndex.value] ?? mediumSpeed;
         const distance = speed * deltaTime;

@@ -7,8 +7,6 @@
 @import './tokens/typography.css';
 @import './tokens/utilities.css';
 
-@source "../../../content/**/*";
-
 /* ==================================================================
    Token -> Tailwind bridge
 

@@ -62,6 +62,6 @@ export default defineNuxtConfig({
     },
     devtools: { enabled: true },
 
-    modules: ['@nuxt/eslint', '@nuxt/image', '@nuxt/scripts', '@nuxt/test-utils', '@nuxt/ui', '@nuxt/content'],
+    modules: ['@nuxt/eslint', '@nuxt/test-utils', '@nuxt/ui'],
     css: ['~/assets/css/main.css'],
 });

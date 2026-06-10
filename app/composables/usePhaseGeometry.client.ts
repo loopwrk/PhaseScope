@@ -493,7 +493,6 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         corridorMeta,
         trackCoveragePercent,
         useAlternateColors,
-        totalFramesForTrack,
         effectiveMaxPoints,
         pointsWarningLevel,
         formatPointCount,

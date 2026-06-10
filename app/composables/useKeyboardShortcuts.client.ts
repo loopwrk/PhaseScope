@@ -27,6 +27,12 @@ export function useKeyboardShortcuts() {
             return;
         }
 
+        // One action per physical press: holding a key down would otherwise
+        // machine-gun toggles (e.g. play/pause) on every OS key repeat
+        if (event.repeat) {
+            return;
+        }
+
         const key = normalizeKey(event.key);
         const shortcut = shortcuts.get(key);
 
