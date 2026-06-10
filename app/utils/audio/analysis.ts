@@ -1,4 +1,5 @@
 // Audio Analysis Utilities
+import { clamp } from '~/utils/utilities';
 
 // Frequency analysis window sizes (in samples)
 export const ANALYSIS_WINDOW_TEMPORAL = 256; // Fast response, good for percussion/transients
