@@ -1286,31 +1286,25 @@ onUnmounted(async () => {
 
 <template>
     <div>
-        <ProseH1>PhaseScope</ProseH1>
-        <ProseH2>3D Lissajous/phase-space visualiser (prototype) WIP</ProseH2>
+        <LayoutAppHeader
+            class="mb-6"
+            @toggle-controls="showControlsOverlay = !showControlsOverlay"
+            @toggle-fullscreen="three.toggleFullscreen"
+        />
 
-        <div class="flex items-center gap-4 mb-6">
-            <div class="flex items-center">
-                <PlayPauseButton :is-playing="!!audio.source" :disabled="!wavLoaded" @click="handlePlayPause" />
-                <StopButton :disabled="!audio.started" @click="handleStop" />
-                <AudioLoaderButton :handler="loadWavFile" @error="onAudioLoadError"> Load Audio </AudioLoaderButton>
-            </div>
-
-            <div v-if="sortedDemoTracks.length > 0" class="flex items-center gap-2">
-                <span class="text-sm text-gray-500">or try a demo:</span>
-                <USelectMenu
-                    :model-value="selectedDemoTrackId"
-                    :items="sortedDemoTracks.map((t) => ({ label: t.name, value: t.id }))"
-                    placeholder="Select demo track"
-                    value-key="value"
-                    :loading="demoTracksLoading"
-                    :disabled="demoTracksLoading"
-                    class="w-48"
-                    :ui="{ content: 'bg-white' }"
-                    @update:model-value="(value: string) => value && handleLoadDemoTrack(value)"
-                />
-            </div>
-        </div>
+        <LayoutTransportBar
+            class="mb-6"
+            :playing="!!audio.source"
+            :audio-loaded="wavLoaded"
+            :started="audio.started"
+            :tracks="sortedDemoTracks.map((t) => ({ label: t.name, value: t.id }))"
+            :tracks-loading="demoTracksLoading"
+            :selected-track="selectedDemoTrackId"
+            @play-pause="handlePlayPause"
+            @stop="handleStop"
+            @load-file="(file: File) => loadWavFile(file).catch(onAudioLoadError)"
+            @select-track="handleLoadDemoTrack"
+        />
 
         <ProseH3>Display settings</ProseH3>
         <div class="border-accessible-blue w-full border-1 rounded-md py-4 px-6 mb-6">
@@ -1649,126 +1643,8 @@ onUnmounted(async () => {
         </div>
 
         <div class="relative rounded-lg w-full h-[600px] bg-black" ref="canvasContainer">
-            <!-- Controls overlay -->
-            <div v-show="showControlsOverlay" class="absolute top-4 left-4 z-10 flex flex-col gap-1 opacity-60">
-                <div class="flex gap-4">
-                    <div class="flex flex-col gap-2">
-                        <span class="text-white font-bold">Navigation</span>
-                        <div class="border border-white/60 rounded-md p-3 flex flex-col gap-3 mb-2">
-                            <!-- WASD keys -->
-                            <div class="flex flex-col items-start gap-1">
-                                <!-- Top row: W (offset to align with S) -->
-                                <kbd class="overlay-kbd overlay-kbd-lg ml-9">W</kbd>
-                                <!-- Bottom row: A S D -->
-                                <div class="flex gap-1">
-                                    <kbd class="overlay-kbd overlay-kbd-lg">A</kbd>
-                                    <kbd class="overlay-kbd overlay-kbd-lg">S</kbd>
-                                    <kbd class="overlay-kbd overlay-kbd-lg">D</kbd>
-                                </div>
-                            </div>
-
-                            <!-- Arrow keys -->
-                            <div class="flex flex-col items-start gap-1">
-                                <!-- Top row: Up (offset to align with Down) -->
-                                <kbd class="overlay-kbd overlay-kbd-lg ml-9">
-                                    <UIcon name="mingcute-arrow-up-line" class="text-white size-4" />
-                                </kbd>
-                                <!-- Bottom row: Left Down Right -->
-                                <div class="flex gap-1">
-                                    <kbd class="overlay-kbd overlay-kbd-lg">
-                                        <UIcon name="mingcute-arrow-left-line" class="text-white size-4" />
-                                    </kbd>
-                                    <kbd class="overlay-kbd overlay-kbd-lg">
-                                        <UIcon name="mingcute-arrow-down-line" class="text-white size-4" />
-                                    </kbd>
-                                    <kbd class="overlay-kbd overlay-kbd-lg">
-                                        <UIcon name="mingcute-arrow-right-line" class="text-white size-4" />
-                                    </kbd>
-                                </div>
-                            </div>
-
-                            <div class="flex gap-1">
-                                <kbd class="overlay-kbd overlay-kbd-lg !w-13 !justify-start pl-1.25"
-                                    ><span class="scale-170 translate-y-[1px]">⇧</span></kbd
-                                >
-                                <kbd class="overlay-kbd overlay-kbd-lg text-[0.5rem] !w-22">SPC</kbd>
-                            </div>
-
-                            <!-- Mouse / Touch -->
-                            <div class="flex items-center gap-2">
-                                <UIcon name="mingcute-mouse-line" class="text-white size-9" />
-                                <div class="w-px h-5 bg-white/50"></div>
-                                <UIcon name="mingcute-finger-swipe-line" class="text-white size-9" />
-                            </div>
-                            <div class="flex items-center gap-2 mb-2">
-                                <kbd class="overlay-kbd overlay-kbd-sm">[</kbd>
-                                <UIcon
-                                    :name="
-                                        movement.speedIndex.value >= 0
-                                            ? 'mingcute-tag-chevron-fill'
-                                            : 'mingcute-tag-chevron-line'
-                                    "
-                                    class="text-white size-4"
-                                />
-                                <UIcon
-                                    :name="
-                                        movement.speedIndex.value >= 1
-                                            ? 'mingcute-tag-chevron-fill'
-                                            : 'mingcute-tag-chevron-line'
-                                    "
-                                    class="text-white size-4"
-                                />
-                                <UIcon
-                                    :name="
-                                        movement.speedIndex.value >= 2
-                                            ? 'mingcute-tag-chevron-fill'
-                                            : 'mingcute-tag-chevron-line'
-                                    "
-                                    class="text-white size-4"
-                                />
-                                <kbd class="overlay-kbd overlay-kbd-sm">]</kbd>
-                            </div>
-                        </div>
-                        <span class="text-white font-bold">Rendering Options</span>
-                        <div class="border border-white/60 rounded-md p-3 mb-4 flex flex-col gap-3">
-                            <div class="flex items-center gap-2">
-                                <span class="text-white/80 text-s">Render Mode</span>
-                                <kbd class="overlay-kbd overlay-kbd-sm">R</kbd>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="text-white/80 text-s">Oscillation</span>
-                                <kbd class="overlay-kbd overlay-kbd-sm">O</kbd>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-white text-s font-bold">Hide Overlay</span>
-                            <kbd class="overlay-kbd overlay-kbd-sm">H</kbd>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col gap-2">
-                        <div class="flex flex-col items-start gap-2">
-                            <span class="text-white font-bold">Play/Pause</span>
-                            <kbd class="overlay-kbd overlay-kbd-lg text-[0.5rem] !w-22 mb-2" aria-label="Enter">
-                                ENTER
-                                <span class="ml-1 text-2xl translate-y-[-3px]">↵</span>
-                            </kbd>
-
-                            <div class="flex items-center gap-2">
-                                <span class="text-white font-bold">Camera mode</span>
-                                <kbd class="overlay-kbd overlay-kbd-sm">C</kbd>
-                            </div>
-                            <kbd
-                                class="overlay-kbd overlay-kbd-lg text-[0.5rem] !w-30 !h-12 mb-2 !justify-start pl-2 gap-2"
-                                aria-label="Camera"
-                            >
-                                <UIcon name="mingcute-camcorder-line" class="text-white size-8" />
-                                <span>{{ cameraMode.charAt(0).toUpperCase() + cameraMode.slice(1) }}</span>
-                            </kbd>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- Controls overlay (dark-glass HUD) -->
+            <LayoutControlsOverlay v-show="showControlsOverlay" class="absolute top-4 left-4 z-10" />
 
             <UButton
                 v-if="showControlsOverlay"
