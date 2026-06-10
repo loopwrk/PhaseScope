@@ -57,6 +57,7 @@ export default defineNuxtConfig({
     // from browser-only state (media queries, colour mode, the Three.js engine).
     // The rest of the site keeps SSR.
     routeRules: {
+        '/': { redirect: '/phasescope' },
         '/phasescope': { ssr: false },
     },
     devtools: { enabled: true },

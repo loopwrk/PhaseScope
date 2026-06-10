@@ -607,6 +607,11 @@ const playAutoTrackAtIndex = async (index: number) => {
     await handlePlay();
 };
 
+const handleSelectDemoTrack = (trackId: string) => {
+    const index = sortedDemoTracks.value.findIndex((t) => t.id === trackId);
+    if (index !== -1) void playAutoTrackAtIndex(index);
+};
+
 onTrackEnded(() => {
     // Only auto-advance if a demo track was playing (not a user-loaded file)
     if (autoPlayIndex.value < 0) return;
@@ -1423,7 +1428,7 @@ onUnmounted(async () => {
             @play-pause="handlePlayPause"
             @stop="handleStop"
             @load-file="(file: File) => loadWavFile(file).catch(onAudioLoadError)"
-            @select-track="handleLoadDemoTrack"
+            @select-track="handleSelectDemoTrack"
         />
     </div>
 </template>
