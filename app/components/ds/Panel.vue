@@ -59,8 +59,9 @@ withDefaults(defineProps<{ variant?: 'solid' | 'glass' | 'elevated'; title?: str
     color: var(--text-muted);
 }
 .panel__title {
+    color: var(--ui-text-white);
     font-family: var(--font-mono);
-    font-size: var(--font-size-caption);
+    font-size: var(--text-heading);
     letter-spacing: var(--label-tracking-wide);
     text-transform: uppercase;
 }

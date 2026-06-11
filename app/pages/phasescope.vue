@@ -28,9 +28,21 @@ const renderer = useCorridorRenderer(scene);
 const dreamBg = useDreamBackground(scene, settings.dreamBgEnabled);
 const heavenlyBg = useHeavenlyBackground(scene, settings.heavenlyBgEnabled);
 
+// 3D Lissajous scope mode: the live phase portrait in a cube, no time axis.
+// Entered by clicking the goniometer; the corridor hides while it is active.
+const scope3d = ref(false);
+
 const player = useWavPlayer();
 const geometry = usePhaseGeometry({ renderer, renderMode, topologyMode, audio: player.audio });
-const camera = useAutoCamera({ three, renderer, geometry, topologyMode, wavLoaded: player.wavLoaded });
+const camera = useAutoCamera({
+    three,
+    renderer,
+    geometry,
+    topologyMode,
+    wavLoaded: player.wavLoaded,
+    lissajousActive: scope3d,
+    lissajousDimension: usePersistedState<'3d' | '2d'>('scope:liss-dimension', () => '3d'),
+});
 const playback = usePlaybackOrchestration({ three, geometry, camera, topologyMode, player });
 
 // Flat bindings for the template
@@ -39,13 +51,10 @@ const {
     corridorMeta,
     trackCoveragePercent,
     useAlternateColors,
+    channelBias,
     effectiveMaxPoints,
     pointsWarningLevel,
     formatPointCount,
-    narrativeEnabled,
-    narrativeAutoStage,
-    narrativeStage,
-    narrativeHandedBias,
 } = geometry;
 const { cameraMode, setCameraMode, toggleCameraMode } = camera;
 const {
@@ -66,14 +75,19 @@ const {
 } = playback;
 
 // Manual camera input: WASD movement and pointer lock both hand the camera
-// to the user (auto-follow disengages via cameraMode = 'free').
+// to the user (auto-follow disengages via cameraMode = 'free') - EXCEPT in
+// the scope's 2D view, which is dolly-only with the gaze locked.
+const scope2dLocked = computed(() => scope3d.value && lissajous.dimension.value === '2d');
+
 const movement = useKeyboardMovement(three.controls, {
+    dollyOnly: scope2dLocked,
     onMovement: () => {
-        cameraMode.value = 'free';
+        if (!scope2dLocked.value) cameraMode.value = 'free';
     },
 });
 
 usePointerLockCamera(three.controls, canvasContainer, {
+    disabled: scope2dLocked,
     onLock: () => {
         // Disable auto-follow when user takes manual camera control
         cameraMode.value = 'free';
@@ -131,8 +145,14 @@ const toggleSettings = () => {
 const goniometerSource = () => {
     const raw = toRaw(corridorState.value);
     if (!raw.ch0 || !raw.ch1 || !raw.buffer) return null;
-    return { ch0: raw.ch0, ch1: raw.ch1, index: Math.floor(getPlaybackTimeSeconds() * raw.sr) };
+    return { ch0: raw.ch0, ch1: raw.ch1, index: Math.floor(getPlaybackTimeSeconds() * raw.sr), sr: raw.sr };
 };
+
+const lissajous = useLissajous3D(three, goniometerSource);
+watch(scope3d, (active) => {
+    lissajous.active.value = active;
+    renderer.setCorridorVisible(!active);
+});
 
 /* ---------- Background skyboxes (mutually exclusive) ---------- */
 
@@ -147,6 +167,7 @@ const onHeavenlyBgToggle = () => {
 
 const shortcuts = useKeyboardShortcuts();
 shortcuts.register('r', () => {
+    if (channelBias.value) return; // lines unavailable while the field is split
     renderMode.value = renderMode.value === 'points' ? 'lines' : 'points';
 });
 shortcuts.register('o', () => {
@@ -210,6 +231,8 @@ const animate = (now: number) => {
         });
     }
 
+    if (scope3d.value) lissajous.update();
+
     const r = three.renderer.value;
     const c = three.camera.value;
     dreamBg.update(now / 1000, c?.position);
@@ -238,6 +261,7 @@ onUnmounted(async () => {
     }
 
     await disposePlayback();
+    lissajous.dispose();
     dreamBg.dispose();
     heavenlyBg.dispose();
     three.dispose();
@@ -312,6 +336,7 @@ onUnmounted(async () => {
                 v-model:topology="topologyMode"
                 v-model:oscillation="oscillation.enabled.value"
                 v-model:reverse="useAlternateColors"
+                v-model:channel-bias="channelBias"
                 v-model:controlsOverlay="showControlsOverlay"
                 :dream="dreamBg.enabled.value"
                 :heavenly="heavenlyBg.enabled.value"
@@ -334,14 +359,7 @@ onUnmounted(async () => {
                 "
             >
                 <template #advanced>
-                    <LayoutAdvancedPanel
-                        v-model:open="advancedOptionsOpen"
-                        v-model:mode="oscillation.mode.value"
-                        v-model:narrative="narrativeEnabled"
-                        v-model:stage="narrativeStage"
-                        v-model:chirality="narrativeHandedBias"
-                        v-model:auto-stage="narrativeAutoStage"
-                    />
+                    <LayoutAdvancedPanel v-model:open="advancedOptionsOpen" v-model:mode="oscillation.mode.value" />
                 </template>
             </LayoutDisplayPanel>
         </div>
@@ -359,14 +377,29 @@ onUnmounted(async () => {
             @close="showControlsOverlay = false"
         />
 
-        <!-- Bottom-left: goniometer HUD (the instantaneous phase portrait).
-             Left side: the controls overlay runs nearly full-height on the
-             right, while the settings panel leaves this corner clear. -->
-        <LayoutGoniometer
+        <!-- Bottom-left: goniometer HUD (the instantaneous phase portrait)
+             plus, while the 3D scope is active, its settings rising above. -->
+        <!-- On short windows the panel sits beside the goniometer instead of
+             above it, so the stack never reaches the header/logo -->
+        <div
             v-if="showGoniometer && wavLoaded"
-            class="ps-rise absolute bottom-5 left-5 z-20 hidden md:flex"
-            :source="goniometerSource"
-        />
+            class="absolute bottom-5 left-5 z-20 hidden flex-col items-start gap-3 md:flex [@media(max-height:880px)]:flex-row [@media(max-height:880px)]:items-end"
+        >
+            <LayoutScopeSettingsPanel
+                v-if="scope3d"
+                class="ps-rise max-h-[calc(100svh_-_8rem)] overflow-y-auto"
+                v-model:dimension="lissajous.dimension.value"
+                v-model:line-width="lissajous.lineWidth.value"
+                v-model:colour-mode="lissajous.colourMode.value"
+                v-model:custom-colour="lissajous.customColour.value"
+            />
+            <LayoutGoniometer
+                class="ps-rise"
+                :source="goniometerSource"
+                :active3d="scope3d"
+                @toggle3d="scope3d = !scope3d"
+            />
+        </div>
 
         <!-- Bottom: transport dock (skip-link target: the primary controls) -->
         <main id="content" tabindex="-1" class="focus-visible:outline-none">

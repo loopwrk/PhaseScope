@@ -59,9 +59,9 @@
 
     /* --- Typographic scale (raw sizes; mapped to text-* in main.css) --- */
     --font-size-caption: 0.6875rem; /* 11px - micro / uppercase labels */
-    --font-size-detail: 0.8125rem; /* 13px - secondary / control labels */
+    --font-size-detail: 1rem; /* 16px - secondary / control labels */
     --font-size-body: 0.875rem; /* 14px - body copy */
-    --font-size-heading: 1rem; /* 16px - panel / section headings */
+    --font-size-heading: 0.875rem; /* 14px - panel / section headings */
     --font-size-title: 1.25rem; /* 20px - view titles */
     --font-size-display: 1.75rem; /* 28px - large display text */
     --font-size-mega: 2.75rem; /* 44px - hero numerals / readouts */
@@ -119,10 +119,10 @@
     --surface-sunken: oklch(0.1165 0.0142 272.6); /* #04050a - deepest wells / slider grooves */
 
     --text: oklch(0.9374 0.0125 271.28); /* #e7eaf3 - cool near-white */
-    --text-muted: oklch(0.6763 0.0263 267.82); /* #9097a8 - tracked labels, secondary copy */
+    --text-muted: oklch(0.7444 0.0263 267.82); /* #9097a8 - tracked labels, secondary copy */
     --text-faint: oklch(0.4972 0.0281 270); /* #5c6273 - disabled, hint, watermark */
 
-    --border: oklch(0.2794 0.0305 270.91); /* #232838 - hairline divider on glass */
+    --border: var(--scope-border); /* #232838 - hairline divider on glass */
     --border-strong: oklch(0.355 0.0379 270.13); /* #343b50 - panel edges / focused fields */
 
     --success-soft: color-mix(in oklch, var(--success) 20%, transparent);

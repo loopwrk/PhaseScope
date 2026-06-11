@@ -6,6 +6,8 @@
 import KeyCap from '../ds/KeyCap.vue';
 import IconButton from '../ds/IconButton.vue';
 
+import { segBaseSm as segBase, segActive, segIdle } from '../ds/segmented';
+
 type CameraMode = 'free' | 'follow' | 'orbit';
 
 withDefaults(
@@ -26,11 +28,6 @@ const cameraModes: { label: string; value: CameraMode }[] = [
     { label: 'Orbit', value: 'orbit' },
 ];
 const speeds = ['Slow', 'Med', 'Fast'];
-
-const segBase =
-    'rounded-none border px-2 py-1 font-mono text-caption uppercase tracking-label transition-[transform,box-shadow,color] duration-150 [clip-path:var(--clip-chamfer-sm)] focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-(--focus-glow) active:translate-y-px';
-const segActive = 'border-(--accent) text-(--accent) shadow-(--shadow-glow-accent)';
-const segIdle = 'border-(--border-strong) text-(--text-muted) hover:text-(--text)';
 
 // Static reference (Camera + Speed live above; tracks use { } - [ ] is speed).
 const sections: { label: string; keys: { k: string; d: string }[] }[] = [

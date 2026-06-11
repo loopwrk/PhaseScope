@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { stereoCorrelation } from '~/utils/audio/analysis';
 /* Goniometer - the instantaneous phase portrait, PhaseScope's own ancestor
    as a HUD instrument. Draws the current playback window's raw Lissajous
    figure (x = L, y = R, matching the 3D portrait convention) on a small
@@ -19,7 +20,8 @@ export interface GoniometerSource {
     index: number;
 }
 
-const props = defineProps<{ source: () => GoniometerSource | null }>();
+const props = defineProps<{ source: () => GoniometerSource | null; active3d?: boolean }>();
+const emit = defineEmits<{ toggle3d: [] }>();
 
 const SIZE = 136; // CSS px, square
 const WINDOW = 1024; // samples for the correlation estimate
@@ -84,18 +86,7 @@ const draw = (now: number) => {
     const start = Math.max(0, Math.min(index - WINDOW / 2, ch0.length - WINDOW));
     if (ch0.length < WINDOW) return;
 
-    // Correlation over the window
-    let eL = 0;
-    let eR = 0;
-    let eLR = 0;
-    for (let i = start; i < start + WINDOW; i++) {
-        const l = ch0[i] ?? 0;
-        const r = ch1[i] ?? 0;
-        eL += l * l;
-        eR += r * r;
-        eLR += l * r;
-    }
-    corr.value = eL > 1e-9 && eR > 1e-9 ? eLR / Math.sqrt(eL * eR) : null;
+    corr.value = stereoCorrelation(ch0, ch1, start, WINDOW);
 
     // Trace: x = L, y = R (matching the corridor portrait; y up)
     const half = w / 2;
@@ -131,23 +122,41 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <aside class="ps-glass flex flex-col gap-2 p-3 [clip-path:var(--clip-chamfer-md)]" aria-label="Goniometer">
-        <div class="flex items-baseline justify-between gap-3">
+    <!-- The whole frame is the toggle: clicking anywhere (figure, label or
+         the corner arrow) enters/exits the 3D Lissajous scope -->
+    <button
+        type="button"
+        class="ps-glass group flex cursor-pointer flex-col gap-2 p-3 text-left [clip-path:var(--clip-chamfer-md)] focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
+        :style="active3d ? { borderColor: 'var(--accent)' } : undefined"
+        :aria-pressed="active3d"
+        :title="active3d ? 'Exit the 3D scope' : 'Enter the 3D scope'"
+        aria-label="Toggle the 3D Lissajous scope"
+        @click="emit('toggle3d')"
+    >
+        <div class="flex w-full items-center justify-between gap-3">
             <p class="ps-label">Phase</p>
-            <p
-                class="font-mono text-caption font-semibold tracking-label tabular-nums"
-                :class="corr !== null && corr < 0 ? 'text-(--scope-magenta)' : 'text-(--scope-cyan)'"
-                aria-label="Stereo correlation"
-            >
-                CORR {{ corrLabel }}
-            </p>
+            <div class="flex items-center gap-2">
+                <p
+                    class="font-mono text-caption font-semibold tracking-label tabular-nums"
+                    :class="corr !== null && corr < 0 ? 'text-(--scope-magenta)' : 'text-(--scope-cyan)'"
+                    aria-label="Stereo correlation"
+                >
+                    CORR {{ corrLabel }}
+                </p>
+                <!-- Expand/collapse affordance at the frame's top-right corner -->
+                <UIcon
+                    :name="active3d ? 'i-lucide-arrow-down-left' : 'i-lucide-arrow-up-right'"
+                    class="size-4 shrink-0 text-(--accent) transition-transform duration-150 motion-safe:group-hover:translate-x-0.5 motion-safe:group-hover:-translate-y-0.5"
+                    aria-hidden="true"
+                />
+            </div>
         </div>
         <canvas
             ref="canvasEl"
-            class="bg-(--surface-sunken) [clip-path:var(--clip-chamfer-sm)]"
+            class="block bg-(--surface-sunken) [clip-path:var(--clip-chamfer-sm)]"
             :style="{ width: `${SIZE}px`, height: `${SIZE}px` }"
             role="img"
             aria-label="Instantaneous Lissajous figure of the current audio"
         ></canvas>
-    </aside>
+    </button>
 </template>

@@ -8,11 +8,11 @@ import type { TopologyMode } from '~/composables/usePhaseGeometry.client';
  */
 export function useScopeSettings() {
     return {
-        renderMode: useState<RenderMode>('scope:render-mode', () => 'points'),
-        topologyMode: useState<TopologyMode>('scope:topology', () => 'corridor'),
-        showGoniometer: useState<boolean>('scope:goniometer', () => true),
-        advancedOptionsOpen: useState<boolean>('scope:advanced-open', () => false),
-        dreamBgEnabled: useState<boolean>('scope:dream-bg', () => false),
-        heavenlyBgEnabled: useState<boolean>('scope:heavenly-bg', () => false),
+        renderMode: usePersistedState<RenderMode>('scope:render-mode', () => 'points'),
+        topologyMode: usePersistedState<TopologyMode>('scope:topology', () => 'corridor'),
+        showGoniometer: usePersistedState<boolean>('scope:goniometer', () => true),
+        advancedOptionsOpen: usePersistedState<boolean>('scope:advanced-open', () => false),
+        dreamBgEnabled: usePersistedState<boolean>('scope:dream-bg', () => false),
+        heavenlyBgEnabled: usePersistedState<boolean>('scope:heavenly-bg', () => false),
     };
 }

@@ -22,7 +22,7 @@ withDefaults(
         :disabled="disabled"
         :orientation="orientation"
         :ui="{
-            base: 'rounded-none [clip-path:var(--clip-chamfer-sm)] focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-(--focus-glow)',
+            base: 'rounded-none [clip-path:var(--clip-chamfer-sm)] focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-(--focus-glow) ring-(--scope-cyan) ',
             indicator: 'rounded-none [clip-path:var(--clip-chamfer-sm)]',
             description: 'text-(--text-muted)',
         }"

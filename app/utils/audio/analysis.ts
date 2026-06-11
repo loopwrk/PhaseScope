@@ -102,3 +102,34 @@ export const ampToOscillationRange = (
     const range = maxAmp - minAmp;
     return clampedAmp * range + minAmp;
 };
+
+// Stereo correlation over a window: +1 mono (L = R), 0 decorrelated,
+// -1 anti-phase. The goniometer's readout and the phase-space "width" of
+// everything PhaseScope draws. Returns null for silence (undefined ratio).
+export const stereoCorrelation = (
+    ch0: Float32Array,
+    ch1: Float32Array,
+    start: number,
+    length: number
+): number | null => {
+    let eL = 0;
+    let eR = 0;
+    let eLR = 0;
+    const end = Math.min(start + length, ch0.length);
+    for (let i = Math.max(0, start); i < end; i++) {
+        const l = ch0[i] ?? 0;
+        const r = ch1[i] ?? 0;
+        eL += l * l;
+        eR += r * r;
+        eLR += l * r;
+    }
+    return eL > 1e-9 && eR > 1e-9 ? eLR / Math.sqrt(eL * eR) : null;
+};
+
+// Pitch-chroma hue: the fractional octave position of a frequency, so the
+// full colour wheel cycles once per octave and a note keeps its colour in
+// every octave. Reference defaults to C0 (hue 0 = C = red).
+export const pitchChromaHue = (hz: number, refHz: number = 16.3516): number => {
+    if (!(hz > 0)) return 0;
+    return ((Math.log2(hz / refHz) % 1) + 1) % 1;
+};

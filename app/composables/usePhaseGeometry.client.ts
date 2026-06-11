@@ -8,7 +8,7 @@ import {
     ampToOscillationRange,
 } from '~/utils/audio/analysis';
 import { precomputeAttractorSpine } from '~/utils/attractor';
-import { useNarrativeTransform } from '~/composables/experimental/useNarrativeTransform';
+import { channelBiasTransform, CHANNEL_BIAS_Z_KEEP } from '~/utils/channelBias';
 import type { RenderMode, useCorridorRenderer } from '~/composables/useCorridorRenderer.client';
 
 /* usePhaseGeometry - the audio-to-geometry engine.
@@ -17,9 +17,7 @@ import type { RenderMode, useCorridorRenderer } from '~/composables/useCorridorR
    arrays), the per-topology frame mappers and registry, and the
    progressive build that paces geometry to audio playback. The page
    supplies the renderer, the reactive modes, and the playback clock;
-   everything that writes into the position/colour buffers lives here
-   (including the experimental narrative transform, whose controls are
-   re-exposed flat). */
+   everything that writes into the position/colour buffers lives here. */
 
 export type TopologyMode = 'corridor' | 'sphere' | 'attractor' | 'mobius';
 
@@ -52,8 +50,6 @@ interface FramePoint {
 }
 
 interface FrameMapper {
-    /** Narrative-transform z anchor (corridor backbone z; 0 elsewhere) */
-    z0: number;
     mapPoint: (u: number, L: number, R: number, normalizedAmp: number) => FramePoint;
 }
 
@@ -63,7 +59,6 @@ const corridorFrameMapper: FrameMapperFactory = (frameIndex, raw, meta) => {
     const { frameCount, xyScale, ringRadius } = raw;
     const z0 = (frameIndex - frameCount / 2) * meta.zStep;
     return {
-        z0,
         // Ring + Lissajous portrait: each frame is a "floating wreath" you can
         // walk through; the portrait controls the vertical shape, the ring
         // wraps it, and z0 strings the frames along the time corridor.
@@ -84,7 +79,6 @@ const sphereFrameMapper: FrameMapperFactory = (frameIndex, raw) => {
     const sinPhi = Math.sin(phi);
     const cosPhi = Math.cos(phi);
     return {
-        z0: 0,
         // u is the azimuth; amplitude displaces the surface radially
         mapPoint: (u, _L, _R, normalizedAmp) => {
             const r = baseRadius + normalizedAmp * displacementScale;
@@ -117,7 +111,6 @@ const attractorFrameMapper: FrameMapperFactory = (frameIndex, raw) => {
     const audioTubeScale = 0.6;
 
     return {
-        z0: 0,
         // Tube cross-section: a ring around the spine in its Frenet frame;
         // the radius breathes with audio amplitude
         mapPoint: (u, _L, _R, normalizedAmp) => {
@@ -154,7 +147,6 @@ const mobiusFrameMapper: FrameMapperFactory = (frameIndex, raw) => {
     const centreZ = sinT * bandRadius;
 
     return {
-        z0: 0,
         // Cross-section coordinates (a, b) live in a basis that twists with
         // theta: u-hat = cosW*r-hat + sinW*y-hat, v-hat = -sinW*r-hat + cosW*y-hat,
         // where r-hat is the outward radial direction at this point of the lap.
@@ -253,9 +245,11 @@ export const TOPOLOGIES: Record<TopologyMode, TopologyDef> = {
     },
 };
 
-// Performance warning thresholds
-const POINTS_WARNING_THRESHOLD = 3_000_000;
-const POINTS_DANGER_THRESHOLD = 8_000_000;
+// Performance warning thresholds. Tuned for the optimised engine (ranged
+// GPU uploads, shared buffers, shader-side oscillation): the old limits
+// were upload/CPU-bound; the remaining ceiling is raw vertex throughput.
+const POINTS_WARNING_THRESHOLD = 8_000_000;
+const POINTS_DANGER_THRESHOLD = 20_000_000;
 
 interface UsePhaseGeometryOptions {
     renderer: ReturnType<typeof useCorridorRenderer>;
@@ -290,7 +284,7 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
 
     // User-tweakable settings live in useState (keys documented in
     // useScopeSettings) so they survive navigation away from the page.
-    const corridorMeta = useState<CorridorMeta>('scope:corridor-meta', () => ({
+    const corridorMeta = usePersistedState<CorridorMeta>('scope:corridor-meta', () => ({
         zStep: 0.08, // distance between frames along Z axis
         pointsPerFrame: 512,
         windowSize: 2048, // samples per frame window
@@ -298,21 +292,25 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
     }));
 
     // Track coverage as percentage (0-100)
-    const trackCoveragePercent = useState('scope:track-coverage', () => 100);
+    const trackCoveragePercent = usePersistedState('scope:track-coverage', () => 100);
 
     // Reverse colour spectrum (the V shortcut / settings toggle)
-    const useAlternateColors = useState('scope:reverse-colours', () => false);
+    const useAlternateColors = usePersistedState('scope:reverse-colours', () => false);
 
-    // Experimental narrative transform: owned here because it writes into the
-    // same per-point pipeline; its controls are re-exposed flat below.
-    const { narrativeEnabled, narrativeAutoStage, narrativeStage, narrativeHandedBias, applyNarrativeTransform } =
-        useNarrativeTransform(corridorState);
-
-    // Repaint existing points when the narrative transform switches on
-    watch(narrativeEnabled, (enabled) => {
-        if (renderer.hasGeometry() && enabled) {
-            renderer.markGeometryForUpdate(true, true);
-        }
+    // Channel bias: the stereo field pulled apart into left/right
+    // populations - works in every topology. Lines would bridge the gap
+    // with long jumps, so the toggle locks render mode to points; and the
+    // time-budgeted build makes a full retro-rebuild cheap, so flipping it
+    // repaints the whole structure rather than only new frames.
+    const channelBias = usePersistedState('scope:channel-bias', () => false);
+    watch(channelBias, (on) => {
+        if (on) renderMode.value = 'points';
+        if (renderer.hasGeometry()) corridorState.value.builtFrames = 0; // rebuild to playhead
+    });
+    // Defensive half of the two-way exclusion: even if the disabled radio
+    // is bypassed (shortcut, stale UI), lines and channel bias never coexist
+    watch(renderMode, (mode) => {
+        if (mode === 'lines' && channelBias.value) renderMode.value = 'points';
     });
 
     /* ---------- Point budget / performance computeds ---------- */
@@ -421,7 +419,7 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         const { pointsPerFrame, windowSize, hopSize } = meta;
         // Use toRaw to ensure we write to the actual Float32Arrays, not Vue proxies
         const rawState = toRaw(corridorState.value);
-        const { ch0, ch1, frameCount, pos } = rawState;
+        const { ch0, ch1, pos } = rawState;
         if (!pos || !ch0 || !ch1 || !renderer.hasGeometry()) return;
         if (!oscData) return;
 
@@ -470,15 +468,10 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
             const R = ch1[i] ?? 0;
             const normalizedAmp = clamp(Math.sqrt(L * L + R * R), 0, 1);
 
-            const transformed = applyNarrativeTransform(frame.mapPoint(u, L, R, normalizedAmp), {
-                L,
-                R,
-                normalizedAmp,
-                uAngle: u,
-                frameIndex,
-                frameCount,
-                z0: frame.z0,
-            });
+            let transformed = frame.mapPoint(u, L, R, normalizedAmp);
+            if (channelBias.value) {
+                transformed = channelBiasTransform(transformed, { L, R, normalizedAmp, frameIndex, uAngle: u }, 1);
+            }
 
             pos[p] = transformed.x;
             pos[p + 1] = transformed.y;
@@ -560,21 +553,27 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         renderer.uploadBuiltRange(firstFrame * pointsPerFrame, built * pointsPerFrame);
     };
 
+    /** The corridor head's anchor as actually rendered: channel bias
+     *  crushes z, and the camera must follow the crushed head. The split
+     *  centre stays on the axis, so x/y remain 0. Identity when off. */
+    const transformHeadAnchor = (frameIndex: number) => {
+        const { frameCount } = corridorState.value;
+        const z0 = (frameIndex - frameCount / 2) * corridorMeta.value.zStep;
+        return { x: 0, y: 0, z: channelBias.value ? z0 * CHANNEL_BIAS_Z_KEEP : z0 };
+    };
+
     return {
         corridorState,
         corridorMeta,
         trackCoveragePercent,
         useAlternateColors,
+        channelBias,
         effectiveMaxPoints,
         pointsWarningLevel,
         formatPointCount,
-        // narrative controls (flat, for v-model wiring)
-        narrativeEnabled,
-        narrativeAutoStage,
-        narrativeStage,
-        narrativeHandedBias,
         clear,
         initFromBuffer,
         updateProgressiveBuild,
+        transformHeadAnchor,
     };
 }

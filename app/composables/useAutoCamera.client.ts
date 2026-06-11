@@ -15,16 +15,32 @@ import { TOPOLOGIES } from '~/composables/usePhaseGeometry.client';
 
 export type CameraMode = 'free' | 'follow' | 'orbit';
 
+// Orbit for the 3D Lissajous scope: a tighter circle around the cube
+const LISSAJOUS_ORBIT = {
+    radius: 9,
+    speed: 0.18,
+    elevCosFreq: 0.14,
+    elevCosAmp: 0.8,
+    elevSinFreq: 0.37,
+    elevSinAmp: 0.3,
+    wobbleFreq: 0.45,
+    wobbleAmp: 1.2,
+};
+
 interface UseAutoCameraOptions {
     three: ReturnType<typeof useThree>;
     renderer: ReturnType<typeof useCorridorRenderer>;
     geometry: ReturnType<typeof usePhaseGeometry>;
     topologyMode: Ref<TopologyMode>;
     wavLoaded: Ref<boolean>;
+    /** While the 3D Lissajous scope is active, orbit its cube instead */
+    lissajousActive?: Ref<boolean>;
+    /** In the scope's 2D mode, lock straight-on to the cube's front face */
+    lissajousDimension?: Ref<'3d' | '2d'>;
 }
 
 export function useAutoCamera(options: UseAutoCameraOptions) {
-    const { three, renderer, geometry, topologyMode, wavLoaded } = options;
+    const { three, renderer, geometry, topologyMode, wavLoaded, lissajousActive, lissajousDimension } = options;
 
     const cameraMode = ref<CameraMode>('orbit');
 
@@ -44,6 +60,17 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
         applyTopologyCameraDefaults();
     });
 
+    // The scope's 2D view is a LOCK: if the user was flying free, hand the
+    // camera back to the auto path so the front-face hold actually engages
+    if (lissajousActive && lissajousDimension) {
+        watch([lissajousActive, lissajousDimension], ([active, dim]) => {
+            if (active && dim === '2d') {
+                cameraMode.value = 'orbit';
+                if (document.pointerLockElement) document.exitPointerLock();
+            }
+        });
+    }
+
     const update = (time: number) => {
         if (cameraMode.value === 'free' || !renderer.hasGeometry() || !geometry.corridorState.value.buffer) return;
 
@@ -55,8 +82,13 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
         let targetPos: { x: number; y: number; z: number };
         let lookTarget: THREE.Vector3;
 
-        const orbit = TOPOLOGIES[topologyMode.value].orbit;
-        if (orbit) {
+        if (lissajousActive?.value && lissajousDimension?.value === '2d') {
+            // 2D scope: hold square-on to the front face (x/y centred, gaze
+            // locked); Z belongs to the W/S dolly, clamped at the pane
+            targetPos = { x: 0, y: galleryY, z: Math.min(14, Math.max(3.2, camObj.position.z)) };
+            lookTarget = new THREE.Vector3(0, galleryY, 0);
+        } else if (lissajousActive?.value || TOPOLOGIES[topologyMode.value].orbit) {
+            const orbit = lissajousActive?.value ? LISSAJOUS_ORBIT : TOPOLOGIES[topologyMode.value].orbit!;
             // Centre-orbiting topologies (sphere, attractor): a Lissajous-like
             // path around the origin whose constants come from the registry.
             // Elevation starts at the top (cos term = 1) and naturally drifts
@@ -80,10 +112,9 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
             const headFrameIndex = geometry.corridorState.value.builtFrames - 1;
             if (headFrameIndex < 0) return;
 
-            const frameCenteringDivisor = 2;
-            const headZ =
-                (headFrameIndex - geometry.corridorState.value.frameCount / frameCenteringDivisor) *
-                geometry.corridorMeta.value.zStep;
+            // Where the head ACTUALLY is: channel bias crushes the
+            // corridor's z, so ask the engine rather than assuming.
+            const head = geometry.transformHeadAnchor(headFrameIndex);
 
             if (cameraMode.value === 'orbit') {
                 // Drone-like orbit around the corridor head
@@ -99,9 +130,9 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
 
                 // Orbit in XZ plane around the head, with Y oscillation
                 targetPos = {
-                    x: Math.cos(horizontalAngle) * orbitRadius * (1 + Math.sin(tiltAngle) * 0.3),
-                    y: galleryY + 2 + Math.sin(verticalAngle) * verticalAmplitude,
-                    z: headZ + Math.sin(horizontalAngle) * orbitRadius,
+                    x: head.x + Math.cos(horizontalAngle) * orbitRadius * (1 + Math.sin(tiltAngle) * 0.3),
+                    y: galleryY + head.y + 2 + Math.sin(verticalAngle) * verticalAmplitude,
+                    z: head.z + Math.sin(horizontalAngle) * orbitRadius,
                 };
             } else {
                 // Follow mode: isometric angle behind and above the head
@@ -112,13 +143,13 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
                 };
 
                 targetPos = {
-                    x: offset.x,
-                    y: galleryY + offset.y,
-                    z: headZ + offset.z,
+                    x: head.x + offset.x,
+                    y: galleryY + head.y + offset.y,
+                    z: head.z + offset.z,
                 };
             }
 
-            lookTarget = new THREE.Vector3(0, galleryY, headZ);
+            lookTarget = new THREE.Vector3(head.x, galleryY + head.y, head.z);
         }
 
         // Smooth camera movement

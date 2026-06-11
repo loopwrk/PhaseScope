@@ -19,7 +19,7 @@ export interface CorridorConfig {
    - The progressive build appends frames to a contiguous span, so build
      ticks call uploadBuiltRange() and only that span is sent to the GPU
      (three.js updateRanges -> gl.bufferSubData).
-   - Full rewrites (the narrative repaint) call markGeometryForUpdate(),
+   - Full rewrites (in-place repaints) call markGeometryForUpdate(),
      which clears pending ranges - empty updateRanges means three.js
      uploads the whole buffer.
 
@@ -175,7 +175,6 @@ export function useCorridorRenderer(scene: THREE.Scene) {
         const points = markRaw(new THREE.Points(gPoints, mPoints));
         points.position.set(pointsPos.x, pointsPos.y, pointsPos.z);
         points.frustumCulled = false;
-        points.visible = renderMode.value === 'points';
         snapshotCorridorPoints.value = points;
         scene.add(points);
 
@@ -200,9 +199,11 @@ export function useCorridorRenderer(scene: THREE.Scene) {
         const lines = markRaw(new THREE.Line(gLine, mLine));
         lines.position.set(linesPos.x, linesPos.y, linesPos.z);
         lines.frustumCulled = false;
-        lines.visible = renderMode.value === 'lines';
         snapshotCorridorLines.value = lines;
         scene.add(lines);
+
+        currentMode = renderMode.value;
+        applyVisibility();
 
         return { positions, colors, oscData };
     };
@@ -230,7 +231,7 @@ export function useCorridorRenderer(scene: THREE.Scene) {
     };
 
     /** Full-buffer upload, for paths that rewrite points in place (the
-     *  narrative repaint). Clearing pending ranges matters: with ranges
+     *  in-place repaint). Clearing pending ranges matters: with ranges
      *  queued, three.js would upload only those spans. */
     const markGeometryForUpdate = (updatePositions = true, updateColors = false) => {
         if (updatePositions && posAttr) {
@@ -243,13 +244,27 @@ export function useCorridorRenderer(scene: THREE.Scene) {
         }
     };
 
-    const setRenderMode = (mode: RenderMode) => {
+    // Visibility = render mode AND not hidden (the 3D Lissajous scope hides
+    // the corridor while it owns the stage; the build continues regardless)
+    let currentMode: RenderMode = 'points';
+    let corridorHidden = false;
+    const applyVisibility = () => {
         if (snapshotCorridorPoints.value) {
-            snapshotCorridorPoints.value.visible = mode === 'points';
+            snapshotCorridorPoints.value.visible = !corridorHidden && currentMode === 'points';
         }
         if (snapshotCorridorLines.value) {
-            snapshotCorridorLines.value.visible = mode === 'lines';
+            snapshotCorridorLines.value.visible = !corridorHidden && currentMode === 'lines';
         }
+    };
+
+    const setRenderMode = (mode: RenderMode) => {
+        currentMode = mode;
+        applyVisibility();
+    };
+
+    const setCorridorVisible = (visible: boolean) => {
+        corridorHidden = !visible;
+        applyVisibility();
     };
 
     const getColorArray = (): Float32Array | null => {
@@ -271,6 +286,7 @@ export function useCorridorRenderer(scene: THREE.Scene) {
         markGeometryForUpdate,
         setOscillation,
         setRenderMode,
+        setCorridorVisible,
         getColorArray,
         hasGeometry,
     };

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import Welcome from './Welcome.vue';
+import Welcome from './WelcomeIntro.vue';
 
 const meta: Meta<typeof Welcome> = {
     title: 'Welcome',

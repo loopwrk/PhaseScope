@@ -7,13 +7,13 @@ type BVariant = 'solid' | 'outline' | 'subtle';
 
 withDefaults(defineProps<{ color?: Color; variant?: BVariant; label?: string; live?: boolean; dot?: boolean }>(), {
     color: 'neutral',
-    variant: 'subtle',
+    variant: 'outline',
     live: false,
     dot: false,
 });
 
 const baseClass =
-    'font-mono text-caption font-medium uppercase tracking-label-wide rounded-none [clip-path:var(--clip-chamfer-sm)]';
+    'font-mono text-caption font-medium uppercase tracking-label-wide rounded-none [clip-path:var(--clip-chamfer-sm)] ';
 const liveClass = 'text-(--scope-magenta) border-(--scope-magenta) shadow-(--shadow-glow-live)';
 const neutralClass = 'text-(--text-muted)'; // quiet status chip (e.g. PAUSED)
 </script>
@@ -30,6 +30,8 @@ const neutralClass = 'text-(--text-muted)'; // quiet status chip (e.g. PAUSED)
             :class="{ 'ps-pulse-live': live }"
             aria-hidden="true"
         />
-        <slot>{{ label }}</slot>
+        <slot
+            ><span class="text-(--brand-secondary) text-[1rem]">{{ label }}</span></slot
+        >
     </UBadge>
 </template>

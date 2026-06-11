@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import Logo from '../components/ds/Logo.vue';
+import IconButton from '../components/ds/IconButton.vue';
 import type { TopologyMode } from '~/composables/usePhaseGeometry.client';
+
+// Segmented-control treatment shared with the HUD (ControlsOverlay)
+import { segActive, segBaseMd as segBase, segIdle } from '../components/ds/segmented';
 
 useSeoMeta({
     title: 'About — PhaseScope',
@@ -51,6 +55,14 @@ const topologies: TopologyCopy[] = [
 
 const activeTopology = ref<TopologyMode>('corridor');
 
+// Close = the back button: return wherever the reader came from. Direct
+// visits (no in-app history) fall back to the scope itself.
+const router = useRouter();
+const close = () => {
+    if (window.history.length > 1) router.back();
+    else router.push('/phasescope');
+};
+
 // "Walk through it" opens the scope in the topology being read: the
 // settings live in useState (useScopeSettings), so setting the mode here
 // carries across the client-side navigation.
@@ -58,12 +70,6 @@ const { topologyMode } = useScopeSettings();
 const launchActiveTopology = () => {
     topologyMode.value = activeTopology.value;
 };
-
-// Segmented-control treatment shared with the HUD (ControlsOverlay)
-const segBase =
-    'rounded-none border px-3 py-1.5 font-mono text-caption uppercase tracking-label transition-[transform,box-shadow,color] duration-150 [clip-path:var(--clip-chamfer-sm)] focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-(--focus-glow) active:translate-y-px';
-const segActive = 'border-(--accent) text-(--accent) shadow-(--shadow-glow-accent)';
-const segIdle = 'border-(--border-strong) text-(--text-muted) hover:text-(--text)';
 </script>
 
 <template>
@@ -71,16 +77,19 @@ const segIdle = 'border-(--border-strong) text-(--text-muted) hover:text-(--text
          31em at the 14px body size measures ~73 characters per line. -->
     <main class="min-h-svh bg-(--bg) px-6 py-14 text-(--text) md:py-20">
         <div class="mx-auto flex w-full max-w-[31em] flex-col gap-12">
-            <NuxtLink
-                to="/phasescope"
-                class="inline-flex w-fit items-center gap-3 text-(--text) no-underline hover:no-underline focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
-                aria-label="Back to the visualiser"
-            >
-                <Logo :size="34" class="shrink-0" />
-                <span class="font-display text-title font-semibold leading-none tracking-display">
-                    Phase<span class="text-(--accent)">Scope</span>
-                </span>
-            </NuxtLink>
+            <div class="flex items-center justify-between gap-4">
+                <NuxtLink
+                    to="/phasescope"
+                    class="inline-flex w-fit items-center gap-3 text-(--text) no-underline hover:no-underline focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
+                    aria-label="Back to the visualiser"
+                >
+                    <Logo :size="34" class="shrink-0" />
+                    <span class="font-display text-title font-semibold leading-none tracking-display">
+                        Phase<span class="text-(--accent)">Scope</span>
+                    </span>
+                </NuxtLink>
+                <IconButton icon="i-lucide-x" variant="ghost" aria-label="Close and go back" @click="close" />
+            </div>
 
             <!-- gap-7 = 28px, roughly the 2em paragraph spacing the article suggests -->
             <section class="flex flex-col gap-7">
@@ -123,8 +132,8 @@ const segIdle = 'border-(--border-strong) text-(--text-muted) hover:text-(--text
                 <div role="tablist" aria-label="Topology" class="flex flex-wrap gap-1.5">
                     <button
                         v-for="t in topologies"
-                        :key="t.id"
                         :id="`topology-tab-${t.id}`"
+                        :key="t.id"
                         role="tab"
                         type="button"
                         :aria-selected="activeTopology === t.id"
@@ -141,8 +150,8 @@ const segIdle = 'border-(--border-strong) text-(--text-muted) hover:text-(--text
                 <div
                     v-for="t in topologies"
                     v-show="activeTopology === t.id"
-                    :key="t.id"
                     :id="`topology-panel-${t.id}`"
+                    :key="t.id"
                     role="tabpanel"
                     :aria-labelledby="`topology-tab-${t.id}`"
                     class="flex flex-col gap-7 border-l-2 border-[color-mix(in_oklch,var(--accent)_40%,transparent)] pl-6"

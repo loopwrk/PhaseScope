@@ -43,18 +43,3 @@ export const Open: Story = {
     `,
     }),
 };
-
-// Narrative transform engaged: stage radios + chirality slider live.
-export const NarrativeEnabled: Story = {
-    args: { open: true, mode: 'per-frame', narrative: true, stage: 'tilt', chirality: 0.22 },
-    render: (args) => ({
-        components: { AdvancedPanel, Panel },
-        setup: () => ({ args }),
-        template: `
-      <Panel variant="elevated" title="Display Settings" style="max-width: 420px">
-        <p style="color: var(--text-muted); margin: 0">(panel body)</p>
-        <AdvancedPanel v-bind="args" />
-      </Panel>
-    `,
-    }),
-};

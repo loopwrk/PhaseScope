@@ -29,10 +29,11 @@ const meta = { zStep: 0.08, pointsPerFrame: 512, windowSize: 2048, hopSize: 1024
 
 describe('corridor mapper', () => {
     it('spaces frames along Z by zStep, centred on the track midpoint', () => {
+        // At u = 0 with silent input, mapPoint's z is the frame's backbone z
         const first = TOPOLOGIES.corridor.frameMapper(0, state(), meta)!;
         const mid = TOPOLOGIES.corridor.frameMapper(FRAME_COUNT / 2, state(), meta)!;
-        expect(mid.z0).toBeCloseTo(0, 6);
-        expect(first.z0).toBeCloseTo((-FRAME_COUNT / 2) * meta.zStep, 6);
+        expect(mid.mapPoint(0, 0, 0, 0).z).toBeCloseTo(0, 6);
+        expect(first.mapPoint(0, 0, 0, 0).z).toBeCloseTo((-FRAME_COUNT / 2) * meta.zStep, 6);
     });
 });
 

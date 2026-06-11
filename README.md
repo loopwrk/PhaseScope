@@ -92,6 +92,8 @@ Points can oscillate around their anchor positions. Three modes available under 
 
 A live HUD inset (toggle `G`) drawing the instantaneous Lissajous figure of the current playback window — the hardware-oscilloscope ancestor of the whole app — with a stereo-correlation readout: `+1.00` mono (the L = R diagonal), `0.00` decorrelated, `−1.00` anti-phase. The trace runs scope-cyan, swinging magenta when correlation goes negative.
 
+**Click the figure to enter the 3D scope**: the live phase portrait embedded in a cube, with no time axis. The third dimension is a [Takens delay embedding](https://en.wikipedia.org/wiki/Takens%27s_theorem) — `x = L(t)`, `y = R(t)`, `z = mid(t − 6ms)` — so the orbit plane tilts with the music's frequency content and the figure precesses of its own accord. Fly around it like everything else; click the figure again to return to the corridor.
+
 ### Camera
 
 - **Orbit** — Lissajous-like path that slowly circles the active geometry; default on load
@@ -104,22 +106,22 @@ Two animated GLSL skyboxes rendered on the inside of a large sphere surrounding 
 
 ### Performance controls
 
-- **Points per frame** — 32–512, controls ring resolution
+- **Points per frame** — 16–640, controls ring resolution
 - **Track coverage** — 10–100%, sets the point budget as a percentage of the full track
-- Warnings shown at 3M and 8M points
+- Warnings shown at 8M and 20M points
 
 ---
 
 ## Tech stack
 
-|                      |                                                 |
-| -------------------- | ----------------------------------------------- |
-| Framework            | [Nuxt 4](https://nuxt.com)                      |
-| 3D rendering         | [Three.js](https://threejs.org)                 |
-| Audio                | Web Audio API                                   |
-| UI                   | [Nuxt UI 4](https://ui.nuxt.com) + Tailwind CSS |
-| Reactivity utils     | [VueUse](https://vueuse.org)                    |
-| Language             | TypeScript 5                                    |
+|                  |                                                 |
+| ---------------- | ----------------------------------------------- |
+| Framework        | [Nuxt 4](https://nuxt.com)                      |
+| 3D rendering     | [Three.js](https://threejs.org)                 |
+| Audio            | Web Audio API                                   |
+| UI               | [Nuxt UI 4](https://ui.nuxt.com) + Tailwind CSS |
+| Reactivity utils | [VueUse](https://vueuse.org)                    |
+| Language         | TypeScript 5                                    |
 
 ---
 
@@ -129,7 +131,7 @@ Two animated GLSL skyboxes rendered on the inside of a large sphere surrounding 
 
 2. **Frame slicing** — the buffer is divided into overlapping windows (`windowSize = 2048` samples, `hopSize = 1024`). Each window becomes one frame of geometry.
 
-3. **Point placement** — for each of the 32–512 points in a frame:
+3. **Point placement** — for each of the 16–640 points in a frame:
     - A parametric angle `u` walks around a ring
     - `x = L * xyScale`, `y = R * xyScale` gives the Lissajous portrait
     - In **corridor** mode the ring is centred at `z = (frameIndex - frameCount/2) * zStep`

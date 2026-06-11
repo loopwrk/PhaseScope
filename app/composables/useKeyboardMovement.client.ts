@@ -13,6 +13,9 @@ const isTypingTarget = (el: Element | EventTarget | null): boolean =>
     el instanceof HTMLElement && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
 
 interface UseKeyboardMovementOptions {
+    /** 2D scope lock: only forward/backward dolly along Z, clamped at the
+     *  cube's front pane - no strafe, no vertical, no turning */
+    dollyOnly?: Ref<boolean>;
     slowSpeed?: number;
     mediumSpeed?: number;
     fastSpeed?: number;
@@ -32,6 +35,7 @@ export function useKeyboardMovement(
     options: UseKeyboardMovementOptions = {}
 ) {
     const {
+        dollyOnly,
         slowSpeed = 2.5,
         mediumSpeed = 4.0,
         fastSpeed = 7.5,
@@ -107,6 +111,17 @@ export function useKeyboardMovement(
 
         const speed = speedLevels[speedIndex.value] ?? mediumSpeed;
         const distance = speed * deltaTime;
+
+        if (dollyOnly?.value) {
+            // 2D scope: dolly along Z only, stopping at the front pane
+            // (cube face z=3, small margin) and a sensible far limit
+            const camObj = ctl.object;
+            if (camObj) {
+                const dolly = (forward.value ? 1 : 0) - (backward.value ? 1 : 0);
+                camObj.position.z = Math.min(14, Math.max(3.2, camObj.position.z - dolly * distance));
+            }
+            return;
+        }
 
         // Forward/backward
         if (forward.value) ctl.moveForward(distance);

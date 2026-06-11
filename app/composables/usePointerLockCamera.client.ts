@@ -5,6 +5,8 @@ import { useEventListener } from '@vueuse/core';
 interface UsePointerLockCameraOptions {
     onLock?: () => void;
     onUnlock?: () => void;
+    /** While true, clicks do not acquire pointer lock (2D scope mode) */
+    disabled?: Ref<boolean>;
 }
 
 export function usePointerLockCamera(
@@ -12,7 +14,7 @@ export function usePointerLockCamera(
     targetElement: Ref<HTMLElement | null>,
     options: UsePointerLockCameraOptions = {}
 ) {
-    const { onLock, onUnlock } = options;
+    const { onLock, onUnlock, disabled } = options;
     const isLocked = ref(false);
 
     // Update locked state when pointer lock changes
@@ -34,6 +36,7 @@ export function usePointerLockCamera(
 
     // Click target element to lock pointer
     useEventListener(targetElement, 'click', () => {
+        if (disabled?.value) return;
         const ctl = controls.value;
         if (ctl && !isLocked.value) {
             ctl.lock();

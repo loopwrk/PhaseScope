@@ -41,11 +41,14 @@ const reverse = defineModel<boolean>('reverse', { default: false });
 const dream = defineModel<boolean>('dream', { default: false });
 const heavenly = defineModel<boolean>('heavenly', { default: false });
 const controlsOverlay = defineModel<boolean>('controlsOverlay', { default: true });
+const channelBias = defineModel<boolean>('channelBias', { default: false });
 
-const renderItems = [
+// Lines would draw long bridges across the split stereo field, so channel
+// bias locks rendering to points
+const renderItems = computed(() => [
     { label: 'Points', value: 'points' },
-    { label: 'Lines', value: 'lines' },
-];
+    { label: 'Lines', value: 'lines', disabled: channelBias.value },
+]);
 const topologyLabels: Record<string, string> = {
     corridor: 'Corridor',
     sphere: 'Sphere',
@@ -72,7 +75,7 @@ const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? S
 <template>
     <Panel :variant="variant" title="Display Settings" class="w-full">
         <template #headerRight>
-            <Badge color="primary" :label="topologyLabel" />
+            <Badge color="primary" size="xl" :label="topologyLabel" />
         </template>
 
         <div class="grid gap-x-7 gap-y-5 sm:grid-cols-2">
@@ -85,7 +88,7 @@ const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? S
                             pointsPerFrame
                         }}</span>
                     </div>
-                    <Slider v-model="pointsPerFrame" :min="32" :max="512" :step="32" :disabled="settingsDisabled" />
+                    <Slider v-model="pointsPerFrame" :min="16" :max="640" :step="16" :disabled="settingsDisabled" />
                 </div>
 
                 <!-- Track coverage -->
@@ -140,13 +143,26 @@ const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? S
                     /></span>
                     <RadioGroup v-model="renderMode" :items="renderItems" orientation="horizontal" />
                 </div>
+
+                <!-- Background skyboxes (mutually exclusive, handled upstream) -->
+                <div class="flex flex-col gap-3">
+                    <span class="font-display text-detail font-semibold text-(--accent)">Background</span>
+                    <label class="flex items-center gap-3">
+                        <Checkbox v-model="dream" size="lg" />
+                        <span class="inline-flex items-center gap-2 text-detail">Dream <KeyCap label="B" /></span>
+                    </label>
+                    <label class="flex items-center gap-3">
+                        <Checkbox v-model="heavenly" size="lg" />
+                        <span class="inline-flex items-center gap-2 text-detail">Heavenly <KeyCap label="N" /></span>
+                    </label>
+                </div>
             </div>
 
             <div class="flex flex-col gap-5">
                 <!-- Topology -->
                 <div class="flex flex-col gap-2.5" :class="{ 'pointer-events-none opacity-40': topologyDisabled }">
                     <span class="font-display text-detail font-semibold text-(--accent)">Topology</span>
-                    <RadioGroup v-model="topology" :items="topologyItems" :disabled="topologyDisabled" />
+                    <RadioGroup v-model="topology" :items="topologyItems" :disabled="topologyDisabled" size="lg" />
                 </div>
 
                 <!-- Toggles -->
@@ -158,28 +174,22 @@ const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? S
                         /></span>
                     </label>
                     <label class="flex items-center gap-3">
-                        <Checkbox v-model="oscillation" />
+                        <Checkbox v-model="oscillation" size="lg" />
                         <span class="inline-flex items-center gap-2 text-detail"
                             >Enable Point Oscillation <KeyCap label="O"
                         /></span>
                     </label>
                     <label class="flex items-center gap-3">
-                        <Checkbox v-model="reverse" />
+                        <Checkbox v-model="reverse" size="lg" />
                         <span class="inline-flex items-center gap-2 text-detail"
                             >Reverse Colour Spectrum <KeyCap label="V"
                         /></span>
                     </label>
-                    <label class="flex items-center gap-3">
-                        <Checkbox v-model="dream" />
-                        <span class="inline-flex items-center gap-2 text-detail"
-                            >Dream Background <KeyCap label="B"
-                        /></span>
-                    </label>
-                    <label class="flex items-center gap-3">
-                        <Checkbox v-model="heavenly" />
-                        <span class="inline-flex items-center gap-2 text-detail"
-                            >Heavenly Background <KeyCap label="N"
-                        /></span>
+                    <!-- Two-way exclusion with Lines: each greys while the
+                         other is active -->
+                    <label class="flex items-center gap-3" :class="{ 'opacity-40': renderMode === 'lines' }">
+                        <Checkbox v-model="channelBias" :disabled="renderMode === 'lines'" size="lg" />
+                        <span class="inline-flex items-center gap-2 text-detail">Channel Bias</span>
                     </label>
                 </div>
             </div>
