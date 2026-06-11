@@ -14,13 +14,14 @@ Points are coloured by spectral content. Bass frequencies map to blue/magenta, t
 
 ### Topology modes
 
-Three ways to wrap the audio geometry in space:
+Four ways to wrap the audio geometry in space:
 
-| Mode          | Description                                                                                                                                                                            |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Corridor**  | Each audio frame becomes a ring; frames stack along the Z-axis, forming a tunnel you can fly through as the track builds.                                                              |
-| **Sphere**    | Frames wrap from north to south pole. Time becomes latitude.                                                                                                                           |
-| **Attractor** | Frames trace a [Lorenz strange attractor](https://en.wikipedia.org/wiki/Lorenz_system); audio amplitude modulates the chaos parameter ρ, pulling the trajectory between the two lobes. |
+| Mode          | Description                                                                                                                                                                                                             |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Corridor**  | Each audio frame becomes a ring; frames stack along the Z-axis, forming a tunnel you can fly through as the track builds.                                                                                               |
+| **Sphere**    | Frames wrap from north to south pole. Time becomes latitude.                                                                                                                                                            |
+| **Attractor** | Frames trace a [Lorenz strange attractor](https://en.wikipedia.org/wiki/Lorenz_system); audio amplitude modulates the chaos parameter ρ, pulling the trajectory between the two lobes.                                  |
+| **Möbius**    | Time loops once around a [half-twisted band](https://en.wikipedia.org/wiki/M%C3%B6bius_strip); the cross-section is the phase portrait itself, so the end of the track arrives as the polarity-mirror of its beginning. |
 
 ---
 
@@ -45,13 +46,14 @@ Open [http://localhost:3000](http://localhost:3000). You'll be redirected to `/p
 | Key       | Action                                    |
 | --------- | ----------------------------------------- |
 | `Enter ↵` | Play / Pause                              |
-| `R`       | Toggle render mode (Points ↔ Lines)      |
+| `R`       | Toggle render mode (Points ↔ Lines)       |
 | `O`       | Toggle point oscillation                  |
 | `C`       | Cycle camera mode (Orbit → Follow → Free) |
 | `F`       | Toggle fullscreen                         |
 | `V`       | Reverse colour spectrum                   |
 | `B`       | Toggle Dream background                   |
 | `N`       | Toggle Heavenly background                |
+| `G`       | Toggle goniometer HUD                     |
 | `H`       | Toggle controls overlay                   |
 | `{` / `}` | Previous / next demo track                |
 | `[` / `]` | Decrease / increase movement speed        |
@@ -86,6 +88,10 @@ Points can oscillate around their anchor positions. Three modes available under 
 - **Per-frame** — all points in a frame move together at the frame's average frequency; preserves ring shape
 - **Per-point** — each point oscillates independently at its locally-estimated frequency
 
+### Goniometer
+
+A live HUD inset (toggle `G`) drawing the instantaneous Lissajous figure of the current playback window — the hardware-oscilloscope ancestor of the whole app — with a stereo-correlation readout: `+1.00` mono (the L = R diagonal), `0.00` decorrelated, `−1.00` anti-phase. The trace runs scope-cyan, swinging magenta when correlation goes negative.
+
 ### Camera
 
 - **Orbit** — Lissajous-like path that slowly circles the active geometry; default on load
@@ -113,7 +119,6 @@ Two animated GLSL skyboxes rendered on the inside of a large sphere surrounding 
 | Audio                | Web Audio API                                   |
 | UI                   | [Nuxt UI 4](https://ui.nuxt.com) + Tailwind CSS |
 | Reactivity utils     | [VueUse](https://vueuse.org)                    |
-| Synth (experimental) | [Tone.js](https://tonejs.github.io)             |
 | Language             | TypeScript 5                                    |
 
 ---

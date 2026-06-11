@@ -21,7 +21,7 @@ import type { RenderMode, useCorridorRenderer } from '~/composables/useCorridorR
    (including the experimental narrative transform, whose controls are
    re-exposed flat). */
 
-export type TopologyMode = 'corridor' | 'sphere' | 'attractor';
+export type TopologyMode = 'corridor' | 'sphere' | 'attractor' | 'mobius';
 
 export interface CorridorState {
     buffer: AudioBuffer | null;
@@ -136,6 +136,45 @@ const attractorFrameMapper: FrameMapperFactory = (frameIndex, raw) => {
     };
 };
 
+const mobiusFrameMapper: FrameMapperFactory = (frameIndex, raw) => {
+    const { frameCount, xyScale } = raw;
+    const bandRadius = 6.0; // centreline radius of the band
+    const ringRadius = 0.35; // skeleton ring so silence still draws the band
+
+    // Time wraps the band in exactly one lap; the cross-section frame
+    // rotates by half a turn over that lap. So the final frame arrives at
+    // the starting position with its portrait rotated 180 degrees: the
+    // track's end meets its beginning as its own polarity-inverse - the
+    // same figure, opposed. (A Lissajous portrait rotated by pi is the
+    // portrait of the inverted signal: correlation +1 returns as -1.)
+    const theta = (frameIndex / frameCount) * Math.PI * 2;
+    const twist = theta / 2;
+    const cosT = Math.cos(theta);
+    const sinT = Math.sin(theta);
+    const cosW = Math.cos(twist);
+    const sinW = Math.sin(twist);
+    const centreX = cosT * bandRadius;
+    const centreZ = sinT * bandRadius;
+
+    return {
+        z0: 0,
+        // Cross-section coordinates (a, b) live in a basis that twists with
+        // theta: u-hat = cosW*r-hat + sinW*y-hat, v-hat = -sinW*r-hat + cosW*y-hat,
+        // where r-hat is the outward radial direction at this point of the lap.
+        mapPoint: (u, L, R) => {
+            const a = L * xyScale + Math.cos(u) * ringRadius; // portrait X + ring
+            const b = R * xyScale + Math.sin(u) * ringRadius; // portrait Y + ring
+            const radial = a * cosW - b * sinW;
+            const vertical = a * sinW + b * cosW;
+            return {
+                x: centreX + radial * cosT,
+                y: vertical,
+                z: centreZ + radial * sinT,
+            };
+        },
+    };
+};
+
 /* ---------- Topology registry ----------
    Single home for everything that varies per topology: the frame mapper,
    the renderer's object-space offsets, whether the Lorenz spine must be
@@ -197,6 +236,22 @@ export const TOPOLOGIES: Record<TopologyMode, TopologyDef> = {
             elevSinAmp: 0.3,
             wobbleFreq: 0.47,
             wobbleAmp: 2.5,
+        },
+    },
+    mobius: {
+        frameMapper: mobiusFrameMapper,
+        geometry: { pointsPosition: { x: 0, y: 1.7, z: 0 }, linesPosition: { x: 0, y: 1.7, z: 0 } },
+        // Mid-distance orbit; a touch more elevation drift than the sphere
+        // so the half-twist reads from above and below as it passes
+        orbit: {
+            radius: 13,
+            speed: 0.16,
+            elevCosFreq: 0.15,
+            elevCosAmp: 1.0,
+            elevSinFreq: 0.39,
+            elevSinAmp: 0.32,
+            wobbleFreq: 0.5,
+            wobbleAmp: 2.0,
         },
     },
 };

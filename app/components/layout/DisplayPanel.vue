@@ -46,23 +46,27 @@ const renderItems = [
     { label: 'Points', value: 'points' },
     { label: 'Lines', value: 'lines' },
 ];
+const topologyLabels: Record<string, string> = {
+    corridor: 'Corridor',
+    sphere: 'Sphere',
+    attractor: 'Attractor',
+    mobius: 'Möbius',
+};
 const topologyDescriptions: Record<string, string> = {
     corridor: 'Time unfolds along the Z-axis as a traversable tunnel.',
     sphere: 'Audio wraps around a sphere from north to south pole.',
     attractor: 'Audio traces a Lorenz strange attractor - amplitude drives the chaos parameter.',
+    mobius: 'Time loops a half-twisted band - the end of the track arrives as the mirror of its beginning.',
 };
 // Description rides on the selected option only, like the comp.
 const topologyItems = computed(() =>
-    ['corridor', 'sphere', 'attractor'].map((value) => ({
-        label: value.charAt(0).toUpperCase() + value.slice(1),
+    Object.keys(topologyLabels).map((value) => ({
+        label: topologyLabels[value]!,
         value,
         description: topology.value === value ? topologyDescriptions[value] : undefined,
     }))
 );
-const topologyLabel = computed(() => {
-    const v = String(topology.value);
-    return v.charAt(0).toUpperCase() + v.slice(1);
-});
+const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? String(topology.value));
 </script>
 
 <template>

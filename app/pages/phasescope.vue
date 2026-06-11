@@ -133,6 +133,19 @@ const toggleSettings = () => {
     if (!isDesktop.value && showSettings.value) showControlsOverlay.value = false;
 };
 
+/* ---------- Goniometer HUD ---------- */
+
+// Pull-based source: the component samples this inside its own ~30fps rAF
+// loop (no reactive churn, no contact with the WebGL path). Shows the
+// window at the playhead whether playing or paused - a scope reads
+// whatever is at the probe.
+const showGoniometer = ref(true);
+const goniometerSource = () => {
+    const raw = toRaw(corridorState.value);
+    if (!raw.ch0 || !raw.ch1 || !raw.buffer) return null;
+    return { ch0: raw.ch0, ch1: raw.ch1, index: Math.floor(getPlaybackTimeSeconds() * raw.sr) };
+};
+
 /* ---------- Background skyboxes (mutually exclusive) ---------- */
 
 const onDreamBgToggle = () => {
@@ -173,6 +186,9 @@ shortcuts.register('b', () => {
 shortcuts.register('n', () => {
     heavenlyBg.enabled.value = !heavenlyBg.enabled.value;
     onHeavenlyBgToggle();
+});
+shortcuts.register('g', () => {
+    showGoniometer.value = !showGoniometer.value;
 });
 shortcuts.register('{', () => playAdjacentTrack(-1));
 shortcuts.register('}', () => playAdjacentTrack(1));
@@ -346,6 +362,15 @@ onUnmounted(async () => {
             @set-camera-mode="setCameraMode"
             @set-speed="setMovementSpeed"
             @close="showControlsOverlay = false"
+        />
+
+        <!-- Bottom-left: goniometer HUD (the instantaneous phase portrait).
+             Left side: the controls overlay runs nearly full-height on the
+             right, while the settings panel leaves this corner clear. -->
+        <LayoutGoniometer
+            v-if="showGoniometer && wavLoaded"
+            class="ps-rise absolute bottom-5 left-5 z-20 hidden md:flex"
+            :source="goniometerSource"
         />
 
         <!-- Bottom: transport dock (skip-link target: the primary controls) -->

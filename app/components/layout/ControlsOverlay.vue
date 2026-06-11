@@ -48,6 +48,7 @@ const sections: { label: string; keys: { k: string; d: string }[] }[] = [
             { k: 'V', d: 'Reverse colour spectrum' },
             { k: 'B', d: 'Dream background' },
             { k: 'N', d: 'Heavenly background' },
+            { k: 'G', d: 'Goniometer' },
             { k: 'H', d: 'Toggle this overlay' },
         ],
     },
