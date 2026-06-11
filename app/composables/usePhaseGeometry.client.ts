@@ -529,20 +529,28 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         const remaining = targetFrame - corridorState.value.builtFrames;
         if (remaining <= 0) return;
 
-        // Avoid big hitches if the user seeks forward or loads a long file.
-        const MAX_FRAMES_PER_TICK = 6;
-        const toBuild = Math.min(remaining, MAX_FRAMES_PER_TICK);
+        // Time-budgeted building: spend at most ~4ms of the frame, however
+        // many frames that buys on this machine (always at least one). After
+        // a seek or a heavy load the corridor catches up at CPU speed
+        // instead of a fixed 6 frames/tick crawl, and on slow machines the
+        // budget keeps build ticks from starving the render loop.
+        const BUILD_BUDGET_MS = 4;
+        const MAX_FRAMES_PER_TICK = 256; // bound the per-tick GPU upload span
+        const startedAt = performance.now();
+        const firstFrame = corridorState.value.builtFrames;
 
-        for (let i = 0; i < toBuild; i++) {
+        let built = 0;
+        do {
             buildOneFrame(corridorState.value.builtFrames);
             corridorState.value.builtFrames++;
-        }
+            built++;
+        } while (built < remaining && built < MAX_FRAMES_PER_TICK && performance.now() - startedAt < BUILD_BUDGET_MS);
 
-        const builtPoints = corridorState.value.builtFrames * corridorMeta.value.pointsPerFrame;
+        const { pointsPerFrame } = corridorMeta.value;
 
-        // Update geometry
-        renderer.updateDrawRange(builtPoints);
-        renderer.markGeometryForUpdate(true, true);
+        // Update geometry: draw the new total, upload ONLY the new span
+        renderer.updateDrawRange(corridorState.value.builtFrames * pointsPerFrame);
+        renderer.uploadBuiltRange(firstFrame * pointsPerFrame, built * pointsPerFrame);
     };
 
     return {

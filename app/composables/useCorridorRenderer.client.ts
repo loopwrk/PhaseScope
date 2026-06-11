@@ -9,9 +9,27 @@ export interface CorridorConfig {
     linesPosition?: { x: number; y: number; z: number };
 }
 
+/* Renders the corridor as Points and Lines objects over ONE pair of shared
+   BufferAttributes: both geometries reference the same attribute instances,
+   so the GPU holds a single copy of positions/colours and every upload
+   happens once, not twice.
+
+   Upload contract (this is where long tracks live or die):
+   - The progressive build appends frames to a contiguous span, so build
+     ticks call uploadBuiltRange() and only that span is sent to the GPU
+     (three.js updateRanges -> gl.bufferSubData). A 10-minute track stops
+     costing a ~150MB re-upload per tick and costs ~40KB instead.
+   - Full rewrites (oscillation displacing every built point, the narrative
+     transform repainting) call markGeometryForUpdate(), which clears any
+     pending ranges - empty updateRanges means three.js uploads the whole
+     buffer, which is exactly right for those paths. */
 export function useCorridorRenderer(scene: THREE.Scene) {
     const snapshotCorridorPoints = ref<THREE.Points | null>(null);
     const snapshotCorridorLines = ref<THREE.Line | null>(null);
+
+    // The single shared attribute pair (referenced by BOTH geometries)
+    let posAttr: THREE.BufferAttribute | null = null;
+    let colorAttr: THREE.BufferAttribute | null = null;
 
     const disposeThreeObject = (obj: THREE.Points | THREE.Line | null) => {
         if (!obj) return;
@@ -32,6 +50,9 @@ export function useCorridorRenderer(scene: THREE.Scene) {
 
         disposeThreeObject(snapshotCorridorLines.value);
         snapshotCorridorLines.value = null;
+
+        posAttr = null;
+        colorAttr = null;
     };
 
     // Create corridor geometries (both Points and Lines)
@@ -39,17 +60,21 @@ export function useCorridorRenderer(scene: THREE.Scene) {
         clearGeometry();
 
         const { totalPoints, renderMode } = config;
-        const positionArrayMultiplier = 3; // x, y, z
-        const colorArrayMultiplier = 3; // r, g, b
+        const stride = 3; // x,y,z / r,g,b
 
-        // Allocate shared arrays
-        const positions = new Float32Array(totalPoints * positionArrayMultiplier);
-        const colors = new Float32Array(totalPoints * colorArrayMultiplier);
+        // Shared arrays AND shared attributes: one GPU buffer for the pair
+        const positions = new Float32Array(totalPoints * stride);
+        const colors = new Float32Array(totalPoints * stride);
+        posAttr = markRaw(new THREE.BufferAttribute(positions, stride));
+        colorAttr = markRaw(new THREE.BufferAttribute(colors, stride));
+        // The build writes the buffer front-to-back over the whole track
+        posAttr.setUsage(THREE.DynamicDrawUsage);
+        colorAttr.setUsage(THREE.DynamicDrawUsage);
 
         // Create POINTS version
         const gPoints = markRaw(new THREE.BufferGeometry());
-        gPoints.setAttribute('position', new THREE.BufferAttribute(positions, positionArrayMultiplier));
-        gPoints.setAttribute('color', new THREE.BufferAttribute(colors, colorArrayMultiplier));
+        gPoints.setAttribute('position', posAttr);
+        gPoints.setAttribute('color', colorAttr);
         gPoints.setDrawRange(0, 0);
 
         const mPoints = markRaw(
@@ -69,10 +94,10 @@ export function useCorridorRenderer(scene: THREE.Scene) {
         snapshotCorridorPoints.value = points;
         scene.add(points);
 
-        // Create LINES version (shares same position/color arrays)
+        // Create LINES version (same attribute instances - zero extra GPU)
         const gLine = markRaw(new THREE.BufferGeometry());
-        gLine.setAttribute('position', new THREE.BufferAttribute(positions, positionArrayMultiplier));
-        gLine.setAttribute('color', new THREE.BufferAttribute(colors, colorArrayMultiplier));
+        gLine.setAttribute('position', posAttr);
+        gLine.setAttribute('color', colorAttr);
         gLine.setDrawRange(0, 0);
 
         const mLine = markRaw(
@@ -105,18 +130,28 @@ export function useCorridorRenderer(scene: THREE.Scene) {
         }
     };
 
+    /** Upload ONLY the freshly built span of points (positions + colours).
+     *  three.js auto-clears the ranges after the next render's upload. */
+    const uploadBuiltRange = (startPoint: number, pointCount: number) => {
+        if (!posAttr || !colorAttr || pointCount <= 0) return;
+        posAttr.addUpdateRange(startPoint * 3, pointCount * 3);
+        posAttr.needsUpdate = true;
+        colorAttr.addUpdateRange(startPoint * 3, pointCount * 3);
+        colorAttr.needsUpdate = true;
+    };
+
+    /** Full-buffer upload, for paths that rewrite points in place
+     *  (oscillation; narrative repaint). Clearing pending ranges matters:
+     *  with ranges queued, three.js would upload only those spans and the
+     *  in-place rewrites of older frames would never reach the GPU. */
     const markGeometryForUpdate = (updatePositions = true, updateColors = false) => {
-        if (snapshotCorridorPoints.value) {
-            const pointsPos = snapshotCorridorPoints.value.geometry.attributes.position;
-            const pointsColor = snapshotCorridorPoints.value.geometry.attributes.color;
-            if (updatePositions && pointsPos) pointsPos.needsUpdate = true;
-            if (updateColors && pointsColor) pointsColor.needsUpdate = true;
+        if (updatePositions && posAttr) {
+            posAttr.clearUpdateRanges();
+            posAttr.needsUpdate = true;
         }
-        if (snapshotCorridorLines.value) {
-            const linesPos = snapshotCorridorLines.value.geometry.attributes.position;
-            const linesColor = snapshotCorridorLines.value.geometry.attributes.color;
-            if (updatePositions && linesPos) linesPos.needsUpdate = true;
-            if (updateColors && linesColor) linesColor.needsUpdate = true;
+        if (updateColors && colorAttr) {
+            colorAttr.clearUpdateRanges();
+            colorAttr.needsUpdate = true;
         }
     };
 
@@ -130,8 +165,6 @@ export function useCorridorRenderer(scene: THREE.Scene) {
     };
 
     const getColorArray = (): Float32Array | null => {
-        if (!snapshotCorridorPoints.value) return null;
-        const colorAttr = snapshotCorridorPoints.value.geometry.attributes.color;
         return colorAttr ? (colorAttr.array as Float32Array) : null;
     };
 
@@ -146,6 +179,7 @@ export function useCorridorRenderer(scene: THREE.Scene) {
         createGeometry,
         clearGeometry,
         updateDrawRange,
+        uploadBuiltRange,
         markGeometryForUpdate,
         setRenderMode,
         getColorArray,
