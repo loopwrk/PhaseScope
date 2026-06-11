@@ -33,9 +33,6 @@ export interface CorridorState {
     ringRadius: number;
     builtFrames: number;
     pos: Float32Array | null;
-    frequencies: Float32Array | null;
-    amplitudes: Float32Array | null;
-    anchorPositions: Float32Array | null;
     attractorSpine: Float32Array | null;
     attractorNormals: Float32Array | null;
     attractorBinormals: Float32Array | null;
@@ -281,13 +278,15 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         ringRadius: 1.8,
         builtFrames: 0,
         pos: null,
-        frequencies: null,
-        amplitudes: null,
-        anchorPositions: null,
         attractorSpine: null,
         attractorNormals: null,
         attractorBinormals: null,
     });
+
+    // GPU-bound oscillation side buffer (half floats: pointFreq, pointAmp,
+    // frameAvgFreq, frameAvgAmp per point), written during the build and
+    // displaced in the vertex shader - see useCorridorRenderer.
+    let oscData: Uint16Array | null = null;
 
     // User-tweakable settings live in useState (keys documented in
     // useScopeSettings) so they survive navigation away from the page.
@@ -361,9 +360,7 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         corridorState.value.frameCount = 0;
         corridorState.value.builtFrames = 0;
         corridorState.value.pos = null;
-        corridorState.value.frequencies = null;
-        corridorState.value.amplitudes = null;
-        corridorState.value.anchorPositions = null;
+        oscData = null;
         corridorState.value.attractorSpine = null;
         corridorState.value.attractorNormals = null;
         corridorState.value.attractorBinormals = null;
@@ -395,11 +392,6 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
 
         const totalPoints = frameCount * pointsPerFrame;
 
-        // Allocate oscillation data arrays
-        corridorState.value.frequencies = new Float32Array(totalPoints);
-        corridorState.value.amplitudes = new Float32Array(totalPoints);
-        corridorState.value.anchorPositions = new Float32Array(totalPoints * 3);
-
         const topology = TOPOLOGIES[topologyMode.value];
 
         // Attractor topology: pre-compute Lorenz spine and Frenet frames at load time
@@ -411,13 +403,14 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         }
 
         // Create geometries using the renderer, at the topology's object-space offsets
-        const { positions } = renderer.createGeometry({
+        const { positions, oscData: osc } = renderer.createGeometry({
             totalPoints,
             renderMode,
             ...topology.geometry,
         });
 
         corridorState.value.pos = positions;
+        oscData = osc;
     };
 
     /* ---------- Frame building (shared pipeline) ---------- */
@@ -428,9 +421,9 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         const { pointsPerFrame, windowSize, hopSize } = meta;
         // Use toRaw to ensure we write to the actual Float32Arrays, not Vue proxies
         const rawState = toRaw(corridorState.value);
-        const { ch0, ch1, frameCount, pos, frequencies, amplitudes, anchorPositions } = rawState;
+        const { ch0, ch1, frameCount, pos } = rawState;
         if (!pos || !ch0 || !ch1 || !renderer.hasGeometry()) return;
-        if (!frequencies || !amplitudes || !anchorPositions) return;
+        if (!oscData) return;
 
         const frame = TOPOLOGIES[topologyMode.value].frameMapper(frameIndex, rawState, meta);
         if (!frame) return;
@@ -464,6 +457,10 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         const baseLightness = 0.35;
         const amplitudeBrightnessFactor = 0.35;
 
+        // Frame averages for the per-frame and wave oscillation modes
+        let sumFreq = 0;
+        let sumAmp = 0;
+
         for (let k = 0; k < pointsPerFrame; k++) {
             const u = (k / pointsPerFrame) * Math.PI * 2;
             const sampleIndex = frameStart + Math.floor((k / pointsPerFrame) * windowSize);
@@ -495,17 +492,27 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
             colors[p + 1] = color.g;
             colors[p + 2] = color.b;
 
-            // Store oscillation data for this point
-            const pointIndex = frameIndex * pointsPerFrame + k;
-            frequencies[pointIndex] = freqContentToHz(analyzeLocalFrequency(ch0, ch1, i));
-            amplitudes[pointIndex] = ampToOscillationRange(normalizedAmp);
-
-            // Store anchor position (original position before any oscillation)
-            anchorPositions[p] = pos[p] ?? 0;
-            anchorPositions[p + 1] = pos[p + 1] ?? 0;
-            anchorPositions[p + 2] = pos[p + 2] ?? 0;
+            // Oscillation data rides to the GPU as half floats (aOsc.xy);
+            // positions stay pristine anchors - displacement is shader-side
+            const pointFreq = freqContentToHz(analyzeLocalFrequency(ch0, ch1, i));
+            const pointAmp = ampToOscillationRange(normalizedAmp);
+            const o = (frameIndex * pointsPerFrame + k) * 4;
+            oscData[o] = THREE.DataUtils.toHalfFloat(pointFreq);
+            oscData[o + 1] = THREE.DataUtils.toHalfFloat(pointAmp);
+            sumFreq += pointFreq;
+            sumAmp += pointAmp;
 
             p += 3;
+        }
+
+        // Stamp the frame's averages into every point's aOsc.zw - the GPU
+        // can't reduce across vertices, so the reduction happens here, once
+        const avgFreqHalf = THREE.DataUtils.toHalfFloat(sumFreq / pointsPerFrame);
+        const avgAmpHalf = THREE.DataUtils.toHalfFloat(sumAmp / pointsPerFrame);
+        const frameBase = frameIndex * pointsPerFrame * 4;
+        for (let k = 0; k < pointsPerFrame; k++) {
+            oscData[frameBase + k * 4 + 2] = avgFreqHalf;
+            oscData[frameBase + k * 4 + 3] = avgAmpHalf;
         }
     };
 

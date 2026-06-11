@@ -85,19 +85,9 @@ const setMovementSpeed = (index: number) => {
     movement.speedIndex.value = Math.min(2, Math.max(0, index));
 };
 
-// Point oscillation (positions only; colours are untouched by oscillation)
-const oscillation = useOscillation({
-    onUpdate: () => renderer.markGeometryForUpdate(true, false),
-});
-
-// Restore smooth curves when oscillation is disabled
-watch(oscillation.enabled, (enabled) => {
-    if (!enabled) {
-        oscillation.restoreAnchorPositions(toRaw(corridorState.value), {
-            pointsPerFrame: corridorMeta.value.pointsPerFrame,
-        });
-    }
-});
+// Point oscillation controls - the displacement itself runs in the vertex
+// shader, driven by renderer.setOscillation() in the render loop below.
+const oscillation = useOscillation();
 
 // Points <-> lines visibility
 watch(renderMode, (newMode) => {
@@ -210,12 +200,14 @@ const animate = (now: number) => {
         geometry.updateProgressiveBuild(getPlaybackTimeSeconds());
         // Update camera based on current mode
         camera.update(timeInSeconds);
-        // Apply oscillation to existing points if enabled
-        if (oscillation.enabled.value) {
-            oscillation.oscillate(timeInSeconds, toRaw(corridorState.value), {
-                pointsPerFrame: corridorMeta.value.pointsPerFrame,
-            });
-        }
+        // Drive the GPU oscillation (four uniform writes; the displacement
+        // happens in the vertex shader, off the CPU entirely)
+        renderer.setOscillation({
+            time: timeInSeconds,
+            mode: oscillation.enabled.value ? oscillation.mode.value : 'off',
+            builtFrames: corridorState.value.builtFrames,
+            pointsPerFrame: corridorMeta.value.pointsPerFrame,
+        });
     }
 
     const r = three.renderer.value;
@@ -232,6 +224,11 @@ onMounted(() => {
     three.init();
     initMediaSessionHandlers();
     requestAnimFrame = requestAnimationFrame(animate);
+
+    // Dev-only escape hatch for inspecting the live engine from the console
+    if (import.meta.dev) {
+        (window as unknown as Record<string, unknown>).__scope = { three, renderer, geometry, oscillation };
+    }
 });
 
 onUnmounted(async () => {
