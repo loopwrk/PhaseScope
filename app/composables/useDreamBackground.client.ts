@@ -55,6 +55,6 @@ const fragmentShader = /* glsl */ `
   }
 `;
 
-export function useDreamBackground(scene: THREE.Scene) {
-    return createSkyboxBackground(scene, fragmentShader);
+export function useDreamBackground(scene: THREE.Scene, enabled?: Ref<boolean>) {
+    return createSkyboxBackground(scene, fragmentShader, enabled);
 }

@@ -53,6 +53,7 @@ defineEmits<{ toggleControls: []; toggleSettings: []; toggleFullscreen: [] }>();
                 aria-label="Toggle fullscreen"
                 @click="$emit('toggleFullscreen')"
             />
+            <IconButton icon="i-lucide-info" variant="ghost" aria-label="About PhaseScope" to="/about" />
         </div>
     </header>
 </template>

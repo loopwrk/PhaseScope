@@ -130,6 +130,6 @@ const fragmentShader = /* glsl */ `
   }
 `;
 
-export function useHeavenlyBackground(scene: THREE.Scene) {
-    return createSkyboxBackground(scene, fragmentShader);
+export function useHeavenlyBackground(scene: THREE.Scene, enabled?: Ref<boolean>) {
+    return createSkyboxBackground(scene, fragmentShader, enabled);
 }

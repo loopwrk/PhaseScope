@@ -28,8 +28,10 @@ const STRIDE = 3; // x, y, z
 
 export function useOscillation(options: UseOscillationOptions = {}) {
     const { onUpdate } = options;
-    const enabled = ref(true);
-    const mode = ref<OscillationMode>('wave');
+    // useState (not ref) so the user's oscillation settings survive
+    // navigating away from the page; keys documented in useScopeSettings.
+    const enabled = useState('scope:oscillation-enabled', () => true);
+    const mode = useState<OscillationMode>('scope:oscillation-mode', () => 'wave');
 
     /** Write `anchor + sin offset` for `count` points starting at point index `start`. */
     const displaceRange = (

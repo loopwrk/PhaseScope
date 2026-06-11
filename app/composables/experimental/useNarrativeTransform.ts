@@ -34,11 +34,13 @@ interface NarrativeVector3 {
 }
 
 export const useNarrativeTransform = (corridorState: Ref<NarrativeCorridorState>) => {
-    const narrativeEnabled = ref(false);
-    const narrativeAutoStage = ref(false);
-    const narrativeStage = ref<NarrativeStage>('channel-bias');
+    // useState (not ref) so the narrative settings survive navigating away
+    // from the page; keys documented in useScopeSettings.
+    const narrativeEnabled = useState('scope:narrative-enabled', () => false);
+    const narrativeAutoStage = useState('scope:narrative-auto-stage', () => false);
+    const narrativeStage = useState<NarrativeStage>('scope:narrative-stage', () => 'channel-bias');
 
-    const narrativeHandedBias = ref(0.22);
+    const narrativeHandedBias = useState('scope:narrative-chirality', () => 0.22);
 
     const narrativeProgress = computed(() => {
         if (!corridorState.value.buffer || corridorState.value.frameCount <= 0) return 0;

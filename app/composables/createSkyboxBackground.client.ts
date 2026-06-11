@@ -41,8 +41,14 @@ export const skyboxNoiseGlsl = /* glsl */ `
   }
 `;
 
-export function createSkyboxBackground(scene: THREE.Scene, fragmentShader: string) {
-    const enabled = ref(false);
+export function createSkyboxBackground(
+    scene: THREE.Scene,
+    fragmentShader: string,
+    // An external ref (e.g. from useScopeSettings) lets the toggle survive
+    // page navigation; the watch below is immediate so a remount with a
+    // preserved `true` recreates the mesh in the fresh scene.
+    enabled: Ref<boolean> = ref(false)
+) {
     let mesh: THREE.Mesh | null = null;
 
     const create = () => {
@@ -78,10 +84,14 @@ export function createSkyboxBackground(scene: THREE.Scene, fragmentShader: strin
         (mesh.material as THREE.ShaderMaterial).uniforms.uTime!.value = time;
     };
 
-    watch(enabled, (val) => {
-        if (val) create();
-        else destroy();
-    });
+    watch(
+        enabled,
+        (val) => {
+            if (val) create();
+            else destroy();
+        },
+        { immediate: true }
+    );
 
     const dispose = () => destroy();
 

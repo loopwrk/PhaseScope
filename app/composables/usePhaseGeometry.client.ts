@@ -289,18 +289,20 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         attractorBinormals: null,
     });
 
-    const corridorMeta = ref<CorridorMeta>({
+    // User-tweakable settings live in useState (keys documented in
+    // useScopeSettings) so they survive navigation away from the page.
+    const corridorMeta = useState<CorridorMeta>('scope:corridor-meta', () => ({
         zStep: 0.08, // distance between frames along Z axis
         pointsPerFrame: 512,
         windowSize: 2048, // samples per frame window
         hopSize: 1024, // samples between frames
-    });
+    }));
 
     // Track coverage as percentage (0-100)
-    const trackCoveragePercent = ref(100);
+    const trackCoveragePercent = useState('scope:track-coverage', () => 100);
 
     // Reverse colour spectrum (the V shortcut / settings toggle)
-    const useAlternateColors = ref(false);
+    const useAlternateColors = useState('scope:reverse-colours', () => false);
 
     // Experimental narrative transform: owned here because it writes into the
     // same per-point pipeline; its controls are re-exposed flat below.

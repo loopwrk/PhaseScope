@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { toRaw } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
-import type { RenderMode } from '~/composables/useCorridorRenderer.client';
-import type { TopologyMode } from '~/composables/usePhaseGeometry.client';
 
 // Full-bleed canvas dashboard - opt out of the default site chrome (header /
 // container / footer); this page paints the whole viewport itself.
@@ -18,15 +16,17 @@ const isDesktop = useMediaQuery('(min-width: 768px)');
    and the playback orchestrator (usePlaybackOrchestration), joined by the
    render loop below. All engine behaviour lives in the composables. */
 
-const renderMode = ref<RenderMode>('points');
-const topologyMode = ref<TopologyMode>('corridor');
+// User settings survive navigation (e.g. /about and back) via useState -
+// see useScopeSettings for the full key inventory.
+const settings = useScopeSettings();
+const { renderMode, topologyMode, showGoniometer, advancedOptionsOpen } = settings;
 const canvasContainer = ref<HTMLDivElement | null>(null);
 
 const three = useThree(canvasContainer);
 const scene = three.scene;
 const renderer = useCorridorRenderer(scene);
-const dreamBg = useDreamBackground(scene);
-const heavenlyBg = useHeavenlyBackground(scene);
+const dreamBg = useDreamBackground(scene, settings.dreamBgEnabled);
+const heavenlyBg = useHeavenlyBackground(scene, settings.heavenlyBgEnabled);
 
 const player = useWavPlayer();
 const geometry = usePhaseGeometry({ renderer, renderMode, topologyMode, audio: player.audio });
@@ -108,7 +108,6 @@ watch(renderMode, (newMode) => {
 
 const showControlsOverlay = ref(true);
 const showSettings = ref(true);
-const advancedOptionsOpen = ref(false);
 
 // Floating side panels: both open on desktop, both collapsed on phones (they
 // overlay the canvas). Crossing the breakpoint resets them. `immediate` means
@@ -139,7 +138,6 @@ const toggleSettings = () => {
 // loop (no reactive churn, no contact with the WebGL path). Shows the
 // window at the playhead whether playing or paused - a scope reads
 // whatever is at the probe.
-const showGoniometer = ref(true);
 const goniometerSource = () => {
     const raw = toRaw(corridorState.value);
     if (!raw.ch0 || !raw.ch1 || !raw.buffer) return null;
