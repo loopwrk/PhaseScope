@@ -9,6 +9,7 @@
    Controlled: the parent owns topology + duration state. */
 import Button from '../ds/Button.vue';
 import type { TopologyMode } from '~/composables/usePhaseGeometry.client';
+import { LIVE_VOICES, LIVE_VOICE_IDS, type LiveVoiceId } from '~/utils/liveVoices';
 
 const props = defineProps<{
     deviceNames: string[];
@@ -16,6 +17,7 @@ const props = defineProps<{
 
 const topology = defineModel<TopologyMode>('topology', { default: 'corridor' });
 const duration = defineModel<number>('duration', { default: 60 });
+const voice = defineModel<LiveVoiceId>('voice', { default: 'warm' });
 
 const emit = defineEmits<{
     start: [];
@@ -104,50 +106,71 @@ const pickCanvas = (id: TopologyMode, disabled?: boolean) => {
             </div>
         </div>
 
+        <!-- Voice: the brush (swappable mid-session from Display Settings) -->
+        <div class="flex flex-col gap-2.5">
+            <span class="font-display text-detail font-semibold text-(--accent)">Voice</span>
+            <div class="flex flex-wrap items-center gap-2">
+                <button
+                    v-for="id in LIVE_VOICE_IDS"
+                    :key="id"
+                    type="button"
+                    class="rounded-none border px-3 py-1 font-mono text-caption tracking-label transition-colors duration-150 [clip-path:var(--clip-chamfer-sm)] focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
+                    :class="
+                        voice === id
+                            ? 'border-(--accent) text-(--accent)'
+                            : 'border-(--border-strong) text-(--text-muted) hover:text-(--text)'
+                    "
+                    :aria-pressed="voice === id"
+                    @click="voice = id"
+                >
+                    {{ LIVE_VOICES[id].label }}
+                </button>
+            </div>
+            <p class="text-caption text-(--text-muted)">{{ LIVE_VOICES[voice].hint }}</p>
+        </div>
+
         <!-- Session length -->
         <div class="flex flex-col gap-2.5">
-            <template>
-                <span class="font-display text-detail font-semibold text-(--accent)"
-                    >Session length
-                    <span class="ml-1 font-mono text-caption font-normal normal-case text-(--text-muted)"
-                        >— locked once you play</span
-                    ></span
+            <span class="font-display text-detail font-semibold text-(--accent)"
+                >Session length
+                <span class="ml-1 font-mono text-caption font-normal normal-case text-(--text-muted)"
+                    >— locked once you play</span
+                ></span
+            >
+            <div class="flex flex-wrap items-center gap-2">
+                <button
+                    v-for="chip in LENGTH_CHIPS"
+                    :key="chip.value"
+                    type="button"
+                    class="rounded-none border px-3 py-1 font-mono text-caption tracking-label transition-colors duration-150 [clip-path:var(--clip-chamfer-sm)] focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
+                    :class="
+                        !customOpen && duration === chip.value
+                            ? 'border-(--accent) text-(--accent)'
+                            : 'border-(--border-strong) text-(--text-muted) hover:text-(--text)'
+                    "
+                    @click="pickChip(chip.value)"
                 >
-                <div class="flex flex-wrap items-center gap-2">
-                    <button
-                        v-for="chip in LENGTH_CHIPS"
-                        :key="chip.value"
-                        type="button"
-                        class="rounded-none border px-3 py-1 font-mono text-caption tracking-label transition-colors duration-150 [clip-path:var(--clip-chamfer-sm)] focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
-                        :class="
-                            !customOpen && duration === chip.value
-                                ? 'border-(--accent) text-(--accent)'
-                                : 'border-(--border-strong) text-(--text-muted) hover:text-(--text)'
-                        "
-                        @click="pickChip(chip.value)"
-                    >
-                        {{ chip.label }}
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded-none border px-3 py-1 font-mono text-caption tracking-label transition-colors duration-150 [clip-path:var(--clip-chamfer-sm)] focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
-                        :class="
-                            customOpen
-                                ? 'border-(--accent) text-(--accent)'
-                                : 'border-(--border-strong) text-(--text-muted) hover:text-(--text)'
-                        "
-                        @click="customOpen = true"
-                    >
-                        custom…
-                    </button>
-                    <span
-                        v-if="customOpen"
-                        class="ml-auto font-mono text-caption tracking-label text-(--accent) tabular-nums"
-                        >{{ durationLabel }}</span
-                    >
-                </div>
-                <DsSlider v-if="customOpen" v-model="duration" :min="5" :max="600" :step="5" />
-            </template>
+                    {{ chip.label }}
+                </button>
+                <button
+                    type="button"
+                    class="rounded-none border px-3 py-1 font-mono text-caption tracking-label transition-colors duration-150 [clip-path:var(--clip-chamfer-sm)] focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
+                    :class="
+                        customOpen
+                            ? 'border-(--accent) text-(--accent)'
+                            : 'border-(--border-strong) text-(--text-muted) hover:text-(--text)'
+                    "
+                    @click="customOpen = true"
+                >
+                    custom…
+                </button>
+                <span
+                    v-if="customOpen"
+                    class="ml-auto font-mono text-caption tracking-label text-(--accent) tabular-nums"
+                    >{{ durationLabel }}</span
+                >
+            </div>
+            <DsSlider v-if="customOpen" v-model="duration" :min="5" :max="600" :step="5" />
         </div>
 
         <!-- Device status + CTA -->

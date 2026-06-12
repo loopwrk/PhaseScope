@@ -583,6 +583,7 @@ onUnmounted(async () => {
         >
             <LayoutDisplayPanel
                 variant="glass"
+                v-model:live-voice="synth.voice.value"
                 @close="showSettings = false"
                 v-model:pointsPerFrame="corridorMeta.pointsPerFrame"
                 v-model:coverage="trackCoveragePercent"
@@ -666,6 +667,7 @@ onUnmounted(async () => {
             v-if="livePhase === 'setup'"
             v-model:topology="topologyMode"
             v-model:duration="liveDuration"
+            v-model:voice="synth.voice.value"
             class="ps-rise absolute left-1/2 top-1/2 z-40 -translate-x-1/2 -translate-y-1/2"
             :device-names="midi.deviceNames.value"
             @start="startSession"

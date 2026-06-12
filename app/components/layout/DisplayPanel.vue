@@ -11,6 +11,7 @@ import RadioGroup from '../ds/RadioGroup.vue';
 import Checkbox from '../ds/Checkbox.vue';
 import KeyCap from '../ds/KeyCap.vue';
 import IconButton from '../ds/IconButton.vue';
+import { LIVE_VOICES, LIVE_VOICE_IDS, type LiveVoiceId } from '~/utils/liveVoices';
 import { computed } from 'vue';
 
 withDefaults(
@@ -50,6 +51,21 @@ const channelBias = defineModel<boolean>('channelBias', { default: false });
 
 // Lines would draw long bridges across the split stereo field, so channel
 // bias locks rendering to points
+const liveVoice = defineModel<LiveVoiceId>('liveVoice', { default: 'warm' });
+// RadioGroup speaks string | number; this proxy keeps the model typed
+const liveVoiceProxy = computed<string | number>({
+    get: () => liveVoice.value,
+    set: (v) => (liveVoice.value = v as LiveVoiceId),
+});
+// Description rides on the selected voice only, like the topology list
+const voiceItems = computed(() =>
+    LIVE_VOICE_IDS.map((id) => ({
+        label: LIVE_VOICES[id].label,
+        value: id,
+        description: liveVoice.value === id ? LIVE_VOICES[id].hint : undefined,
+    }))
+);
+
 const renderItems = computed(() => [
     { label: 'Points', value: 'points' },
     { label: 'Lines', value: 'lines', disabled: channelBias.value },
@@ -226,6 +242,13 @@ const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? S
                         <Checkbox v-model="channelBias" :disabled="renderMode === 'lines'" size="xl" />
                         <span class="inline-flex items-center gap-2 text-detail">Channel Bias</span>
                     </label>
+                </div>
+
+                <!-- Voice (live sessions): the synth's brush - new notes
+                     take the new preset, held notes finish in the old one -->
+                <div v-if="live" class="flex flex-col gap-2.5">
+                    <span class="font-display text-detail font-semibold text-(--accent)">Voice</span>
+                    <RadioGroup v-model="liveVoiceProxy" :items="voiceItems" size="lg" />
                 </div>
             </div>
         </div>

@@ -1,4 +1,5 @@
 import { midiNoteToHz, pitchToPan, velocityToGain } from '~/utils/midi';
+import { LIVE_VOICES, type LiveVoiceId } from '~/utils/liveVoices';
 import type { GoniometerSource } from '~/components/layout/Goniometer.vue';
 
 /* useLiveSynth - the sound engine of live-input mode.
@@ -37,8 +38,8 @@ registerProcessor('ps-capture', PsCapture);
 
 interface Voice {
     oscA: OscillatorNode;
-    oscB: OscillatorNode;
-    filter: BiquadFilterNode;
+    oscB: OscillatorNode | null;
+    filter: BiquadFilterNode | null;
     env: GainNode;
     pan: StereoPannerNode;
 }
@@ -46,6 +47,10 @@ interface Voice {
 export function useLiveSynth() {
     const enabled = ref(false);
     const activeVoiceCount = ref(0);
+
+    // The brush: which preset new notes are built with (held notes keep
+    // the timbre they were struck with - a natural crossfade)
+    const voicePreset = usePersistedState<LiveVoiceId>('scope:live-voice', () => 'warm');
 
     let ctx: AudioContext | null = null;
     let master: GainNode | null = null;
@@ -108,23 +113,10 @@ export function useLiveSynth() {
         if (!ctx || !master || !enabled.value) return;
         noteOff(note, true); // retrigger steals the old voice instantly
 
+        const def = LIVE_VOICES[voicePreset.value] ?? LIVE_VOICES.warm;
         const hz = midiNoteToHz(note);
-        const peak = velocityToGain(velocity);
+        const peak = velocityToGain(velocity) * def.gain;
         const t = ctx.currentTime;
-
-        const oscA = ctx.createOscillator();
-        const oscB = ctx.createOscillator();
-        oscA.type = 'sawtooth';
-        oscB.type = 'sawtooth';
-        oscA.frequency.value = hz;
-        oscB.frequency.value = hz;
-        oscA.detune.value = -6;
-        oscB.detune.value = 6;
-
-        const filter = ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = Math.min(hz * 6, 9000);
-        filter.Q.value = 0.8;
 
         const env = ctx.createGain();
         env.gain.setValueAtTime(0, t);
@@ -134,11 +126,40 @@ export function useLiveSynth() {
         const pan = ctx.createStereoPanner();
         pan.pan.value = pitchToPan(note);
 
-        oscA.connect(filter);
-        oscB.connect(filter);
-        filter.connect(env).connect(pan).connect(master);
+        // The oscillators feed the filter when the preset wants one,
+        // otherwise straight into the envelope
+        let input: AudioNode = env;
+        let filter: BiquadFilterNode | null = null;
+        if (def.filterMult > 0) {
+            filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = Math.min(hz * def.filterMult, 9000);
+            filter.Q.value = 0.8;
+            filter.connect(env);
+            input = filter;
+        }
+
+        const oscA = ctx.createOscillator();
+        oscA.type = def.wave;
+        oscA.frequency.value = hz;
+        oscA.detune.value = -def.detune / 2;
+        oscA.connect(input);
         oscA.start(t);
-        oscB.start(t);
+
+        let oscB: OscillatorNode | null = null;
+        if (def.bRatio > 0) {
+            oscB = ctx.createOscillator();
+            oscB.type = def.wave;
+            oscB.frequency.value = hz * def.bRatio;
+            oscB.detune.value = def.detune / 2;
+            const gB = ctx.createGain();
+            gB.gain.value = def.bLevel;
+            oscB.connect(gB);
+            gB.connect(input);
+            oscB.start(t);
+        }
+
+        env.connect(pan).connect(master);
 
         voices.set(note, { oscA, oscB, filter, env, pan });
         activeVoiceCount.value = voices.size;
@@ -157,9 +178,9 @@ export function useLiveSynth() {
         voice.env.gain.setValueAtTime(voice.env.gain.value, t);
         voice.env.gain.exponentialRampToValueAtTime(1e-4, t + release);
         voice.oscA.stop(t + release + 0.01);
-        voice.oscB.stop(t + release + 0.01);
-        // GC: once the last osc ends, unhook the whole voice chain
-        voice.oscB.onended = () => {
+        voice.oscB?.stop(t + release + 0.01);
+        // GC: once the voice ends, unhook the whole chain
+        voice.oscA.onended = () => {
             voice.pan.disconnect();
         };
     };
@@ -219,5 +240,6 @@ export function useLiveSynth() {
         samplesWritten,
         resetRing,
         ringInfo,
+        voice: voicePreset,
     };
 }
