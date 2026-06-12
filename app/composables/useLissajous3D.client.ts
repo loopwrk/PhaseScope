@@ -44,7 +44,9 @@ export function useLissajous3D(
     three: ReturnType<typeof useThree>,
     source: () => (GoniometerSource & { sr: number }) | null
 ) {
-    const active = ref(true);
+    // Starts INACTIVE to mirror the page's scope3d ref: if these disagree,
+    // the first toggle is a no-change and the watcher never builds the scene
+    const active = ref(false);
 
     // Scope display settings (persisted; bound by ScopeSettingsPanel)
     const dimension = usePersistedState<'3d' | '2d'>('scope:liss-dimension', () => '3d');

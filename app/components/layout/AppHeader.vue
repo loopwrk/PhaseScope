@@ -6,17 +6,18 @@
 import IconButton from '../ds/IconButton.vue';
 import Logo from '../ds/Logo.vue';
 
-withDefaults(defineProps<{ controlsOpen?: boolean; settingsOpen?: boolean }>(), {
+withDefaults(defineProps<{ controlsOpen?: boolean; settingsOpen?: boolean; goniometerOpen?: boolean }>(), {
     controlsOpen: false,
     settingsOpen: false,
+    goniometerOpen: false,
 });
 
-defineEmits<{ toggleControls: []; toggleSettings: []; toggleFullscreen: []; exit: [] }>();
+defineEmits<{ toggleControls: []; toggleSettings: []; toggleGoniometer: []; toggleFullscreen: []; exit: [] }>();
 </script>
 
 <template>
     <header class="flex items-start justify-between gap-4">
-        <div class="flex items-center gap-3" @click="$emit('exit')">
+        <div class="flex cursor-pointer items-center gap-3" title="Home" @click="$emit('exit')">
             <Logo
                 :size="64"
                 class="shrink-0 text-(--text) drop-shadow-[0_0_10px_color-mix(in_oklch,var(--scope-cyan)_30%,transparent)]"
@@ -34,6 +35,13 @@ defineEmits<{ toggleControls: []; toggleSettings: []; toggleFullscreen: []; exit
         </div>
         <div class="ps-glass flex items-center gap-1 p-1 [clip-path:var(--clip-chamfer-sm)]">
             <IconButton
+                icon="i-lucide-sliders-horizontal"
+                :variant="settingsOpen ? 'secondary' : 'ghost'"
+                :aria-label="settingsOpen ? 'Hide settings' : 'Show settings'"
+                :aria-pressed="settingsOpen"
+                @click="$emit('toggleSettings')"
+            />
+            <IconButton
                 icon="i-lucide-keyboard"
                 :variant="controlsOpen ? 'secondary' : 'ghost'"
                 :aria-label="controlsOpen ? 'Hide controls overlay' : 'Show controls overlay'"
@@ -41,11 +49,11 @@ defineEmits<{ toggleControls: []; toggleSettings: []; toggleFullscreen: []; exit
                 @click="$emit('toggleControls')"
             />
             <IconButton
-                icon="i-lucide-sliders-horizontal"
-                :variant="settingsOpen ? 'secondary' : 'ghost'"
-                :aria-label="settingsOpen ? 'Hide settings' : 'Show settings'"
-                :aria-pressed="settingsOpen"
-                @click="$emit('toggleSettings')"
+                icon="i-lucide-activity"
+                :variant="goniometerOpen ? 'secondary' : 'ghost'"
+                :aria-label="goniometerOpen ? 'Hide goniometer' : 'Show goniometer'"
+                :aria-pressed="goniometerOpen"
+                @click="$emit('toggleGoniometer')"
             />
             <IconButton
                 icon="i-lucide-maximize"

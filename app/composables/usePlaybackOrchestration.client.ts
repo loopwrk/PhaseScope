@@ -130,6 +130,15 @@ export function usePlaybackOrchestration(options: UsePlaybackOrchestrationOption
         geometry.clear();
     };
 
+    /** Unload the track entirely - back to the idle fork (the logo's
+     *  way home from listening). */
+    const unloadTrack = () => {
+        handleStop();
+        autoPlayIndex.value = -1;
+        audio.buffer = null;
+        wavLoaded.value = false;
+    };
+
     /* ---------- Demo-track rotation ---------- */
 
     // Auto-play: play tracks sequentially, looping back to start
@@ -231,6 +240,7 @@ export function usePlaybackOrchestration(options: UsePlaybackOrchestrationOption
         selectedDemoTrackId,
         handlePlayPause,
         handleStop,
+        unloadTrack,
         handleSelectDemoTrack,
         handleLoadFile,
         playAdjacentTrack,

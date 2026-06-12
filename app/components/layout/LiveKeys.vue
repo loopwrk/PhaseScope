@@ -11,7 +11,6 @@
    Presentational: note events go up, session state comes down. litNotes
    lets the parent light keys the player didn't press (the ghost demo). */
 import type { MidiNoteEvent } from '~/composables/useMidiInput.client';
-import Button from '../ds/Button.vue';
 
 export type LiveDockPhase = 'armed' | 'playing' | 'done';
 
@@ -93,65 +92,81 @@ const monitorLabel = computed(() => {
 
 <template>
     <div class="ps-glass flex flex-col gap-2.5 border border-(--border-strong) p-3 [clip-path:var(--clip-notch)]">
-        <!-- MIDI monitor + exit -->
+        <!-- MIDI monitor: device left, note/velocity right (its home) -->
         <div class="flex items-baseline justify-between gap-4 font-mono text-caption uppercase tracking-label">
-            <span :class="deviceNames.length ? 'text-(--accent)' : 'text-(--text-muted)'">
-                {{ deviceNames.length ? deviceNames.join(' + ') : 'no midi device - keys below work' }}
+            <span
+                :class="deviceNames.length ? 'text-(--accent)' : 'text-(--text-muted)'"
+                v-html="deviceNames.length ? deviceNames.join(' + ') : 'no midi device - use keys below'"
+            ></span>
+            <span class="text-(--text-muted)">
+                <span class="text-(--scope-cyan) tabular-nums">{{ monitorLabel }}</span>
+                · voices <span class="tabular-nums">{{ voiceCount }}</span>
             </span>
-            <span class="flex items-baseline gap-3 text-(--text-muted)">
-                <span>
-                    <span class="text-(--scope-cyan) tabular-nums">{{ monitorLabel }}</span>
-                    · voices <span class="tabular-nums">{{ voiceCount }}</span>
-                </span>
+        </div>
+
+        <!-- Phase row: narration / countdown on the left, session controls
+             flush against it on the right -->
+        <div class="flex items-center gap-1.5">
+            <div v-if="phase === 'armed'" class="flex min-w-0 flex-1 flex-col items-center gap-0.5 text-center">
+                <p class="text-detail text-(--text)">{{ primaryLine }}</p>
+                <p class="font-mono text-caption uppercase tracking-label text-(--text-muted)">
+                    {{ secondaryLine }}
+                    <template v-if="!ghostActive">
+                        ·
+                        <button
+                            type="button"
+                            class="uppercase tracking-label text-(--scope-cyan) transition-colors hover:text-(--text) focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
+                            @click="emit('demo')"
+                        >
+                            show me ▶
+                        </button>
+                    </template>
+                </p>
+            </div>
+
+            <template v-else-if="phase === 'playing'">
+                <div class="h-[3px] min-w-0 flex-1 bg-(--border-strong)">
+                    <div
+                        class="h-full bg-(--accent) transition-[width] duration-300 ease-linear"
+                        :style="{ width: `${Math.round((progress ?? 0) * 100)}%` }"
+                    ></div>
+                </div>
+                <span class="font-mono text-caption tracking-label text-(--accent) tabular-nums">{{
+                    progressLabel
+                }}</span>
+            </template>
+
+            <template v-else>
+                <p class="min-w-0 flex-1 text-detail text-(--text)">{{ primaryLine }}</p>
                 <button
                     type="button"
-                    class="uppercase tracking-label transition-colors hover:text-(--text) focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
-                    aria-label="Exit live mode"
-                    @click="emit('exit')"
+                    class="rounded-none border border-(--border-strong) px-2.5 py-1 font-mono text-caption uppercase tracking-label text-(--text) transition-colors duration-150 [clip-path:var(--clip-chamfer-sm)] hover:border-(--accent) hover:text-(--accent) focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
+                    @click="emit('changeCanvas')"
                 >
-                    exit ✕
+                    Change canvas
                 </button>
-            </span>
-        </div>
+            </template>
 
-        <!-- Phase narration -->
-        <div v-if="phase === 'armed'" class="flex flex-col items-center gap-1 py-1 text-center">
-            <p class="text-detail text-(--text)">{{ primaryLine }}</p>
-            <p class="font-mono text-caption uppercase tracking-label text-(--text-muted)">
-                {{ secondaryLine }}
-                <template v-if="!ghostActive">
-                    ·
-                    <button
-                        type="button"
-                        class="uppercase tracking-label text-(--scope-cyan) transition-colors hover:text-(--text) focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
-                        @click="emit('demo')"
-                    >
-                        show me ▶
-                    </button>
-                </template>
-            </p>
-        </div>
-
-        <div v-else-if="phase === 'playing'" class="flex items-center gap-3 py-1">
-            <div class="h-[3px] flex-1 bg-(--surface-raised)">
-                <div
-                    class="h-full bg-(--accent) transition-[width] duration-300 ease-linear"
-                    :style="{ width: `${Math.round((progress ?? 0) * 100)}%` }"
-                ></div>
-            </div>
-            <span class="font-mono text-caption tracking-label text-(--accent) tabular-nums">{{ progressLabel }}</span>
-        </div>
-
-        <div v-else class="flex flex-wrap items-center justify-between gap-3 py-0.5">
-            <p class="text-detail text-(--text)">{{ primaryLine }}</p>
-            <span class="flex gap-2">
-                <Button variant="primary" size="sm" label="New session" @click="emit('newSession')" />
-                <Button variant="secondary" size="sm" label="Change canvas" @click="emit('changeCanvas')" />
-            </span>
+            <button
+                type="button"
+                class="rounded-none border border-(--border-strong) px-2.5 py-1 font-mono text-caption uppercase tracking-label text-(--text) transition-colors duration-150 [clip-path:var(--clip-chamfer-sm)] hover:border-(--accent) hover:text-(--accent) focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
+                aria-label="Start a new session"
+                @click="emit('newSession')"
+            >
+                New ↺
+            </button>
+            <button
+                type="button"
+                class="rounded-none border border-(--border-strong) px-2.5 py-1 font-mono text-caption uppercase tracking-label text-(--text) transition-colors duration-150 [clip-path:var(--clip-chamfer-sm)] hover:border-(--accent) hover:text-(--accent) focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
+                aria-label="Exit live mode"
+                @click="emit('exit')"
+            >
+                Exit ✕
+            </button>
         </div>
 
         <!-- Two-octave keyboard -->
-        <div class="relative h-20 select-none touch-none" role="group" aria-label="On-screen keyboard">
+        <div class="relative h-27 select-none touch-none" role="group" aria-label="On-screen keyboard">
             <div class="flex h-full gap-px">
                 <button
                     v-for="k in whiteKeys"

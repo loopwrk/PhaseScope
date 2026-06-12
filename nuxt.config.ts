@@ -37,6 +37,14 @@ function generateAudioManifest() {
 generateAudioManifest();
 
 export default defineNuxtConfig({
+    ui: {
+        theme: {
+            // Nuxt UI defaults + tertiary: registering it here compiles
+            // color="tertiary" variants (and types) into every component
+            colors: ['primary', 'secondary', 'tertiary', 'success', 'info', 'warning', 'error'],
+        },
+    },
+
     app: {
         head: {
             title: 'PhaseScope',

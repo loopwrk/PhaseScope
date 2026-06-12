@@ -119,12 +119,12 @@
     --surface-elevated: oklch(0.2004 0.0192 266.02); /* #12161f - popovers / advanced options */
     --surface-sunken: oklch(0.1165 0.0142 272.6); /* #04050a - deepest wells / slider grooves */
 
-    --text: oklch(0.9374 0.0125 271.28); /* #e7eaf3 - cool near-white */
-    --text-muted: oklch(0.7444 0.0263 267.82); /* #9097a8 - tracked labels, secondary copy */
+    --text: var(--brand-white); /* standard white via the palette anchor */
+    --text-muted: oklch(0.8465 0.0263 267.82); /* #9097a8 - tracked labels, secondary copy */
     --text-faint: oklch(0.4972 0.0281 270); /* #5c6273 - disabled, hint, watermark */
 
     --border: var(--scope-border); /* #232838 - hairline divider on glass */
-    --border-strong: oklch(0.355 0.0379 270.13); /* #343b50 - panel edges / focused fields */
+    --border-strong: oklch(0.5467 0.0379 270.13); /* #343b50 - panel edges / focused fields */
 
     --success-soft: color-mix(in oklch, var(--success) 20%, transparent);
     --warning-soft: color-mix(in oklch, var(--warning) 20%, transparent);

@@ -37,7 +37,7 @@ const colourItems = [
         <div class="flex flex-col gap-5">
             <div class="flex flex-col gap-2.5">
                 <span class="font-display text-detail font-semibold text-(--accent)">Dimension</span>
-                <RadioGroup v-model="dimension" :items="dimensionItems" orientation="horizontal" />
+                <RadioGroup v-model="dimension" color="primary" :items="dimensionItems" orientation="horizontal" />
             </div>
 
             <div class="flex flex-col gap-2">
@@ -52,7 +52,7 @@ const colourItems = [
 
             <div class="flex flex-col gap-2.5">
                 <span class="font-display text-detail font-semibold text-(--accent)">Colour</span>
-                <RadioGroup v-model="colourMode" :items="colourItems" />
+                <RadioGroup v-model="colourMode" color="primary" :items="colourItems" />
                 <div v-if="colourMode === 'custom'" class="pt-1">
                     <UColorPicker v-model="customColour" format="hex" size="sm" aria-label="Custom trail colour" />
                 </div>

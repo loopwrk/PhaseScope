@@ -136,6 +136,7 @@
 :root {
     --ui-primary: var(--accent);
     --ui-secondary: var(--brand-secondary);
+    --ui-tertiary: var(--brand-tertiary);
     --ui-text: var(--text);
     --ui-text-muted: var(--text-muted);
     --ui-text-highlighted: var(--text);
@@ -155,6 +156,7 @@
 
 html.dark {
     --ui-primary: var(--accent);
+    --ui-tertiary: var(--brand-tertiary);
     --ui-text: var(--text);
     --ui-text-muted: var(--text-muted);
     --ui-bg: var(--bg);

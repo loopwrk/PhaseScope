@@ -8,9 +8,9 @@ import Panel from '../ds/Panel.vue';
 import Badge from '../ds/Badge.vue';
 import Slider from '../ds/Slider.vue';
 import RadioGroup from '../ds/RadioGroup.vue';
-import Switch from '../ds/Switch.vue';
 import Checkbox from '../ds/Checkbox.vue';
 import KeyCap from '../ds/KeyCap.vue';
+import IconButton from '../ds/IconButton.vue';
 import { computed } from 'vue';
 
 withDefaults(
@@ -36,6 +36,8 @@ withDefaults(
     }
 );
 
+defineEmits<{ close: [] }>();
+
 const pointsPerFrame = defineModel<number>('pointsPerFrame', { default: 512 });
 const coverage = defineModel<number>('coverage', { default: 100 });
 const renderMode = defineModel<string | number>('renderMode', { default: 'points' });
@@ -44,7 +46,6 @@ const oscillation = defineModel<boolean>('oscillation', { default: false });
 const reverse = defineModel<boolean>('reverse', { default: false });
 const dream = defineModel<boolean>('dream', { default: false });
 const heavenly = defineModel<boolean>('heavenly', { default: false });
-const controlsOverlay = defineModel<boolean>('controlsOverlay', { default: true });
 const channelBias = defineModel<boolean>('channelBias', { default: false });
 
 // Lines would draw long bridges across the split stereo field, so channel
@@ -79,7 +80,17 @@ const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? S
 <template>
     <Panel :variant="variant" title="Display Settings" class="w-full">
         <template #headerRight>
-            <Badge color="primary" size="xl" :label="topologyLabel" />
+            <div class="flex items-center gap-2">
+                <Badge color="primary" size="xl" :label="topologyLabel" />
+                <IconButton
+                    icon="i-lucide-x"
+                    variant="ghost"
+                    class="mr-0"
+                    size="sm"
+                    aria-label="Hide settings"
+                    @click="$emit('close')"
+                />
+            </div>
         </template>
 
         <div class="grid gap-x-7 gap-y-5 sm:grid-cols-2">
@@ -155,18 +166,24 @@ const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? S
                         class="inline-flex items-center gap-2 font-display text-label font-semibold text-(--brand-secondary)"
                         >Render Mode <KeyCap label="R"
                     /></span>
-                    <RadioGroup v-model="renderMode" :items="renderItems" orientation="horizontal" size="xl" />
+                    <RadioGroup
+                        v-model="renderMode"
+                        :items="renderItems"
+                        orientation="horizontal"
+                        size="xl"
+                        color="primary"
+                    />
                 </div>
 
                 <!-- Background skyboxes (mutually exclusive, handled upstream) -->
                 <div class="flex flex-col gap-3">
                     <span class="font-display text-label font-semibold text-(--brand-secondary)">Background</span>
                     <label class="flex items-center gap-3">
-                        <Checkbox v-model="dream" size="xl" />
+                        <Checkbox v-model="dream" color="primary" size="xl" />
                         <span class="inline-flex items-center gap-2 text-detail">Dream <KeyCap label="B" /></span>
                     </label>
                     <label class="flex items-center gap-3">
-                        <Checkbox v-model="heavenly" size="xl" />
+                        <Checkbox v-model="heavenly" color="primary" size="xl" />
                         <span class="inline-flex items-center gap-2 text-detail">Heavenly <KeyCap label="N" /></span>
                     </label>
                 </div>
@@ -180,25 +197,25 @@ const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? S
                     :class="{ 'pointer-events-none opacity-40': topologyDisabled }"
                 >
                     <span class="font-display text-label font-semibold text-(--brand-secondary)">Topology</span>
-                    <RadioGroup v-model="topology" :items="topologyItems" :disabled="topologyDisabled" size="xl" />
+                    <RadioGroup
+                        v-model="topology"
+                        color="primary"
+                        :items="topologyItems"
+                        :disabled="topologyDisabled"
+                        size="xl"
+                    />
                 </div>
 
                 <!-- Toggles -->
                 <div class="flex flex-col gap-3">
                     <label class="flex items-center gap-3">
-                        <Switch v-model="controlsOverlay" color="secondary" />
-                        <span class="inline-flex items-center gap-2 text-detail"
-                            >Show Controls Overlay <KeyCap label="H"
-                        /></span>
-                    </label>
-                    <label class="flex items-center gap-3">
-                        <Checkbox v-model="oscillation" size="xl" color="secondary" />
+                        <Checkbox v-model="oscillation" size="xl" color="primary" />
                         <span class="inline-flex items-center gap-2 text-detail"
                             >Enable Point Oscillation <KeyCap label="O"
                         /></span>
                     </label>
                     <label class="flex items-center gap-3">
-                        <Checkbox v-model="reverse" size="xl" color="secondary" />
+                        <Checkbox v-model="reverse" size="xl" color="primary" />
                         <span class="inline-flex items-center gap-2 text-detail"
                             >Reverse Colour Spectrum <KeyCap label="V"
                         /></span>
@@ -206,12 +223,7 @@ const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? S
                     <!-- Two-way exclusion with Lines: each greys while the
                          other is active -->
                     <label class="flex items-center gap-3" :class="{ 'opacity-40': renderMode === 'lines' }">
-                        <Checkbox
-                            v-model="channelBias"
-                            :disabled="renderMode === 'lines'"
-                            size="lg"
-                            color="secondary"
-                        />
+                        <Checkbox v-model="channelBias" :disabled="renderMode === 'lines'" size="xl" />
                         <span class="inline-flex items-center gap-2 text-detail">Channel Bias</span>
                     </label>
                 </div>

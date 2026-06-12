@@ -23,7 +23,7 @@ export interface GoniometerSource {
 const props = defineProps<{ source: () => GoniometerSource | null; active3d?: boolean }>();
 const emit = defineEmits<{ toggle3d: [] }>();
 
-const SIZE = 136; // CSS px, square
+const SIZE = 160; // CSS px, square - sized so the frame hugs the header row's natural width
 const WINDOW = 1024; // samples for the correlation estimate
 const TRACE = 256; // line segments drawn per update
 const FRAME_MS = 33; // ~30fps cap
@@ -32,7 +32,7 @@ const canvasEl = ref<HTMLCanvasElement | null>(null);
 const corr = ref<number | null>(null);
 
 const corrLabel = computed(() => {
-    if (corr.value === null) return '-.--';
+    if (corr.value === null) return '—.——';
     const v = corr.value;
     return `${v < 0 ? '−' : '+'}${Math.abs(v).toFixed(2)}`;
 });
@@ -135,21 +135,13 @@ onBeforeUnmount(() => {
     >
         <div class="flex w-full items-center justify-between gap-3">
             <p class="ps-label">Phase</p>
-            <div class="flex items-center gap-2">
-                <p
-                    class="font-mono text-caption font-semibold tracking-label tabular-nums"
-                    :class="corr !== null && corr < 0 ? 'text-(--scope-magenta)' : 'text-(--scope-cyan)'"
-                    aria-label="Stereo correlation"
-                >
-                    CORR {{ corrLabel }}
-                </p>
-                <!-- Expand/collapse affordance at the frame's top-right corner -->
-                <UIcon
-                    :name="active3d ? 'i-lucide-arrow-down-left' : 'i-lucide-arrow-up-right'"
-                    class="size-4 shrink-0 text-(--accent) transition-transform duration-150 motion-safe:group-hover:translate-x-0.5 motion-safe:group-hover:-translate-y-0.5"
-                    aria-hidden="true"
-                />
-            </div>
+            <p
+                class="font-mono text-caption font-semibold tracking-label tabular-nums"
+                :class="corr !== null && corr < 0 ? 'text-(--scope-magenta)' : 'text-(--scope-cyan)'"
+                aria-label="Stereo correlation"
+            >
+                CORR {{ corrLabel }}
+            </p>
         </div>
         <canvas
             ref="canvasEl"
@@ -158,5 +150,17 @@ onBeforeUnmount(() => {
             role="img"
             aria-label="Instantaneous Lissajous figure of the current audio"
         ></canvas>
+        <!-- The affordance says its action in words: a full-width footer
+             bar that doubles as the 3D scope's way back out -->
+        <div
+            class="flex w-full items-center justify-center gap-1.5 border-t border-(--border) pt-2 font-mono text-caption uppercase tracking-label text-(--accent) transition-colors duration-150 group-hover:text-(--brand-white)"
+        >
+            {{ active3d ? 'Exit 3D scope' : 'Enter 3D scope' }}
+            <UIcon
+                :name="active3d ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'"
+                class="size-3.5"
+                aria-hidden="true"
+            />
+        </div>
     </button>
 </template>

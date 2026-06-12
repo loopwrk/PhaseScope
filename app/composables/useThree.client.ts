@@ -27,11 +27,12 @@ export function useThree(canvasContainer: Ref<HTMLDivElement | null>) {
     };
 
     const toggleFullscreen = async () => {
-        if (!canvasContainer.value) return;
-
         try {
             if (!document.fullscreenElement) {
-                await canvasContainer.value.requestFullscreen();
+                // Fullscreen the whole document, not the canvas div: element
+                // fullscreen hides every DOM sibling, taking the control
+                // panels with it - the root keeps the chrome on stage
+                await document.documentElement.requestFullscreen();
                 isFullscreen.value = true;
             } else {
                 await document.exitFullscreen();

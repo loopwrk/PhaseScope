@@ -5,6 +5,7 @@
    parent owns engine state and applies the changes. */
 import KeyCap from '../ds/KeyCap.vue';
 import IconButton from '../ds/IconButton.vue';
+import Panel from '../ds/Panel.vue';
 
 import { segBaseSm as segBase, segActive, segIdle } from '../ds/segmented';
 
@@ -28,134 +29,107 @@ const cameraModes: { label: string; value: CameraMode }[] = [
     { label: 'Orbit', value: 'orbit' },
 ];
 const speeds = ['Slow', 'Med', 'Fast'];
-
-// Static reference (Camera + Speed live above; tracks use { } - [ ] is speed).
-const sections: { label: string; keys: { k: string; d: string }[] }[] = [
-    {
-        label: 'Playback',
-        keys: [
-            { k: 'ENTER ↵', d: 'Play / pause' },
-            { k: 'R', d: 'Render mode' },
-            { k: 'O', d: 'Point oscillation' },
-        ],
-    },
-    {
-        label: 'View',
-        keys: [
-            { k: 'V', d: 'Reverse colour spectrum' },
-            { k: 'B', d: 'Dream background' },
-            { k: 'N', d: 'Heavenly background' },
-            { k: 'G', d: 'Goniometer' },
-            { k: 'H', d: 'Toggle this overlay' },
-        ],
-    },
-    {
-        label: 'Tracks',
-        keys: [
-            { k: '{', d: 'Previous track' },
-            { k: '}', d: 'Next track' },
-        ],
-    },
-];
 </script>
 
 <template>
-    <aside class="ps-glass flex w-[min(100vw_-_2rem,17rem)] flex-col gap-4 p-4 [clip-path:var(--clip-chamfer-md)]">
-        <div class="flex items-center justify-between">
-            <p class="ps-label">Controls</p>
-            <IconButton icon="i-lucide-x" variant="ghost" size="sm" aria-label="Hide overlay" @click="emit('close')" />
-        </div>
+    <Panel variant="glass" title="Controls" class="w-[min(100vw_-_2rem,17rem)]">
+        <template #headerRight>
+            <IconButton
+                icon="i-lucide-x"
+                variant="ghost"
+                class="mr-0"
+                size="sm"
+                aria-label="Hide overlay"
+                @click="emit('close')"
+            />
+        </template>
+        <div class="flex flex-col gap-4">
+            <!-- Camera mode (live + interactive) -->
+            <div class="flex flex-col gap-2" :class="{ 'pointer-events-none opacity-40': disabled }">
+                <div class="flex items-center justify-between">
+                    <span class="ps-label text-(--brand-white)">Camera</span>
+                    <KeyCap label="C" />
+                </div>
+                <div role="group" aria-label="Camera mode" class="grid grid-cols-3 gap-1">
+                    <button
+                        v-for="m in cameraModes"
+                        :key="m.value"
+                        type="button"
+                        :disabled="disabled"
+                        :class="[segBase, cameraMode === m.value ? segActive : segIdle]"
+                        :aria-pressed="cameraMode === m.value"
+                        @click="emit('setCameraMode', m.value)"
+                    >
+                        {{ m.label }}
+                    </button>
+                </div>
+            </div>
 
-        <!-- Camera mode (live + interactive) -->
-        <div class="flex flex-col gap-2" :class="{ 'pointer-events-none opacity-40': disabled }">
-            <div class="flex items-center justify-between">
-                <span class="ps-label text-(--text-faint)">Camera</span>
-                <KeyCap label="C" />
+            <!-- Movement speed (live + interactive) -->
+            <div class="flex flex-col gap-2" :class="{ 'pointer-events-none opacity-40': disabled }">
+                <div class="flex items-center justify-between">
+                    <span class="ps-label text-(--brand-white)">Speed</span>
+                    <span class="flex gap-1"><KeyCap label="[" /><KeyCap label="]" /></span>
+                </div>
+                <div role="group" aria-label="Movement speed" class="grid grid-cols-3 gap-1">
+                    <button
+                        v-for="(s, i) in speeds"
+                        :key="s"
+                        type="button"
+                        :disabled="disabled"
+                        :class="[segBase, speedIndex === i ? segActive : segIdle]"
+                        :aria-pressed="speedIndex === i"
+                        @click="emit('setSpeed', i)"
+                    >
+                        {{ s }}
+                    </button>
+                </div>
             </div>
-            <div role="group" aria-label="Camera mode" class="grid grid-cols-3 gap-1">
-                <button
-                    v-for="m in cameraModes"
-                    :key="m.value"
-                    type="button"
-                    :disabled="disabled"
-                    :class="[segBase, cameraMode === m.value ? segActive : segIdle]"
-                    :aria-pressed="cameraMode === m.value"
-                    @click="emit('setCameraMode', m.value)"
-                >
-                    {{ m.label }}
-                </button>
-            </div>
-        </div>
 
-        <!-- Movement speed (live + interactive) -->
-        <div class="flex flex-col gap-2" :class="{ 'pointer-events-none opacity-40': disabled }">
-            <div class="flex items-center justify-between">
-                <span class="ps-label text-(--text-faint)">Speed</span>
-                <span class="flex gap-1"><KeyCap label="[" /><KeyCap label="]" /></span>
-            </div>
-            <div role="group" aria-label="Movement speed" class="grid grid-cols-3 gap-1">
-                <button
-                    v-for="(s, i) in speeds"
-                    :key="s"
-                    type="button"
-                    :disabled="disabled"
-                    :class="[segBase, speedIndex === i ? segActive : segIdle]"
-                    :aria-pressed="speedIndex === i"
-                    @click="emit('setSpeed', i)"
-                >
-                    {{ s }}
-                </button>
-            </div>
-        </div>
-
-        <!-- Movement keys (WASD pad lights up while moving) -->
-        <div class="flex flex-col gap-2">
-            <div class="flex items-center justify-between">
-                <span class="ps-label text-(--text-faint)">Move</span>
-                <span
-                    class="inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-label"
-                    :class="moving ? 'text-(--accent)' : 'text-(--text-faint)'"
-                >
+            <!-- Movement keys (WASD pad lights up while moving) -->
+            <div class="flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                    <span class="ps-label text-(--brand-white)">Move</span>
                     <span
-                        class="size-1.5"
-                        :class="moving ? 'bg-(--accent) shadow-(--shadow-glow-accent)' : 'bg-(--border-strong)'"
-                    />
-                    {{ moving ? 'Active' : 'Idle' }}
-                </span>
-            </div>
-            <div class="flex flex-col items-center gap-1">
-                <KeyCap label="W" :accent="moving" />
-                <div class="flex gap-1">
-                    <KeyCap label="A" :accent="moving" />
-                    <KeyCap label="S" :accent="moving" />
-                    <KeyCap label="D" :accent="moving" />
+                        class="inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-label"
+                        :class="moving ? 'text-(--accent)' : 'text-(--brand-white)'"
+                    >
+                        <span
+                            class="size-1.5"
+                            :class="moving ? 'bg-(--accent) shadow-(--shadow-glow-accent)' : 'bg-(--border-strong)'"
+                        />
+                        {{ moving ? 'Active' : 'Idle' }}
+                    </span>
+                </div>
+                <div class="flex flex-col items-center gap-1.5">
+                    <KeyCap label="W" size="lg" :accent="moving" />
+                    <div class="flex gap-1.5">
+                        <KeyCap label="A" size="lg" :accent="moving" />
+                        <KeyCap label="S" size="lg" :accent="moving" />
+                        <KeyCap label="D" size="lg" :accent="moving" />
+                    </div>
+                    <!-- Vertical flight: words beat glyphs for instant parsing;
+                     the pair sits centred under WASD so the cluster balances -->
+                    <div class="flex items-start justify-center gap-5 pt-2">
+                        <span class="flex flex-col items-center gap-1">
+                            <KeyCap label="SHIFT" size="lg" />
+                            <span class="font-mono text-caption uppercase tracking-label text-(--text-muted)"
+                                >Down</span
+                            >
+                        </span>
+                        <span class="flex flex-col items-center gap-1">
+                            <KeyCap label="SPACE" size="lg" />
+                            <span class="font-mono text-caption uppercase tracking-label text-(--text-muted)">Up</span>
+                        </span>
+                    </div>
                 </div>
             </div>
-            <div class="flex flex-col gap-1.5 pt-1">
-                <div class="flex items-center gap-3">
-                    <span class="flex w-14 gap-1"><KeyCap label="↑" /><KeyCap label="↓" /></span>
-                    <span class="text-detail text-(--text-muted)">Rise / fall</span>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span class="flex w-14 gap-1"><KeyCap label="←" /><KeyCap label="→" /></span>
-                    <span class="text-detail text-(--text-muted)">Turn</span>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span class="flex w-14 gap-1"><KeyCap label="␣" /><KeyCap label="⇧" /></span>
-                    <span class="text-detail text-(--text-muted)">Up / down</span>
-                </div>
-            </div>
-        </div>
 
-        <!-- Static keyboard reference -->
-        <div class="flex flex-col gap-3 border-t border-(--border) pt-3">
-            <div v-for="s in sections" :key="s.label" class="flex flex-col gap-2">
-                <p class="ps-label text-(--text-faint)">{{ s.label }}</p>
-                <div v-for="row in s.keys" :key="row.k" class="flex items-center gap-3">
-                    <KeyCap :label="row.k" />
-                    <span class="text-detail text-(--text-muted)">{{ row.d }}</span>
-                </div>
+            <!-- The way back: H re-opens what H (or the X) hides -->
+            <div class="flex items-center gap-3 border-t border-(--border) pt-3">
+                <KeyCap label="H" />
+                <span class="text-detail text-(--brand-white)">Hide this panel</span>
             </div>
         </div>
-    </aside>
+    </Panel>
 </template>

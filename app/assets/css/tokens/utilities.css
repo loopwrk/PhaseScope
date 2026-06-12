@@ -58,7 +58,6 @@
     font-weight: var(--font-weight-medium);
     letter-spacing: var(--label-tracking-wide);
     text-transform: uppercase;
-    color: var(--text-muted);
 }
 
 /* --- Mono readout (tabular figures) --- */

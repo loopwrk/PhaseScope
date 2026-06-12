@@ -66,6 +66,7 @@ const {
     formatPointCount,
 } = geometry;
 const { cameraMode, setCameraMode, toggleCameraMode } = camera;
+const { isFullscreen } = three;
 const {
     audio,
     wavLoaded,
@@ -76,6 +77,7 @@ const {
     selectedDemoTrackId,
     handlePlayPause,
     handleStop,
+    unloadTrack,
     handleSelectDemoTrack,
     handleLoadFile,
     playAdjacentTrack,
@@ -192,8 +194,10 @@ const liveNote = (note: number, velocity: number, on: boolean) => {
     }
 };
 
-// The idle fork's Listen door: a page-level file picker
+// The idle fork's Listen door: a page-level file picker + a hand into
+// the transport's demo menu
 const forkFileInput = ref<HTMLInputElement | null>(null);
+const transportRef = ref<{ openDemoMenu: () => void } | null>(null);
 const onForkFile = (e: Event) => {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -242,6 +246,13 @@ const exitLive = () => {
 const toggleLive = () => {
     if (livePhase.value === 'off') void enterLiveSetup();
     else exitLive();
+};
+
+// The logo is the way home: live exits to wherever it came from;
+// listening unloads back to the two doors; home is a no-op
+const goHome = () => {
+    if (livePhase.value !== 'off') exitLive();
+    else if (wavLoaded.value) unloadTrack();
 };
 
 /* ---- Session narration + countdown (the dock's voice) ---- */
@@ -502,29 +513,52 @@ onUnmounted(async () => {
             v-if="!wavLoaded && livePhase === 'off'"
             class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-7"
         >
-            <DsLogo :size="56" mono class="text-(--text-faint)" />
+            <DsLogo :size="56" mono class="text-(--text-muted)" />
             <p class="ps-label">No signal</p>
             <div class="flex flex-col gap-4 sm:flex-row">
-                <button
-                    type="button"
-                    class="ps-glass flex w-60 flex-col items-center gap-2 border border-(--border-strong) px-6 py-5 transition-[border-color,box-shadow] duration-150 [clip-path:var(--clip-notch)] hover:border-(--accent) focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
-                    @click="forkFileInput?.click()"
+                <div
+                    class="ps-glass flex w-60 flex-col items-center gap-2 border border-(--border-strong) px-6 py-5 [clip-path:var(--clip-notch)]"
                 >
                     <UIcon name="i-lucide-headphones" class="size-7 text-(--accent)" />
                     <span class="font-display text-body font-semibold">Listen</span>
-                    <span class="text-caption text-(--text-muted)"
-                        >load a track (WAV, MP3, etc.) - or pick a demo below</span
-                    >
-                </button>
-                <button
-                    type="button"
-                    class="ps-glass flex w-60 flex-col items-center gap-2 border border-(--border-strong) px-6 py-5 transition-[border-color,box-shadow] duration-150 [clip-path:var(--clip-notch)] hover:border-(--accent) focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
-                    @click="toggleLive"
+                    <div class="mx-auto mt-1 flex w-fit flex-col items-stretch gap-2">
+                        <DsButton
+                            variant="secondary"
+                            class="mr-0 py-2 ring-(--brand-primary) text-(--brand-white)"
+                            size="md"
+                            icon="i-lucide-upload"
+                            label="Load audio"
+                            @click="forkFileInput?.click()"
+                        />
+                        <DsButton
+                            variant="secondary"
+                            class="mr-0 py-2 ring-(--brand-primary) text-(--brand-white)"
+                            size="md"
+                            icon="i-lucide-disc-3"
+                            label="Pick a demo"
+                            @click="transportRef?.openDemoMenu()"
+                        />
+                    </div>
+                </div>
+                <div
+                    class="ps-glass flex w-60 flex-col items-center gap-2 border border-(--border-strong) px-6 py-5 [clip-path:var(--clip-notch)]"
                 >
                     <UIcon name="i-lucide-keyboard-music" class="size-7 text-(--accent)" />
                     <span class="font-display text-body font-semibold">Play</span>
-                    <span class="text-caption text-(--text-muted)">play with a MIDI keyboard or on-screen keys</span>
-                </button>
+                    <span class="text-caption text-center text-(--text-muted)"
+                        >Play with a MIDI keyboard or on-screen keys</span
+                    >
+                    <div class="mx-auto mt-1 flex w-fit flex-col items-stretch">
+                        <DsButton
+                            variant="secondary"
+                            class="mr-0 py-2 ring-(--brand-primary) text-(--brand-white)"
+                            size="md"
+                            icon="i-lucide-keyboard-music"
+                            label="Go live"
+                            @click="toggleLive"
+                        />
+                    </div>
+                </div>
             </div>
             <input ref="forkFileInput" type="file" accept="audio/*" class="hidden" @change="onForkFile" />
         </div>
@@ -534,27 +568,22 @@ onUnmounted(async () => {
             class="absolute inset-x-5 top-5 z-30"
             :controls-open="showControlsOverlay"
             :settings-open="showSettings"
+            :goniometer-open="showGoniometer"
             @toggle-controls="toggleControls"
             @toggle-settings="toggleSettings"
+            @toggle-goniometer="showGoniometer = !showGoniometer"
             @toggle-fullscreen="three.toggleFullscreen"
-            @exit="livePhase !== 'off' && exitLive()"
+            @exit="goHome"
         />
-
-        <!-- Quick restart: always within reach while live (borderless slot
-             between the logo and the settings panel, which steps down to
-             make room) -->
-        <div v-if="liveMode" class="absolute left-5 top-22 z-20">
-            <DsButton variant="primary" icon="i-lucide-rotate-ccw" label="New Session" @click="startSession" />
-        </div>
 
         <!-- Left: display settings (advanced options disclosed in-panel) -->
         <div
-            v-if="showSettings && uiActive"
-            class="ps-rise absolute left-5 z-20 max-h-[calc(100svh_-_14rem)] w-[min(100vw_-_2.5rem,37.5rem)] overflow-y-auto"
-            :class="liveMode ? 'top-34' : 'top-24'"
+            v-if="showSettings && uiActive && !isFullscreen"
+            class="ps-rise absolute left-5 top-24 z-20 max-h-[calc(100svh_-_14rem)] w-[min(100vw_-_2.5rem,37.5rem)] overflow-y-auto"
         >
             <LayoutDisplayPanel
                 variant="glass"
+                @close="showSettings = false"
                 v-model:pointsPerFrame="corridorMeta.pointsPerFrame"
                 v-model:coverage="trackCoveragePercent"
                 v-model:renderMode="renderMode"
@@ -562,7 +591,6 @@ onUnmounted(async () => {
                 v-model:oscillation="oscillation.enabled.value"
                 v-model:reverse="useAlternateColors"
                 v-model:channel-bias="channelBias"
-                v-model:controlsOverlay="showControlsOverlay"
                 :dream="dreamBg.enabled.value"
                 :heavenly="heavenlyBg.enabled.value"
                 :live="liveMode"
@@ -591,17 +619,23 @@ onUnmounted(async () => {
         </div>
 
         <!-- Right: live controls HUD -->
-        <LayoutControlsOverlay
+        <!-- Positioning wrapper: Panel's scoped position:relative beats the
+             absolute utility on its own root, so the offsets live out here
+             (same pattern as the Display Settings panel) -->
+        <div
             v-if="showControlsOverlay && uiActive"
             class="ps-rise absolute right-5 top-24 z-20 max-h-[calc(100svh_-_12rem)] overflow-y-auto"
-            :camera-mode="cameraMode"
-            :speed-index="movement.speedIndex.value"
-            :moving="movement.isMoving.value"
-            :disabled="!wavLoaded && !liveMode"
-            @set-camera-mode="setCameraMode"
-            @set-speed="setMovementSpeed"
-            @close="showControlsOverlay = false"
-        />
+        >
+            <LayoutControlsOverlay
+                :camera-mode="cameraMode"
+                :speed-index="movement.speedIndex.value"
+                :moving="movement.isMoving.value"
+                :disabled="!wavLoaded && !liveMode"
+                @set-camera-mode="setCameraMode"
+                @set-speed="setMovementSpeed"
+                @close="showControlsOverlay = false"
+            />
+        </div>
 
         <!-- Bottom-left: goniometer HUD (the instantaneous phase portrait)
              plus, while the 3D scope is active, its settings rising above. -->
@@ -642,7 +676,7 @@ onUnmounted(async () => {
              listening, the live stage from armed onward -->
         <main id="content" tabindex="-1" class="focus-visible:outline-none">
             <LayoutLiveKeys
-                v-if="liveMode"
+                v-if="liveMode && !isFullscreen"
                 class="ps-rise absolute inset-x-4 bottom-5 z-30 mx-auto w-full max-w-2xl"
                 :phase="livePhase === 'armed' ? 'armed' : livePhase === 'playing' ? 'playing' : 'done'"
                 :device-names="midi.deviceNames.value"
@@ -662,7 +696,8 @@ onUnmounted(async () => {
                 @exit="exitLive"
             />
             <LayoutTransportBar
-                v-if="livePhase === 'off'"
+                v-if="livePhase === 'off' && !isFullscreen"
+                ref="transportRef"
                 class="absolute inset-x-4 bottom-5 z-30 mx-auto w-fit max-w-[calc(100vw_-_2rem)]"
                 :live="liveMode"
                 :playing="!!audio.source"

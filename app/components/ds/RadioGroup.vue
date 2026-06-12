@@ -9,20 +9,21 @@ withDefaults(
         items?: RadioItem[];
         disabled?: boolean;
         orientation?: 'horizontal' | 'vertical';
+        color?: 'primary' | 'secondary' | 'tertiary' | 'success' | 'info' | 'warning' | 'error' | 'neutral';
     }>(),
-    { orientation: 'vertical', disabled: false }
+    { orientation: 'vertical', disabled: false, color: 'primary' }
 );
 </script>
 
 <template>
     <URadioGroup
         v-model="model"
-        color="primary"
+        :color="color"
         :items="items"
         :disabled="disabled"
         :orientation="orientation"
         :ui="{
-            base: 'rounded-none [clip-path:var(--clip-chamfer-sm)] focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-(--focus-glow) ring-(--scope-cyan) ',
+            base: 'rounded-none [clip-path:var(--clip-chamfer-sm)] focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-(--focus-glow) ring-(--brand-primary) ',
             indicator: 'rounded-none [clip-path:var(--clip-chamfer-sm)]',
             description: 'text-(--text-muted)',
         }"

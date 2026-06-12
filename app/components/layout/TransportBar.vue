@@ -40,6 +40,10 @@ const emit = defineEmits<{
 
 const fileInput = ref<HTMLInputElement | null>(null);
 
+// The idle fork's "Pick a demo" door reaches in and opens the menu
+const demoMenuOpen = ref(false);
+defineExpose({ openDemoMenu: () => (demoMenuOpen.value = true) });
+
 function pickFile() {
     fileInput.value?.click();
 }
@@ -80,26 +84,28 @@ function onFile(e: Event) {
 
         <Button
             variant="secondary"
-            class="mr-0 !ring-(--brand-primary)"
+            class="mr-0 ring-(--brand-primary) text-(--brand-white)"
             icon="i-lucide-upload"
             label="Load Audio"
             @click="pickFile"
         />
+
         <input ref="fileInput" type="file" accept="audio/*" class="hidden" @change="onFile" />
 
         <label v-if="tracks.length" class="flex flex-col gap-1">
             <USelectMenu
+                v-model:open="demoMenuOpen"
                 :model-value="selectedTrack"
                 :items="tracks"
                 value-key="value"
                 placeholder="Select Demo Track"
                 :loading="tracksLoading"
                 color="primary"
-                class="w-44 max-w-full [--ui-text-dimmed:var(--brand-primary)]"
+                class="w-44 max-w-full [--ui-text-dimmed:var(--brand-white)]"
                 :ui="{
-                    base: 'rounded-none [clip-path:var(--clip-chamfer-sm)] focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-(--focus-glow) text-(--brand-primary) ring-[var(--brand-primary)]',
-                    value: 'text-(--brand-primary)',
-                    label: 'text-(--brand-primary)',
+                    base: 'rounded-none [clip-path:var(--clip-chamfer-sm)] focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-(--focus-glow) text-(--brand-white) ring-[var(--brand-primary)]',
+                    value: 'text-(--brand-white)',
+                    label: 'text-(--brand-white)',
                 }"
                 @update:model-value="(v: string) => v && emit('selectTrack', v)"
             />
@@ -111,7 +117,7 @@ function onFile(e: Event) {
 
         <Button
             :variant="live ? 'primary' : 'secondary'"
-            class="mr-0 !ring-(--brand-primary)"
+            class="mr-0 !ring-(--brand-primary) !text-(--brand-white)"
             icon="i-lucide-keyboard-music"
             label="Live"
             :aria-pressed="live"
