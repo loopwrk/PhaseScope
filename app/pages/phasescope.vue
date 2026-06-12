@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { midiNoteName } from '~/utils/midi';
 import { toRaw } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 
@@ -34,12 +35,20 @@ const scope3d = ref(false);
 
 const player = useWavPlayer();
 const geometry = usePhaseGeometry({ renderer, renderMode, topologyMode, audio: player.audio });
+/* Live session phase: 'setup' is the stage door (the card); a session
+   is on stage from 'armed' onward. liveMode gates geometry/camera/panels. */
+type LivePhase = 'off' | 'setup' | 'armed' | 'playing' | 'done';
+const livePhase = ref<LivePhase>('off');
+const liveMode = computed(
+    () => livePhase.value === 'armed' || livePhase.value === 'playing' || livePhase.value === 'done'
+);
+
 const camera = useAutoCamera({
     three,
     renderer,
     geometry,
     topologyMode,
-    wavLoaded: player.wavLoaded,
+    wavLoaded: computed(() => player.wavLoaded.value || liveMode.value),
     lissajousActive: scope3d,
     lissajousDimension: usePersistedState<'3d' | '2d'>('scope:liss-dimension', () => '3d'),
 });
@@ -113,6 +122,11 @@ watch(renderMode, (newMode) => {
 const showControlsOverlay = ref(true);
 const showSettings = ref(true);
 
+// First-load quiet: neither side panel exists until there is something
+// to control - a loaded track or a live session. The transport bar is
+// the whole interface until then.
+const uiActive = computed(() => wavLoaded.value || liveMode.value);
+
 // Floating side panels: both open on desktop, both collapsed on phones (they
 // overlay the canvas). Crossing the breakpoint resets them. `immediate` means
 // this also sets the correct initial state (isDesktop is false during SSR /
@@ -143,6 +157,7 @@ const toggleSettings = () => {
 // window at the playhead whether playing or paused - a scope reads
 // whatever is at the probe.
 const goniometerSource = () => {
+    if (liveMode.value) return synth.liveSource();
     const raw = toRaw(corridorState.value);
     if (!raw.ch0 || !raw.ch1 || !raw.buffer) return null;
     return { ch0: raw.ch0, ch1: raw.ch1, index: Math.floor(getPlaybackTimeSeconds() * raw.sr), sr: raw.sr };
@@ -153,6 +168,172 @@ watch(scope3d, (active) => {
     lissajous.active.value = active;
     renderer.setCorridorVisible(!active);
 });
+
+/* ---------- Live session (MIDI keyboard + on-screen keys) ----------
+   Three acts: SETUP (the card - choose canvas and length), ARMED (empty
+   stage, clock waiting for the first note), PLAYING (countdown rail),
+   DONE (hard stop -> new session / change canvas). */
+
+const midi = useMidiInput();
+const synth = useLiveSynth();
+
+/** Sphere/Möbius session length in seconds (corridor is open-ended) */
+const liveDuration = usePersistedState('scope:live-duration', () => 60);
+
+// Every note path runs through here: the first note-on arms the live
+// clock and raises the curtain on the PLAYING act
+const liveNote = (note: number, velocity: number, on: boolean) => {
+    if (on) {
+        geometry.armLiveClock(synth.samplesWritten());
+        if (livePhase.value === 'armed') livePhase.value = 'playing';
+        synth.noteOn(note, velocity);
+    } else {
+        synth.noteOff(note);
+    }
+};
+
+// The idle fork's Listen door: a page-level file picker
+const forkFileInput = ref<HTMLInputElement | null>(null);
+const onForkFile = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) handleLoadFile(file);
+    input.value = '';
+};
+
+// On-screen keys speak through the same monitor readout as hardware
+const playVirtualNote = (note: number, on: boolean) => {
+    liveNote(note, 100, on);
+    midi.lastEvent.value = { on, note, velocity: 100, device: 'on-screen', label: midiNoteName(note) };
+};
+
+// Act 1: the stage door. Synth + MIDI wake here so the card can name the
+// connected device; geometry waits for "Take the stage".
+const enterLiveSetup = async () => {
+    handleStop(); // the stage belongs to one signal at a time
+    if (topologyMode.value === 'attractor') topologyMode.value = 'corridor'; // card offers it greyed
+    if (!(await synth.enable({ ringQuantum: corridorMeta.value.hopSize }))) return;
+    await midi.connect(); // no device is fine - the on-screen keys play the same synth
+    midi.onNote((e) => liveNote(e.note, e.velocity, e.on));
+    livePhase.value = 'setup';
+};
+
+// Act 2: take the stage - blank ring, fresh canvas, clock waiting
+const startSession = () => {
+    stopGhost();
+    synth.resetRing();
+    const ring = synth.ringInfo();
+    if (!ring) return;
+    geometry.initLive(ring, { durationSeconds: liveDuration.value });
+    camera.resetOrbitClock();
+    livePhase.value = 'armed';
+};
+
+const exitLive = () => {
+    stopGhost();
+    synth.disable();
+    midi.disconnect();
+    livePhase.value = 'off';
+    // Hand the stage back: a loaded track redraws on play; otherwise idle
+    if (audio.buffer) geometry.initFromBuffer(audio.buffer);
+    else geometry.clear();
+};
+
+const toggleLive = () => {
+    if (livePhase.value === 'off') void enterLiveSetup();
+    else exitLive();
+};
+
+/* ---- Session narration + countdown (the dock's voice) ---- */
+
+const LIVE_CANVAS_NAMES: Record<string, string> = {
+    corridor: 'column',
+    sphere: 'sphere',
+    attractor: 'attractor',
+    mobius: 'Möbius band',
+};
+const liveCanvasName = computed(() => LIVE_CANVAS_NAMES[topologyMode.value] ?? topologyMode.value);
+
+const fmtSessionTime = (seconds: number) => {
+    const t = Math.max(0, Math.round(seconds));
+    return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+};
+
+const liveProgress = computed(() => {
+    const { live, frameCount, builtFrames } = corridorState.value;
+    if (!live || !frameCount) return 0;
+    return Math.min(1, builtFrames / frameCount);
+});
+const liveProgressLabel = computed(() => {
+    const { frameCount, builtFrames, sr } = corridorState.value;
+    const secondsLeft = ((frameCount - builtFrames) * corridorMeta.value.hopSize) / (sr || 48000);
+    return `${fmtSessionTime(secondsLeft)} left`;
+});
+const livePrimaryLine = computed(() => {
+    if (livePhase.value === 'armed') return 'Play your first note - the clock starts with it';
+    if (livePhase.value === 'done') {
+        return topologyMode.value === 'corridor'
+            ? 'Column complete - walk through it, or go again'
+            : `Canvas complete - walk around your ${liveCanvasName.value}, or go again`;
+    }
+    return '';
+});
+const liveSecondaryLine = computed(
+    () => `${fmtSessionTime(liveDuration.value)} on the ${liveCanvasName.value} · waiting`
+);
+
+/* ---- The ghost performance ("show me"): the app demonstrates itself
+   in its own medium - six seconds of scripted melody through the real
+   synth, keys lighting as it plays, then a fresh armed stage. ---- */
+
+const ghostActive = ref(false);
+const ghostLit = ref<number[]>([]);
+let ghostTimers: ReturnType<typeof setTimeout>[] = [];
+
+const stopGhost = () => {
+    ghostTimers.forEach(clearTimeout);
+    ghostTimers = [];
+    ghostLit.value = [];
+    if (ghostActive.value) synth.allNotesOff();
+    ghostActive.value = false;
+};
+
+// Long pads under a rising melody that crosses the stereo field, so the
+// canvas knots, the colours move and the goniometer opens up
+const GHOST_SCORE: { t: number; note: number; dur: number; vel: number }[] = [
+    { t: 0, note: 48, dur: 2400, vel: 88 },
+    { t: 350, note: 55, dur: 2100, vel: 80 },
+    { t: 700, note: 64, dur: 1000, vel: 96 },
+    { t: 1150, note: 67, dur: 1000, vel: 92 },
+    { t: 1600, note: 72, dur: 1500, vel: 100 },
+    { t: 2300, note: 71, dur: 800, vel: 84 },
+    { t: 2750, note: 67, dur: 800, vel: 80 },
+    { t: 3200, note: 60, dur: 1800, vel: 92 },
+    { t: 3300, note: 52, dur: 1700, vel: 76 },
+    { t: 4200, note: 76, dur: 1200, vel: 96 },
+    { t: 4650, note: 72, dur: 1500, vel: 88 },
+];
+
+const playGhost = () => {
+    if (ghostActive.value || livePhase.value !== 'armed') return;
+    ghostActive.value = true;
+    const ghostNote = (note: number, vel: number, on: boolean) => {
+        liveNote(note, vel, on);
+        midi.lastEvent.value = { on, note, velocity: vel, device: 'ghost', label: midiNoteName(note) };
+        ghostLit.value = on ? [...ghostLit.value, note] : ghostLit.value.filter((n) => n !== note);
+    };
+    for (const ev of GHOST_SCORE) {
+        ghostTimers.push(setTimeout(() => ghostNote(ev.note, ev.vel, true), ev.t));
+        ghostTimers.push(setTimeout(() => ghostNote(ev.note, ev.vel, false), ev.t + ev.dur));
+    }
+    // Curtain call: hand back a fresh, armed stage
+    ghostTimers.push(
+        setTimeout(() => {
+            stopGhost();
+            startSession();
+        }, 6800)
+    );
+};
 
 /* ---------- Background skyboxes (mutually exclusive) ---------- */
 
@@ -217,8 +398,18 @@ const animate = (now: number) => {
 
     if (renderer.hasGeometry()) {
         const timeInSeconds = now / 1000;
-        // Build points progressively as playback advances
-        geometry.updateProgressiveBuild(getPlaybackTimeSeconds());
+        // Build points progressively: paced by the playback clock for
+        // tracks, by the synth's sample clock for live input
+        if (liveMode.value) {
+            geometry.updateLiveBuild(synth.samplesWritten());
+            // The hard stop becomes an invitation: flip to the DONE act
+            const st = corridorState.value;
+            if (livePhase.value === 'playing' && st.frameCount > 0 && st.builtFrames >= st.frameCount) {
+                livePhase.value = 'done';
+            }
+        } else {
+            geometry.updateProgressiveBuild(getPlaybackTimeSeconds());
+        }
         // Update camera based on current mode
         camera.update(timeInSeconds);
         // Drive the GPU oscillation (four uniform writes; the displacement
@@ -226,7 +417,7 @@ const animate = (now: number) => {
         renderer.setOscillation({
             time: timeInSeconds,
             mode: oscillation.enabled.value ? oscillation.mode.value : 'off',
-            builtFrames: corridorState.value.builtFrames,
+            builtFrames: liveMode.value ? geometry.headFrameIndex() + 1 : corridorState.value.builtFrames,
             pointsPerFrame: corridorMeta.value.pointsPerFrame,
         });
     }
@@ -255,6 +446,9 @@ onMounted(() => {
 });
 
 onUnmounted(async () => {
+    stopGhost();
+    midi.disconnect();
+    await synth.dispose();
     if (requestAnimFrame !== null) {
         cancelAnimationFrame(requestAnimFrame);
         requestAnimFrame = null;
@@ -302,15 +496,37 @@ onUnmounted(async () => {
         ></div>
         <div class="ps-striation pointer-events-none absolute inset-0 z-0 opacity-50 mix-blend-overlay"></div>
 
-        <!-- No-audio idle state: a restrained mono hint in the canvas void -->
-        <!-- (nudged below the side panels on desktop so it sits in the void) -->
+        <!-- Idle fork: two doors into the same hall. Listen loads a track;
+             Play opens the live session card. -->
         <div
-            v-if="!wavLoaded"
-            class="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 md:translate-y-[16vh]"
+            v-if="!wavLoaded && livePhase === 'off'"
+            class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-7"
         >
             <DsLogo :size="56" mono class="text-(--text-faint)" />
             <p class="ps-label">No signal</p>
-            <p class="text-detail text-(--text-faint)">Load audio or select a demo track to begin</p>
+            <div class="flex flex-col gap-4 sm:flex-row">
+                <button
+                    type="button"
+                    class="ps-glass flex w-60 flex-col items-center gap-2 border border-(--border-strong) px-6 py-5 transition-[border-color,box-shadow] duration-150 [clip-path:var(--clip-notch)] hover:border-(--accent) focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
+                    @click="forkFileInput?.click()"
+                >
+                    <UIcon name="i-lucide-headphones" class="size-7 text-(--accent)" />
+                    <span class="font-display text-body font-semibold">Listen</span>
+                    <span class="text-caption text-(--text-muted)"
+                        >load a track (WAV, MP3, etc.) - or pick a demo below</span
+                    >
+                </button>
+                <button
+                    type="button"
+                    class="ps-glass flex w-60 flex-col items-center gap-2 border border-(--border-strong) px-6 py-5 transition-[border-color,box-shadow] duration-150 [clip-path:var(--clip-notch)] hover:border-(--accent) focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
+                    @click="toggleLive"
+                >
+                    <UIcon name="i-lucide-keyboard-music" class="size-7 text-(--accent)" />
+                    <span class="font-display text-body font-semibold">Play</span>
+                    <span class="text-caption text-(--text-muted)">play with a MIDI keyboard or on-screen keys</span>
+                </button>
+            </div>
+            <input ref="forkFileInput" type="file" accept="audio/*" class="hidden" @change="onForkFile" />
         </div>
 
         <!-- Top: floating header -->
@@ -321,12 +537,21 @@ onUnmounted(async () => {
             @toggle-controls="toggleControls"
             @toggle-settings="toggleSettings"
             @toggle-fullscreen="three.toggleFullscreen"
+            @exit="livePhase !== 'off' && exitLive()"
         />
+
+        <!-- Quick restart: always within reach while live (borderless slot
+             between the logo and the settings panel, which steps down to
+             make room) -->
+        <div v-if="liveMode" class="absolute left-5 top-22 z-20">
+            <DsButton variant="primary" icon="i-lucide-rotate-ccw" label="New Session" @click="startSession" />
+        </div>
 
         <!-- Left: display settings (advanced options disclosed in-panel) -->
         <div
-            v-if="showSettings"
-            class="ps-rise absolute left-5 top-24 z-20 max-h-[calc(100svh_-_12rem)] w-[min(100vw_-_2.5rem,37.5rem)] overflow-y-auto"
+            v-if="showSettings && uiActive"
+            class="ps-rise absolute left-5 z-20 max-h-[calc(100svh_-_14rem)] w-[min(100vw_-_2.5rem,37.5rem)] overflow-y-auto"
+            :class="liveMode ? 'top-34' : 'top-24'"
         >
             <LayoutDisplayPanel
                 variant="glass"
@@ -340,8 +565,9 @@ onUnmounted(async () => {
                 v-model:controlsOverlay="showControlsOverlay"
                 :dream="dreamBg.enabled.value"
                 :heavenly="heavenlyBg.enabled.value"
+                :live="liveMode"
                 :wav-loaded="wavLoaded"
-                :settings-disabled="audio.started || !wavLoaded"
+                :settings-disabled="false"
                 :topology-disabled="audio.started"
                 :perf-level="pointsWarningLevel"
                 :perf-points="formatPointCount(effectiveMaxPoints)"
@@ -366,12 +592,12 @@ onUnmounted(async () => {
 
         <!-- Right: live controls HUD -->
         <LayoutControlsOverlay
-            v-if="showControlsOverlay"
+            v-if="showControlsOverlay && uiActive"
             class="ps-rise absolute right-5 top-24 z-20 max-h-[calc(100svh_-_12rem)] overflow-y-auto"
             :camera-mode="cameraMode"
             :speed-index="movement.speedIndex.value"
             :moving="movement.isMoving.value"
-            :disabled="!wavLoaded"
+            :disabled="!wavLoaded && !liveMode"
             @set-camera-mode="setCameraMode"
             @set-speed="setMovementSpeed"
             @close="showControlsOverlay = false"
@@ -382,7 +608,7 @@ onUnmounted(async () => {
         <!-- On short windows the panel sits beside the goniometer instead of
              above it, so the stack never reaches the header/logo -->
         <div
-            v-if="showGoniometer && wavLoaded"
+            v-if="showGoniometer && (wavLoaded || liveMode)"
             class="absolute bottom-5 left-5 z-20 hidden flex-col items-start gap-3 md:flex [@media(max-height:880px)]:flex-row [@media(max-height:880px)]:items-end"
         >
             <LayoutScopeSettingsPanel
@@ -401,10 +627,44 @@ onUnmounted(async () => {
             />
         </div>
 
-        <!-- Bottom: transport dock (skip-link target: the primary controls) -->
+        <!-- Act 1: the session card (the stage door) -->
+        <LayoutLiveSessionCard
+            v-if="livePhase === 'setup'"
+            v-model:topology="topologyMode"
+            v-model:duration="liveDuration"
+            class="ps-rise absolute left-1/2 top-1/2 z-40 -translate-x-1/2 -translate-y-1/2"
+            :device-names="midi.deviceNames.value"
+            @start="startSession"
+            @cancel="exitLive"
+        />
+
+        <!-- Bottom dock: one slot, two costumes - the transport while
+             listening, the live stage from armed onward -->
         <main id="content" tabindex="-1" class="focus-visible:outline-none">
+            <LayoutLiveKeys
+                v-if="liveMode"
+                class="ps-rise absolute inset-x-4 bottom-5 z-30 mx-auto w-full max-w-2xl"
+                :phase="livePhase === 'armed' ? 'armed' : livePhase === 'playing' ? 'playing' : 'done'"
+                :device-names="midi.deviceNames.value"
+                :last-event="midi.lastEvent.value"
+                :voice-count="synth.activeVoiceCount.value"
+                :primary-line="livePrimaryLine"
+                :secondary-line="liveSecondaryLine"
+                :progress="liveProgress"
+                :progress-label="liveProgressLabel"
+                :lit-notes="ghostLit"
+                :ghost-active="ghostActive"
+                @note-on="(n: number) => playVirtualNote(n, true)"
+                @note-off="(n: number) => playVirtualNote(n, false)"
+                @new-session="startSession"
+                @change-canvas="livePhase = 'setup'"
+                @demo="playGhost"
+                @exit="exitLive"
+            />
             <LayoutTransportBar
+                v-if="livePhase === 'off'"
                 class="absolute inset-x-4 bottom-5 z-30 mx-auto w-fit max-w-[calc(100vw_-_2rem)]"
+                :live="liveMode"
                 :playing="!!audio.source"
                 :audio-loaded="wavLoaded"
                 :started="audio.started"
@@ -416,6 +676,7 @@ onUnmounted(async () => {
                 @stop="handleStop"
                 @load-file="handleLoadFile"
                 @select-track="handleSelectDemoTrack"
+                @toggle-live="toggleLive"
             />
         </main>
     </div>

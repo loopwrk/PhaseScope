@@ -4,7 +4,7 @@ Authoring conventions for these primitives. Keep them consistent.
 
 ## Styling
 
-- **Tailwind utilities in the template** are the default — this is a
+- **Tailwind utilities in the template** are the default - this is a
   Tailwind-committed project (Nuxt UI + Tailwind v4). Use the token-mapped
   theme utilities (`font-mono`, `font-display`, `text-caption|detail|body|heading|title|display|mega`,
   `tracking-label|tracking-label-wide`) plus the design tokens.
@@ -20,7 +20,7 @@ Authoring conventions for these primitives. Keep them consistent.
       the bracket form, e.g. `[clip-path:var(--clip-chamfer-md)]`,
       `transition-[transform,box-shadow]`. There is no `(--var)` shorthand for these.
 
-- **Scoped `<style>` only for what utilities can't express cleanly** — e.g.
+- **Scoped `<style>` only for what utilities can't express cleanly** - e.g.
   Panel's masked `::before` chamfer frame (`mask-composite: exclude`). Don't
   split a component half-utility / half-CSS; keep such components fully scoped.
 

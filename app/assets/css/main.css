@@ -36,6 +36,7 @@
     --text-title: var(--font-size-title);
     --text-display: var(--font-size-display);
     --text-mega: var(--font-size-mega);
+    --text-label: var(--font-size-label);
 
     /* Letter-spacing -> tracking-* utilities */
     --tracking-label: var(--label-tracking);

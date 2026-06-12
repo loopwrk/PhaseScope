@@ -25,6 +25,7 @@ withDefaults(
         tracks?: TrackItem[];
         tracksLoading?: boolean;
         selectedTrack?: string;
+        live?: boolean;
     }>(),
     { playing: false, audioLoaded: false, started: false, elapsed: '00:00', tracks: () => [] }
 );
@@ -34,6 +35,7 @@ const emit = defineEmits<{
     stop: [];
     loadFile: [file: File];
     selectTrack: [id: string];
+    toggleLive: [];
 }>();
 
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -70,32 +72,54 @@ function onFile(e: Event) {
             @click="emit('stop')"
         />
 
-        <span class="h-8 w-px bg-(--border)" aria-hidden="true" />
+        <span class="h-8 w-px bg-(--brand-white)" aria-hidden="true" />
 
         <Readout label="Elapsed" :value="elapsed" :tone="playing ? 'live' : 'cyan'" />
 
-        <span class="h-8 w-px bg-(--border)" aria-hidden="true" />
+        <span class="h-8 w-px bg-(--brand-white)" aria-hidden="true" />
 
-        <Button variant="secondary" icon="i-lucide-upload" label="Load Audio" @click="pickFile" />
+        <Button
+            variant="secondary"
+            class="mr-0 !ring-(--brand-primary)"
+            icon="i-lucide-upload"
+            label="Load Audio"
+            @click="pickFile"
+        />
         <input ref="fileInput" type="file" accept="audio/*" class="hidden" @change="onFile" />
 
         <label v-if="tracks.length" class="flex flex-col gap-1">
-            <span class="font-mono text-[0.625rem] uppercase tracking-label-wide text-(--text-muted)">Demo</span>
             <USelectMenu
                 :model-value="selectedTrack"
                 :items="tracks"
                 value-key="value"
-                placeholder="— select demo —"
+                placeholder="Select Demo Track"
                 :loading="tracksLoading"
-                class="w-44 max-w-full"
+                color="primary"
+                class="w-44 max-w-full [--ui-text-dimmed:var(--brand-primary)]"
                 :ui="{
-                    base: 'rounded-none [clip-path:var(--clip-chamfer-sm)] focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-(--focus-glow)',
+                    base: 'rounded-none [clip-path:var(--clip-chamfer-sm)] focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-(--focus-glow) text-(--brand-primary) ring-[var(--brand-primary)]',
+                    value: 'text-(--brand-primary)',
+                    label: 'text-(--brand-primary)',
                 }"
                 @update:model-value="(v: string) => v && emit('selectTrack', v)"
             />
         </label>
 
         <span v-if="track" class="max-w-[16ch] truncate font-mono text-detail text-(--text-muted)">{{ track }}</span>
+
+        <span class="h-8 w-px bg-(--brand-white)" aria-hidden="true" />
+
+        <Button
+            :variant="live ? 'primary' : 'secondary'"
+            class="mr-0 !ring-(--brand-primary)"
+            icon="i-lucide-keyboard-music"
+            label="Live"
+            :aria-pressed="live"
+            aria-label="Toggle live MIDI input"
+            @click="emit('toggleLive')"
+        />
+
+        <span class="h-8 w-px bg-(--brand-white)" aria-hidden="true" />
 
         <Badge
             class="ml-1"

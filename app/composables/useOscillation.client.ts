@@ -1,7 +1,5 @@
 import type { OscillationMode } from '~/utils/oscillation';
 
-export type { OscillationMode };
-
 /* useOscillation - the user's oscillation controls.
 
    The displacement itself runs on the GPU: useCorridorRenderer injects a

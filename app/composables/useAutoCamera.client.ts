@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Ref } from 'vue';
+import type { ComputedRef, Ref } from 'vue';
 import type { useThree } from '~/composables/useThree.client';
 import type { usePhaseGeometry, TopologyMode } from '~/composables/usePhaseGeometry.client';
 import type { useCorridorRenderer } from '~/composables/useCorridorRenderer.client';
@@ -32,7 +32,7 @@ interface UseAutoCameraOptions {
     renderer: ReturnType<typeof useCorridorRenderer>;
     geometry: ReturnType<typeof usePhaseGeometry>;
     topologyMode: Ref<TopologyMode>;
-    wavLoaded: Ref<boolean>;
+    wavLoaded: Ref<boolean> | ComputedRef<boolean>;
     /** While the 3D Lissajous scope is active, orbit its cube instead */
     lissajousActive?: Ref<boolean>;
     /** In the scope's 2D mode, lock straight-on to the cube's front face */
@@ -72,7 +72,8 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
     }
 
     const update = (time: number) => {
-        if (cameraMode.value === 'free' || !renderer.hasGeometry() || !geometry.corridorState.value.buffer) return;
+        const state = geometry.corridorState.value;
+        if (cameraMode.value === 'free' || !renderer.hasGeometry() || (!state.buffer && !state.live)) return;
 
         const camObj = three.controls.value?.object;
         if (!camObj) return;
@@ -109,7 +110,7 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
             lookTarget = new THREE.Vector3(0, galleryY, 0);
         } else {
             // Corridor mode
-            const headFrameIndex = geometry.corridorState.value.builtFrames - 1;
+            const headFrameIndex = geometry.headFrameIndex();
             if (headFrameIndex < 0) return;
 
             // Where the head ACTUALLY is: channel bias crushes the

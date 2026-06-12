@@ -32,7 +32,7 @@ const canvasEl = ref<HTMLCanvasElement | null>(null);
 const corr = ref<number | null>(null);
 
 const corrLabel = computed(() => {
-    if (corr.value === null) return '—.——';
+    if (corr.value === null) return '-.--';
     const v = corr.value;
     return `${v < 0 ? '−' : '+'}${Math.abs(v).toFixed(2)}`;
 });

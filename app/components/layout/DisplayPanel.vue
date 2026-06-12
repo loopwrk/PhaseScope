@@ -15,6 +15,9 @@ import { computed } from 'vue';
 
 withDefaults(
     defineProps<{
+        /** Live session active: hide track-only sections (points budget,
+         *  coverage, perf warning, topology - the session card owns those) */
+        live?: boolean;
         wavLoaded?: boolean;
         settingsDisabled?: boolean; // points / coverage (disabled while playing or unloaded)
         topologyDisabled?: boolean; // topology (disabled while playing)
@@ -23,6 +26,7 @@ withDefaults(
         variant?: 'solid' | 'glass' | 'elevated';
     }>(),
     {
+        live: false,
         wavLoaded: false,
         settingsDisabled: false,
         topologyDisabled: false,
@@ -81,10 +85,16 @@ const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? S
         <div class="grid gap-x-7 gap-y-5 sm:grid-cols-2">
             <div class="flex flex-col gap-5">
                 <!-- Points per frame -->
-                <div class="flex flex-col gap-2" :class="{ 'pointer-events-none opacity-40': settingsDisabled }">
+                <div
+                    v-if="!live"
+                    class="flex flex-col gap-2"
+                    :class="{ 'pointer-events-none opacity-40': settingsDisabled }"
+                >
                     <div class="flex items-baseline justify-between gap-2">
-                        <span class="font-display text-detail font-medium">Points Per Frame</span>
-                        <span class="font-mono text-detail tracking-label text-(--accent) tabular-nums">{{
+                        <span class="font-display text-label font-medium text-(--brand-secondary)"
+                            >Points Per Frame</span
+                        >
+                        <span class="font-mono text-detail tracking-label text-(--brand-secondary) tabular-nums">{{
                             pointsPerFrame
                         }}</span>
                     </div>
@@ -92,22 +102,25 @@ const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? S
                 </div>
 
                 <!-- Track coverage -->
-                <div class="flex flex-col gap-2" :class="{ 'pointer-events-none opacity-40': settingsDisabled }">
+                <div
+                    v-if="!live"
+                    class="flex flex-col gap-2"
+                    :class="{ 'pointer-events-none opacity-40': settingsDisabled }"
+                >
                     <div class="flex items-baseline justify-between gap-2">
-                        <span class="font-display text-detail font-medium">Track Coverage</span>
-                        <span class="font-mono text-detail tracking-label text-(--accent) tabular-nums">
+                        <span class="font-display text-label font-medium text-(--brand-secondary)">Track Coverage</span>
+                        <span class="font-mono text-detail tracking-label text-(--brand-secondary) tabular-nums">
                             {{ coverage }}%<template v-if="wavLoaded && perfPoints">
                                 &middot; {{ perfPoints }}</template
                             >
                         </span>
                     </div>
                     <Slider v-model="coverage" :min="10" :max="100" :step="5" :disabled="settingsDisabled" />
-                    <p v-if="!wavLoaded" class="text-caption text-(--text-faint)">Load audio to enable this setting.</p>
                 </div>
 
                 <!-- Performance warning -->
                 <div
-                    v-if="wavLoaded && perfLevel !== 'none'"
+                    v-if="!live && wavLoaded && perfLevel !== 'none'"
                     class="flex items-start gap-2.5 border p-3 [clip-path:var(--clip-notch)]"
                     :class="
                         perfLevel === 'danger'
@@ -138,49 +151,54 @@ const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? S
 
                 <!-- Render mode -->
                 <div class="flex flex-col gap-2.5">
-                    <span class="inline-flex items-center gap-2 font-display text-detail font-semibold text-(--accent)"
+                    <span
+                        class="inline-flex items-center gap-2 font-display text-label font-semibold text-(--brand-secondary)"
                         >Render Mode <KeyCap label="R"
                     /></span>
-                    <RadioGroup v-model="renderMode" :items="renderItems" orientation="horizontal" />
+                    <RadioGroup v-model="renderMode" :items="renderItems" orientation="horizontal" size="xl" />
                 </div>
 
                 <!-- Background skyboxes (mutually exclusive, handled upstream) -->
                 <div class="flex flex-col gap-3">
-                    <span class="font-display text-detail font-semibold text-(--accent)">Background</span>
+                    <span class="font-display text-label font-semibold text-(--brand-secondary)">Background</span>
                     <label class="flex items-center gap-3">
-                        <Checkbox v-model="dream" size="lg" />
+                        <Checkbox v-model="dream" size="xl" />
                         <span class="inline-flex items-center gap-2 text-detail">Dream <KeyCap label="B" /></span>
                     </label>
                     <label class="flex items-center gap-3">
-                        <Checkbox v-model="heavenly" size="lg" />
+                        <Checkbox v-model="heavenly" size="xl" />
                         <span class="inline-flex items-center gap-2 text-detail">Heavenly <KeyCap label="N" /></span>
                     </label>
                 </div>
             </div>
 
             <div class="flex flex-col gap-5">
-                <!-- Topology -->
-                <div class="flex flex-col gap-2.5" :class="{ 'pointer-events-none opacity-40': topologyDisabled }">
-                    <span class="font-display text-detail font-semibold text-(--accent)">Topology</span>
-                    <RadioGroup v-model="topology" :items="topologyItems" :disabled="topologyDisabled" size="lg" />
+                <!-- Topology (live: chosen in the session card instead) -->
+                <div
+                    v-if="!live"
+                    class="flex flex-col gap-2.5"
+                    :class="{ 'pointer-events-none opacity-40': topologyDisabled }"
+                >
+                    <span class="font-display text-label font-semibold text-(--brand-secondary)">Topology</span>
+                    <RadioGroup v-model="topology" :items="topologyItems" :disabled="topologyDisabled" size="xl" />
                 </div>
 
                 <!-- Toggles -->
                 <div class="flex flex-col gap-3">
                     <label class="flex items-center gap-3">
-                        <Switch v-model="controlsOverlay" />
+                        <Switch v-model="controlsOverlay" color="secondary" />
                         <span class="inline-flex items-center gap-2 text-detail"
                             >Show Controls Overlay <KeyCap label="H"
                         /></span>
                     </label>
                     <label class="flex items-center gap-3">
-                        <Checkbox v-model="oscillation" size="lg" />
+                        <Checkbox v-model="oscillation" size="xl" color="secondary" />
                         <span class="inline-flex items-center gap-2 text-detail"
                             >Enable Point Oscillation <KeyCap label="O"
                         /></span>
                     </label>
                     <label class="flex items-center gap-3">
-                        <Checkbox v-model="reverse" size="lg" />
+                        <Checkbox v-model="reverse" size="xl" color="secondary" />
                         <span class="inline-flex items-center gap-2 text-detail"
                             >Reverse Colour Spectrum <KeyCap label="V"
                         /></span>
@@ -188,7 +206,12 @@ const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? S
                     <!-- Two-way exclusion with Lines: each greys while the
                          other is active -->
                     <label class="flex items-center gap-3" :class="{ 'opacity-40': renderMode === 'lines' }">
-                        <Checkbox v-model="channelBias" :disabled="renderMode === 'lines'" size="lg" />
+                        <Checkbox
+                            v-model="channelBias"
+                            :disabled="renderMode === 'lines'"
+                            size="lg"
+                            color="secondary"
+                        />
                         <span class="inline-flex items-center gap-2 text-detail">Channel Bias</span>
                     </label>
                 </div>

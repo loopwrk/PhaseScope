@@ -11,16 +11,16 @@ A real-time 3D audio visualizer (Nuxt 4 + Three.js). The screen is a full-bleed
 WebGL canvas painting the audio as colorful geometry; the UI is a thin chrome
 layer floating over it (buttons, sliders, a popover for "Advanced Options",
 toasts, a switch, and a controls overlay). The visualization itself is the only
-thing that should carry strong color — the UI chrome should stay near-monochrome
+thing that should carry strong color - the UI chrome should stay near-monochrome
 so it frames the art rather than competing with it. The UI is a single page, no menus or modals.
 
 ## Aesthetic target
 
-Minimal, edgy, retro-futuristic — a restrained HR-Giger / biomechanical / sci-fi spacechip dashboard / vintage oscilloscope / matrix code / space-time grid feel:
+Minimal, edgy, retro-futuristic - a restrained HR-Giger / biomechanical / sci-fi spacechip dashboard / vintage oscilloscope / matrix code / space-time grid feel:
 Flat chamfered (clip-path) corners rather than rounded
 radii, fine texture/striation used sparingly, technical/uppercase micro-labels
 with wide letter-spacing, and a luminous focus ring as a signature element.
-Suggestive, not literal — no overt biomechanical imagery.
+Suggestive, not literal - no overt biomechanical imagery.
 
 ## Design choices
 
@@ -55,7 +55,7 @@ Placeholders to define: --success, --success-soft, --warning-soft, --error,
 Typography (confirm or adjust the existing scale): --font-size-caption (11px),
 --font-size-detail (13px), --font-size-body (14px), --font-size-heading (16px),
 --font-size-title (20px), --font-size-display (28px), --label-tracking (0.08em).
-Current font is "Inclusive Sans" — recommend keeping or replacing, and if
+Current font is "Inclusive Sans" - recommend keeping or replacing, and if
 replacing, name the font and how to obtain it (e.g. @fontsource package).
 
 ## Provided
@@ -89,7 +89,7 @@ You will create the design system for the chosen design direction The swatches a
     - the color story and which swatch became which role,
     - focus-ring spec (color/width/offset, light + dark),
     - glass/overlay spec (blur radius in px, opacity, scrim) and where it applies,
-    - shape language: exact chamfer/clip-path geometry (or radius values) — if this
+    - shape language: exact chamfer/clip-path geometry (or radius values) - if this
       needs new tokens (e.g. --shape-chamfer), propose the names explicitly,
     - motion notes (any easing/duration tweaks or glow effects; keep the existing
       reduced-motion discipline),

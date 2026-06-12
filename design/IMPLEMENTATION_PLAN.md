@@ -1,4 +1,4 @@
-# PhaseScope — Design System Implementation Plan
+# PhaseScope - Design System Implementation Plan
 
 Status: **draft for review**. No code changed yet.
 
@@ -18,7 +18,7 @@ Status: **draft for review**. No code changed yet.
 
 ---
 
-## 2. Design facts carried over (already decided — no clarification needed)
+## 2. Design facts carried over (already decided - no clarification needed)
 
 These come straight from the bundle's `engineering-spec.md` / `readme.md` and are
 the source of truth for values.
@@ -30,9 +30,9 @@ almost all chrome colour work. Flat **chamfered (`clip-path`) corners**, never
 rounded. Technical uppercase mono micro-labels with wide tracking. A **luminous
 focus ring** is the signature detail. Dark "spaceship-dashboard" first.
 
-### 2.2 Colour — mode-independent anchors
+### 2.2 Colour - mode-independent anchors
 
-- `--brand-primary: #3D7BFF` (accent, focus, primary fills — the 500 anchor)
+- `--brand-primary: #3D7BFF` (accent, focus, primary fills - the 500 anchor)
 - `--brand-secondary: #B327C9` (magenta-violet, used rarely)
 - `--warning: #ED3A00` (unchanged)
 - `--on-brand: #FFFFFF`
@@ -42,7 +42,7 @@ focus ring** is the signature detail. Dark "spaceship-dashboard" first.
   `--info: var(--brand-primary)` (`--warning` as above)
 - **Selection:** `--selection-bg #FFC20A`, `--selection-fg #000000` (unchanged)
 
-### 2.3 Colour — per-mode (dark = primary, light = coherent)
+### 2.3 Colour - per-mode (dark = primary, light = coherent)
 
 | Token                | Dark                            | Light                           |
 | -------------------- | ------------------------------- | ------------------------------- |
@@ -62,7 +62,7 @@ focus ring** is the signature detail. Dark "spaceship-dashboard" first.
 
 `--overlay-blur: 14px`, `--overlay-opacity: 0.6` (shared).
 
-### 2.4 Focus ring (signature) — `box-shadow`, not `outline`
+### 2.4 Focus ring (signature) - `box-shadow`, not `outline`
 
 `outline` draws a rectangle outside the chamfer; a layered `box-shadow` follows
 the clipped silhouette.
@@ -86,7 +86,7 @@ interactive element. **Never removed.**
 controls overlay, glass `Panel`). Solid `--surface` everywhere else. Always pair
 with the canvas vignette + `--scrim` so text clears AA.
 
-### 2.6 Shape language — chamfer
+### 2.6 Shape language - chamfer
 
 `--chamfer-sm 5px / md 9px / lg 14px`, convenience polygons
 `--clip-chamfer-sm|md|lg`, and a single-cut `--clip-notch` for tab/readout strips.
@@ -120,7 +120,7 @@ scanline `--striation` for headers/readouts/canvas grain (`overlay` blend).
 
 ### 2.10 Iconography
 
-Iconify **`lucide`** (UI chrome) + **`mingcute`** (transport play/pause/stop) —
+Iconify **`lucide`** (UI chrome) + **`mingcute`** (transport play/pause/stop) -
 both already installed in our `package.json`. Keyboard hints render as **`KeyCap`
 chips**, never icon buttons. No emoji / unicode-glyph icons in chrome.
 
@@ -186,7 +186,7 @@ shifts. Optionally add a `brand`/`primary` alias later for clarity.
 Each phase ends with a verification gate (see §6). Order minimises risk to the
 working visualiser.
 
-### Phase 0 — Prep
+### Phase 0 - Prep
 
 - Branch `refactor/css-design-tokens` already covers the token groundwork; create
   a follow-on branch e.g. `feat/design-system-dark` for this work.
@@ -198,13 +198,13 @@ working visualiser.
   source if unpublished), and Storybook (`Storybook`, `@Storybook/plugin-vue`,
   `@Storybook/plugin-nuxt`, `@nuxt/test-utils` already present).
 
-### Phase 1 — Token foundation (mostly CSS, no UI risk)
+### Phase 1 - Token foundation (mostly CSS, no UI risk)
 
 1. Extend `tokens.css`: fill our placeholder slots with the §2.2–2.3 values; add
    the §2.12 new tokens. **Dark on `:root` as default; light under `.light`.**
 2. Add `tokens/palettes.css` (§3) and import it.
 3. Add `tokens/effects.css` equivalents: chamfer clip-paths, `--focus-glow`,
-   glass, shadows/glows, striation — ported from the bundle.
+   glass, shadows/glows, striation - ported from the bundle.
 4. Typography: add `--font-display` (Space Grotesk), `--font-mono` (JetBrains
    Mono), keep `--font-sans` (Inclusive Sans); add `--font-size-mega`,
    `--label-tracking-wide`; map into `@theme` (`--font-*`, `--text-mega`, etc.).
@@ -216,13 +216,13 @@ working visualiser.
 8. Global `*:focus-visible` → `--focus-glow`; port `.ps-chamfer/.ps-glass/
 .ps-label/.ps-readout` utilities.
 
-### Phase 2 — Storybook setup
+### Phase 2 - Storybook setup
 
 - Add `Storybook.config.ts` with `HstVue` (+ `HstNuxt` if it cooperates with
-  Nuxt 4 — see risks), `story`/`story:build` scripts, and link `styles`/tokens so
+  Nuxt 4 - see risks), `story`/`story:build` scripts, and link `styles`/tokens so
   stories render in the real theme. Smoke-test with one trivial story.
 
-### Phase 3 — Component primitives (Vue), prototyped in Storybook first
+### Phase 3 - Component primitives (Vue), prototyped in Storybook first
 
 Recreate visuals; prefer skinning Nuxt UI, build bespoke where there's no
 equivalent. Each gets a Storybook story exercising all states.
@@ -244,7 +244,7 @@ equivalent. Each gets a Storybook story exercising all states.
 States to cover everywhere: default / hover / active(`translateY(1px)`) /
 disabled(0.4) / `focus-visible`(`--focus-glow`); on/off for toggles; variants.
 
-### Phase 4 — UI-kit layouts, prototyped then integrated
+### Phase 4 - UI-kit layouts, prototyped then integrated
 
 Build in Storybook as the bundle structures them, then integrate into the app:
 `AppHeader` (logo + mode toggle), `TransportBar` (play/pause/stop, Load Audio,
@@ -260,18 +260,18 @@ demo select, elapsed `Readout`, live `Badge`), `DisplayPanel` (sliders, topology
   layers on the canvas container (the prototypes use static frames; we use the
   live canvas). No static backdrop image.
 
-### Phase 5 — Logo
+### Phase 5 - Logo
 
 - Author `public/` (and favicon) SVG: **almond eye outline + interior lemniscate
   (∞)**, minimal, near-monochrome with optional accent/scope dot. Replace the
   bundle's proposed reticle. Wire into `AppHeader` + favicon. Need review after.
 
-### Phase 6 — Palette switcher UX
+### Phase 6 - Palette switcher UX
 
 - Build `PaletteSwitcher` + `usePalette()` (§3); surface in settings; verify live
   swap across modes and that ramps/`--ui-*` follow.
 
-### Phase 7 — Accessibility & polish
+### Phase 7 - Accessibility & polish
 
 - Keyboard nav pass (existing shortcuts + tab order with the new components;
   ensure pointer-lock canvas doesn't trap focus; `SkipLink` still works).
@@ -281,7 +281,7 @@ demo select, elapsed `Readout`, live `Badge`), `DisplayPanel` (sliders, topology
 - Reduced-motion: transitions gated on `no-preference`; decorative loop + canvas
   zoom off under `reduce`.
 
-### Phase 8 — Final review
+### Phase 8 - Final review
 
 - Prettier + ESLint; `npm run dev`/`build`; Storybook visual review; optional
   dedicated review subagent for a high-stakes accessibility + diff pass.
@@ -298,7 +298,7 @@ demo select, elapsed `Readout`, live `Badge`), `DisplayPanel` (sliders, topology
   `app/pages/phasescope.vue` (overlay extraction); existing transport components
   (`PlayPauseButton`, `StopButton`, `AudioLoaderButton`, `ColorModeToggle`).
 - **Untouched:** Three.js renderers, audio composables, attractor/oscillation
-  math — visual layer only.
+  math - visual layer only.
 
 ---
 
@@ -321,7 +321,7 @@ get an explicit double-check.
 - **Bundle completeness.** Phase 0 audit
   confirms which component/token files are whole before we port them.
 - **Nuxt UI skinning ceiling.** If a component resists deep chamfer/glass styling,
-  drop that one to headless **Reka UI** (the option we reserved) — not the whole
+  drop that one to headless **Reka UI** (the option we reserved) - not the whole
   kit.
 - **`phasescope.vue` extraction** is invasive; do it incrementally with the
   visualiser running after each step.

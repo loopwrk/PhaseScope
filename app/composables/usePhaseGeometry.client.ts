@@ -23,6 +23,8 @@ export type TopologyMode = 'corridor' | 'sphere' | 'attractor' | 'mobius';
 
 export interface CorridorState {
     buffer: AudioBuffer | null;
+    /** Live-input mode: ch0/ch1 are a synth ring buffer, not a track */
+    live: boolean;
     sr: number;
     ch0: Float32Array | null;
     ch1: Float32Array | null;
@@ -264,6 +266,7 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
 
     const corridorState = ref<CorridorState>({
         buffer: null,
+        live: false,
         sr: 0,
         ch0: null,
         ch1: null,
@@ -352,6 +355,9 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
     const clear = () => {
         renderer.clearGeometry();
         corridorState.value.buffer = null;
+        corridorState.value.live = false;
+        liveHops = 0;
+        liveHopBase = -1;
         corridorState.value.sr = 0;
         corridorState.value.ch0 = null;
         corridorState.value.ch1 = null;
@@ -411,9 +417,116 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         oscData = osc;
     };
 
+    /* ---------- Live build (input drawn over a bounded stretch of time) ----------
+
+       Live geometry is a one-shot build: frame slots fill in order as
+       hops of fresh audio arrive, and when the last slot fills the
+       drawing comes to a hard stop - the synth keeps sounding, only the
+       geometry freezes. Nothing wraps except the AUDIO ring the synth
+       captures into: slot s reads samples at (s * hopSize) % ringLength,
+       which is where hop s's audio lives as long as the build stays
+       within the ring's reach of real time (the budgeted catch-up keeps
+       it there through stalls).
+
+       Every canvas spans a user-chosen session length (the card's
+       chips, 5s-10min); the attractor sits live mode out, since its
+       Lorenz spine wants the full signal up front.
+
+       The clock ARMS on the first note: nothing builds (and the window
+       does not run down) until armLiveClock anchors hop 0 at that
+       moment - silence before the first note costs no time and draws no
+       geometry. */
+
+    let liveHops = 0; // hops consumed == next slot to fill (monotonic, no wrap)
+    let liveHopBase = -1; // hop of the first note; -1 = clock not yet armed
+
+    const initLive = (
+        ring: { ch0: Float32Array; ch1: Float32Array; sr: number; ringLength: number },
+        opts: { durationSeconds: number }
+    ) => {
+        clear();
+
+        const { hopSize, pointsPerFrame } = corridorMeta.value;
+        const frameCount = Math.max(1, Math.floor((opts.durationSeconds * ring.sr) / hopSize));
+
+        corridorState.value.live = true;
+        corridorState.value.sr = ring.sr;
+        corridorState.value.ch0 = ring.ch0;
+        corridorState.value.ch1 = ring.ch1;
+        corridorState.value.frameCount = frameCount;
+        corridorState.value.builtFrames = 0;
+
+        const topology = TOPOLOGIES[topologyMode.value];
+        const { positions, oscData: osc } = renderer.createGeometry({
+            totalPoints: frameCount * pointsPerFrame,
+            renderMode,
+            ...topology.geometry,
+        });
+        corridorState.value.pos = positions;
+        oscData = osc;
+
+        liveHops = 0;
+        liveHopBase = -1; // armed by the first note
+    };
+
+    /** Anchor the live clock at the first note (idempotent). Until this
+     *  fires, no geometry builds and the window does not run down. */
+    const armLiveClock = (samplesWritten: number) => {
+        if (!corridorState.value.live || liveHopBase >= 0) return;
+        liveHopBase = Math.max(0, Math.floor(samplesWritten / corridorMeta.value.hopSize));
+    };
+
+    const updateLiveBuild = (samplesWritten: number) => {
+        if (!renderer.hasGeometry() || !corridorState.value.live) return;
+
+        const { hopSize, windowSize, pointsPerFrame } = corridorMeta.value;
+        const { frameCount } = corridorState.value;
+        const ringLength = corridorState.value.ch0?.length ?? 0;
+        if (!ringLength) return;
+
+        // The clock arms on the first note; the hard stop ends the drawing
+        if (liveHopBase < 0 || liveHops >= frameCount) return;
+
+        // Only build hops whose full analysis window has been written,
+        // counted from the armed clock's anchor
+        const effectiveSamples = samplesWritten - liveHopBase * hopSize;
+        const targetHops = Math.min(frameCount, Math.floor((effectiveSamples - windowSize) / hopSize));
+        if (targetHops <= liveHops) return;
+
+        const BUILD_BUDGET_MS = 4;
+        const MAX_FRAMES_PER_TICK = 64;
+        const startedAt = performance.now();
+
+        let built = 0;
+        while (
+            liveHops < targetHops &&
+            built < MAX_FRAMES_PER_TICK &&
+            performance.now() - startedAt < BUILD_BUDGET_MS
+        ) {
+            buildOneFrame(liveHops, ((liveHopBase + liveHops) * hopSize) % ringLength);
+            renderer.uploadBuiltRange(liveHops * pointsPerFrame, pointsPerFrame);
+            liveHops++;
+            built++;
+        }
+
+        // The corridor's draw range grows with the column; prebuilt closed
+        // forms are already at full range and stay there
+        corridorState.value.builtFrames = Math.max(corridorState.value.builtFrames, liveHops);
+        renderer.updateDrawRange(corridorState.value.builtFrames * pointsPerFrame);
+    };
+
+    /** Where the head currently is: the latest filled frame. In live
+     *  mode that is the build cursor (parked on the final frame after the
+     *  hard stop); for tracks it is the build frontier. -1 = none yet. */
+    const headFrameIndex = () => {
+        const { live, frameCount, builtFrames } = corridorState.value;
+        if (!live) return builtFrames - 1;
+        return Math.min(liveHops, frameCount) - 1;
+    };
+
     /* ---------- Frame building (shared pipeline) ---------- */
 
-    const buildOneFrame = (frameIndex: number) => {
+    const buildOneFrame = (frameIndex: number, sampleStart?: number) => {
         // Writes a single frame into the preallocated position/colour buffers.
         const meta = corridorMeta.value;
         const { pointsPerFrame, windowSize, hopSize } = meta;
@@ -426,7 +539,9 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         const frame = TOPOLOGIES[topologyMode.value].frameMapper(frameIndex, rawState, meta);
         if (!frame) return;
 
-        const frameStart = frameIndex * hopSize;
+        // Live mode passes the slot's address in the audio ring; track mode
+        // reads the frame's natural position in the decoded buffer
+        const frameStart = sampleStart ?? frameIndex * hopSize;
 
         // Each frame occupies a contiguous block.
         let p = frameIndex * pointsPerFrame * 3;
@@ -574,6 +689,10 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         clear,
         initFromBuffer,
         updateProgressiveBuild,
+        initLive,
+        armLiveClock,
+        updateLiveBuild,
+        headFrameIndex,
         transformHeadAnchor,
     };
 }

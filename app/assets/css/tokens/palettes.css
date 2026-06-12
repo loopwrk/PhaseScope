@@ -21,6 +21,8 @@
 [data-palette='azure'] {
     --brand-primary: oklch(0.67 0.26 25.5); /* #3d7bff - luminous azure, signature accent + focus ring */
     --brand-secondary: oklch(0.7981 0.1284 206.4); /* #b327c9 - magenta-violet */
+    --brand-tertiary: oklch(0.6675 0.2514 355.4); /* #ff2d9b */
+    --brand-white: oklch(0.95 0.02 25.5); /* #f5f5f5 - off-white for text and surfaces */
 
     /* Spectrum trio - data / live-signal cues ONLY (never chrome) */
     --scope-magenta: oklch(0.6675 0.2514 355.4); /* #ff2d9b */

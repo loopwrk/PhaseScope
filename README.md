@@ -62,10 +62,10 @@ Open [http://localhost:3000](http://localhost:3000). You'll be redirected to `/p
 
 Click on the canvas to lock the pointer. Then:
 
-- **WASD** — move forward / back / strafe
-- **Arrow keys** — move vertically (↑/↓) or turn (←/→)
-- **Space** — move up; **Shift** — move down
-- **Mouse drag / touch** — look around
+- **WASD** - move forward / back / strafe
+- **Arrow keys** - move vertically (↑/↓) or turn (←/→)
+- **Space** - move up; **Shift** - move down
+- **Mouse drag / touch** - look around
 
 Hardware media keys (play, skip) are wired up via the [Media Session API](https://developer.mozilla.org/en-US/docs/Web/API/Media_Session_API).
 
@@ -77,28 +77,28 @@ Hardware media keys (play, skip) are wired up via the [Media Session API](https:
 
 - **Points** and **Lines** render modes, toggled live with `R`
 - Vertex colours computed per-point from frequency (hue) and amplitude (lightness + saturation)
-- Geometry built progressively in sync with playback — up to 6 frames per animation tick to avoid hitches
+- Geometry built progressively in sync with playback - up to 6 frames per animation tick to avoid hitches
 - Draw range updated each frame so only built frames are rendered
 
 ### Oscillation
 
 Points can oscillate around their anchor positions. Three modes available under Advanced Options:
 
-- **Wave** — a ripple propagates backward from the playback head; louder sections create bigger waves
-- **Per-frame** — all points in a frame move together at the frame's average frequency; preserves ring shape
-- **Per-point** — each point oscillates independently at its locally-estimated frequency
+- **Wave** - a ripple propagates backward from the playback head; louder sections create bigger waves
+- **Per-frame** - all points in a frame move together at the frame's average frequency; preserves ring shape
+- **Per-point** - each point oscillates independently at its locally-estimated frequency
 
 ### Goniometer
 
-A live HUD inset (toggle `G`) drawing the instantaneous Lissajous figure of the current playback window — the hardware-oscilloscope ancestor of the whole app — with a stereo-correlation readout: `+1.00` mono (the L = R diagonal), `0.00` decorrelated, `−1.00` anti-phase. The trace runs scope-cyan, swinging magenta when correlation goes negative.
+A live HUD inset (toggle `G`) drawing the instantaneous Lissajous figure of the current playback window - the hardware-oscilloscope ancestor of the whole app - with a stereo-correlation readout: `+1.00` mono (the L = R diagonal), `0.00` decorrelated, `−1.00` anti-phase. The trace runs scope-cyan, swinging magenta when correlation goes negative.
 
-**Click the figure to enter the 3D scope**: the live phase portrait embedded in a cube, with no time axis. The third dimension is a [Takens delay embedding](https://en.wikipedia.org/wiki/Takens%27s_theorem) — `x = L(t)`, `y = R(t)`, `z = mid(t − 6ms)` — so the orbit plane tilts with the music's frequency content and the figure precesses of its own accord. Fly around it like everything else; click the figure again to return to the corridor.
+**Click the figure to enter the 3D scope**: the live phase portrait embedded in a cube, with no time axis. The third dimension is a [Takens delay embedding](https://en.wikipedia.org/wiki/Takens%27s_theorem) - `x = L(t)`, `y = R(t)`, `z = mid(t − 6ms)` - so the orbit plane tilts with the music's frequency content and the figure precesses of its own accord. Fly around it like everything else; click the figure again to return to the corridor.
 
 ### Camera
 
-- **Orbit** — Lissajous-like path that slowly circles the active geometry; default on load
-- **Follow** — isometric angle behind and above the corridor head
-- **Free** — full first-person exploration with WASD + pointer lock
+- **Orbit** - Lissajous-like path that slowly circles the active geometry; default on load
+- **Follow** - isometric angle behind and above the corridor head
+- **Free** - full first-person exploration with WASD + pointer lock
 
 Camera smoothly lerps to its target position each frame. Moving with WASD or locking the pointer automatically switches to Free mode.
 
@@ -106,8 +106,8 @@ Two animated GLSL skyboxes rendered on the inside of a large sphere surrounding 
 
 ### Performance controls
 
-- **Points per frame** — 16–640, controls ring resolution
-- **Track coverage** — 10–100%, sets the point budget as a percentage of the full track
+- **Points per frame** - 16–640, controls ring resolution
+- **Track coverage** - 10–100%, sets the point budget as a percentage of the full track
 - Warnings shown at 8M and 20M points
 
 ---
@@ -127,22 +127,22 @@ Two animated GLSL skyboxes rendered on the inside of a large sphere surrounding 
 
 ## How the visualisation works
 
-1. **Load** — the audio file is decoded into an `AudioBuffer` via `decodeAudioData`. Left and right channel `Float32Array`s are held in memory.
+1. **Load** - the audio file is decoded into an `AudioBuffer` via `decodeAudioData`. Left and right channel `Float32Array`s are held in memory.
 
-2. **Frame slicing** — the buffer is divided into overlapping windows (`windowSize = 2048` samples, `hopSize = 1024`). Each window becomes one frame of geometry.
+2. **Frame slicing** - the buffer is divided into overlapping windows (`windowSize = 2048` samples, `hopSize = 1024`). Each window becomes one frame of geometry.
 
-3. **Point placement** — for each of the 16–640 points in a frame:
+3. **Point placement** - for each of the 16–640 points in a frame:
     - A parametric angle `u` walks around a ring
     - `x = L * xyScale`, `y = R * xyScale` gives the Lissajous portrait
     - In **corridor** mode the ring is centred at `z = (frameIndex - frameCount/2) * zStep`
     - In **sphere** mode `(phi, theta)` map frame index and point index to spherical coordinates
     - In **attractor** mode points are placed on a tube cross-section around a pre-computed Lorenz spine, with Frenet frames computed via parallel transport
 
-4. **Attractor spine** — pre-computed at load time using a 4th-order Runge-Kutta integrator. The RMS envelope of the audio modulates ρ between 25 and 38, pulling the trajectory between the two lobes of the butterfly.
+4. **Attractor spine** - pre-computed at load time using a 4th-order Runge-Kutta integrator. The RMS envelope of the audio modulates ρ between 25 and 38, pulling the trajectory between the two lobes of the butterfly.
 
-5. **Colour** — frequency content per frame is estimated from the ratio of derivative energy to signal energy (a lightweight proxy for spectral centroid). Hue is mapped across 75% of the colour wheel; lightness and saturation scale with amplitude.
+5. **Colour** - frequency content per frame is estimated from the ratio of derivative energy to signal energy (a lightweight proxy for spectral centroid). Hue is mapped across 75% of the colour wheel; lightness and saturation scale with amplitude.
 
-6. **Progressive build** — frames are written into pre-allocated `Float32Array` buffers. Up to 6 frames are built per animation tick, paced to the audio playback position. Only built frames are in the GPU draw range.
+6. **Progressive build** - frames are written into pre-allocated `Float32Array` buffers. Up to 6 frames are built per animation tick, paced to the audio playback position. Only built frames are in the GPU draw range.
 
 ---
 

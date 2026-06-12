@@ -44,7 +44,7 @@ export function useLissajous3D(
     three: ReturnType<typeof useThree>,
     source: () => (GoniometerSource & { sr: number }) | null
 ) {
-    const active = ref(false);
+    const active = ref(true);
 
     // Scope display settings (persisted; bound by ScopeSettingsPanel)
     const dimension = usePersistedState<'3d' | '2d'>('scope:liss-dimension', () => '3d');

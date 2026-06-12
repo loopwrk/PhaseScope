@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /* PhaseScope button - skins Nuxt UI's UButton. Variants map onto Nuxt UI */
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'neutral' | 'ghost' | 'danger';
 type Size = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
 withDefaults(defineProps<{ variant?: Variant; size?: Size; disabled?: boolean; label?: string }>(), {
@@ -14,6 +14,8 @@ const variantMap: Record<Variant, { color: 'primary' | 'neutral' | 'error'; vari
     {
         primary: { color: 'primary', variant: 'solid' },
         secondary: { color: 'primary', variant: 'outline' },
+        // neutral matches the select menu's quiet ring (transport dock kin)
+        neutral: { color: 'neutral', variant: 'outline' },
         ghost: { color: 'neutral', variant: 'ghost' },
         danger: { color: 'error', variant: 'solid' },
     };

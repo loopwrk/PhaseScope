@@ -7,7 +7,7 @@ import type { TopologyMode } from '~/composables/usePhaseGeometry.client';
 import { segActive, segBaseMd as segBase, segIdle } from '../components/ds/segmented';
 
 useSeoMeta({
-    title: 'About — PhaseScope',
+    title: 'About - PhaseScope',
     description:
         'What PhaseScope is and how it works: a real-time 3D audio visualiser that renders stereo sound as explorable phase-space geometry - a corridor, sphere, Lorenz attractor or Möbius band built from the music itself.',
 });

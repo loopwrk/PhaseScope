@@ -11,12 +11,12 @@ withDefaults(defineProps<{ controlsOpen?: boolean; settingsOpen?: boolean }>(), 
     settingsOpen: false,
 });
 
-defineEmits<{ toggleControls: []; toggleSettings: []; toggleFullscreen: [] }>();
+defineEmits<{ toggleControls: []; toggleSettings: []; toggleFullscreen: []; exit: [] }>();
 </script>
 
 <template>
     <header class="flex items-start justify-between gap-4">
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3" @click="$emit('exit')">
             <Logo
                 :size="64"
                 class="shrink-0 text-(--text) drop-shadow-[0_0_10px_color-mix(in_oklch,var(--scope-cyan)_30%,transparent)]"
