@@ -650,16 +650,22 @@ onUnmounted(async () => {
                 v-if="scope3d"
                 class="ps-rise max-h-[calc(100svh_-_8rem)] overflow-y-auto"
                 v-model:dimension="lissajous.dimension.value"
+                v-model:waveform="lissajous.showWaveform.value"
                 v-model:line-width="lissajous.lineWidth.value"
                 v-model:colour-mode="lissajous.colourMode.value"
                 v-model:custom-colour="lissajous.customColour.value"
             />
-            <LayoutGoniometer
-                class="ps-rise"
-                :source="goniometerSource"
-                :active3d="scope3d"
-                @toggle3d="scope3d = !scope3d"
-            />
+            <!-- The two scopes stand together: phase (the relationship)
+                 and waveform (the forms) of the same signal -->
+            <div class="flex items-end gap-3">
+                <LayoutGoniometer
+                    class="ps-rise"
+                    :source="goniometerSource"
+                    :active3d="scope3d"
+                    @toggle3d="scope3d = !scope3d"
+                />
+                <LayoutWaveform class="ps-rise hidden min-[1400px]:flex" :source="goniometerSource" />
+            </div>
         </div>
 
         <!-- Act 1: the session card (the stage door) -->

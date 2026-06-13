@@ -7,11 +7,17 @@
 import Panel from '../ds/Panel.vue';
 import RadioGroup from '../ds/RadioGroup.vue';
 import Slider from '../ds/Slider.vue';
+import Checkbox from '../ds/Checkbox.vue';
+import IconButton from '../ds/IconButton.vue';
+
+// Panel-local UI state, persisted like every other scope:* setting
+const open = usePersistedState<boolean>('scope:liss-panel-open', () => true);
 
 const dimension = defineModel<'3d' | '2d'>('dimension', { default: '3d' });
 const lineWidth = defineModel<number>('lineWidth', { default: 1 });
 const colourMode = defineModel<'spectrum' | 'average' | 'custom'>('colourMode', { default: 'spectrum' });
 const customColour = defineModel<string>('customColour', { default: '#2fd4e6' });
+const waveform = defineModel<boolean>('waveform', { default: false });
 
 const dimensionItems = [
     { label: '3D', value: '3d', description: 'Takens embedding: z is the mid signal, delayed 6 ms.' },
@@ -34,7 +40,22 @@ const colourItems = [
 
 <template>
     <Panel variant="glass" title="Scope Settings" class="w-64">
-        <div class="flex flex-col gap-5">
+        <template #headerRight>
+            <IconButton
+                :icon="open ? 'i-lucide-chevron-down' : 'i-lucide-chevron-up'"
+                variant="ghost"
+                class="mr-0"
+                size="sm"
+                :aria-label="open ? 'Collapse scope settings' : 'Expand scope settings'"
+                :aria-expanded="open"
+                @click="open = !open"
+            />
+        </template>
+        <div
+            class="flex flex-col gap-5 transition-all duration-300 ease-(--motion-ease-out)"
+            :class="open ? 'max-h-[40rem]' : '-my-(--space-4) max-h-0 overflow-hidden opacity-0'"
+            :inert="!open"
+        >
             <div class="flex flex-col gap-2.5">
                 <span class="font-display text-detail font-semibold text-(--accent)">Dimension</span>
                 <RadioGroup v-model="dimension" color="primary" :items="dimensionItems" orientation="horizontal" />
@@ -49,6 +70,14 @@ const colourItems = [
                 </div>
                 <Slider v-model="lineWidth" :min="1" :max="6" :step="1" />
             </div>
+
+            <label class="flex items-center gap-3">
+                <Checkbox v-model="waveform" size="lg" />
+                <span class="flex flex-col">
+                    <span class="text-detail">Waveform overlay</span>
+                    <span class="text-caption text-(--text-muted)">Time across the cube, amplitude on Y.</span>
+                </span>
+            </label>
 
             <div class="flex flex-col gap-2.5">
                 <span class="font-display text-detail font-semibold text-(--accent)">Colour</span>

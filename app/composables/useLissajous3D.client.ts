@@ -39,6 +39,10 @@ const CENTRE_Y = 1.7; // gallery height, matching the topologies
 const C0_HZ = 16.3516; // pitch-chroma reference: hue wraps each octave from C
 
 const CUBE_RGB = 0x343b50; // --border-strong graphite
+const WAVE_L_RGB = 0x2fd4e6; // --scope-cyan, matching the HUD waveform's L
+const WAVE_R_RGB = 0xff2d9b; // --scope-magenta, its R
+const WAVE_POINTS = 256;
+const WAVE_GAIN = 2.4; // amplitude scale: full-scale stays inside the cube
 
 export function useLissajous3D(
     three: ReturnType<typeof useThree>,
@@ -50,6 +54,10 @@ export function useLissajous3D(
 
     // Scope display settings (persisted; bound by ScopeSettingsPanel)
     const dimension = usePersistedState<'3d' | '2d'>('scope:liss-dimension', () => '3d');
+    // In-cube waveform overlay: time across the cube's width, amplitude on
+    // Y, sitting on the mid-Z plane - head-on in 2D it reads as a classic
+    // dual-trace scope behind the figure
+    const showWaveform = usePersistedState<boolean>('scope:liss-waveform', () => false);
     const lineWidth = usePersistedState<number>('scope:liss-linewidth', () => 1);
     const colourMode = usePersistedState<'spectrum' | 'average' | 'custom'>('scope:liss-colour-mode', () => 'spectrum');
     const customColour = usePersistedState<string>('scope:liss-custom-colour', () => '#2fd4e6'); // scope-cyan
@@ -59,6 +67,10 @@ export function useLissajous3D(
     let group: THREE.Group | null = null;
     let trail: Line2 | null = null;
     let material: LineMaterial | null = null;
+    let waveL: THREE.Line | null = null;
+    let waveR: THREE.Line | null = null;
+    const wavePosL = new Float32Array(WAVE_POINTS * 3);
+    const wavePosR = new Float32Array(WAVE_POINTS * 3);
     const positions = new Float32Array(TRAIL_POINTS * 3);
     const colors = new Float32Array(TRAIL_POINTS * 3);
     const colourScratch = new THREE.Color();
@@ -92,6 +104,25 @@ export function useLissajous3D(
         trail.frustumCulled = false;
         group.add(trail);
 
+        // The waveform pair: plain thin lines, deliberately quieter than
+        // the fat trail so they read as the figure's ruled paper
+        const makeWave = (positions: Float32Array, rgb: number) => {
+            const g = markRaw(new THREE.BufferGeometry());
+            g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const line = markRaw(
+                new THREE.Line(
+                    g,
+                    markRaw(new THREE.LineBasicMaterial({ color: rgb, transparent: true, opacity: 0.65 }))
+                )
+            );
+            line.frustumCulled = false;
+            line.visible = showWaveform.value;
+            group!.add(line);
+            return line;
+        };
+        waveL = makeWave(wavePosL, WAVE_L_RGB);
+        waveR = makeWave(wavePosR, WAVE_R_RGB);
+
         scene().add(group);
     };
 
@@ -108,6 +139,8 @@ export function useLissajous3D(
         group = null;
         trail = null;
         material = null;
+        waveL = null;
+        waveR = null;
     };
 
     watch(active, (val) => {
@@ -168,6 +201,40 @@ export function useLissajous3D(
         trail.geometry.setPositions(positions);
         trail.geometry.setColors(colors);
 
+        // Waveform overlay: same window, anchored by a rising zero-crossing
+        // of the mid signal so periodic notes stand still
+        if (waveL && waveR) {
+            waveL.visible = showWaveform.value;
+            waveR.visible = showWaveform.value;
+            if (showWaveform.value) {
+                let from = start;
+                let prev = (ch0[start] ?? 0) + (ch1[start] ?? 0);
+                for (let i = start + 1; i < start + TRAIL_WINDOW / 2; i++) {
+                    const m = (ch0[i] ?? 0) + (ch1[i] ?? 0);
+                    if (prev <= 0 && m > 0) {
+                        from = i;
+                        break;
+                    }
+                    prev = m;
+                }
+                const span = TRAIL_WINDOW / 2;
+                const waveStride = span / WAVE_POINTS;
+                const halfW = (CUBE_SIZE / 2) * 0.95;
+                for (let k = 0; k < WAVE_POINTS; k++) {
+                    const i = from + Math.floor(k * waveStride);
+                    const x = -halfW + (k / (WAVE_POINTS - 1)) * halfW * 2;
+                    wavePosL[k * 3] = x;
+                    wavePosL[k * 3 + 1] = (ch0[i] ?? 0) * WAVE_GAIN;
+                    wavePosL[k * 3 + 2] = 0;
+                    wavePosR[k * 3] = x;
+                    wavePosR[k * 3 + 1] = (ch1[i] ?? 0) * WAVE_GAIN;
+                    wavePosR[k * 3 + 2] = 0;
+                }
+                waveL.geometry.attributes.position!.needsUpdate = true;
+                waveR.geometry.attributes.position!.needsUpdate = true;
+            }
+        }
+
         // LineMaterial needs the viewport for screen-space widths
         material.linewidth = lineWidth.value;
         const r = three.renderer.value;
@@ -179,5 +246,5 @@ export function useLissajous3D(
 
     const dispose = () => destroy();
 
-    return { active, dimension, lineWidth, colourMode, customColour, update, dispose };
+    return { active, dimension, showWaveform, lineWidth, colourMode, customColour, update, dispose };
 }
