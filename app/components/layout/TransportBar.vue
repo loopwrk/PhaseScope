@@ -13,7 +13,17 @@ import Button from '../ds/Button.vue';
 import Readout from '../ds/Readout.vue';
 import Badge from '../ds/Badge.vue';
 
-type TrackItem = { label: string; value: string };
+// A demo-select item: a selectable track ({ label, value }) or a non-selectable
+// structural row - a group heading (type: 'label') or a divider rule (type:
+// 'separator', a per-item `class` sets its colour). One permissive shape rather
+// than a union, so USelectMenu can resolve value-key="value" (keyof a union is
+// only its common keys, which would be none here).
+type TrackItem = {
+    label?: string;
+    value?: string;
+    type?: 'label' | 'separator';
+    class?: string;
+};
 
 withDefaults(
     defineProps<{
@@ -105,9 +115,12 @@ function onFile(e: Event) {
                 :ui="{
                     base: 'rounded-none [clip-path:var(--clip-chamfer-sm)] focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-(--focus-glow) text-(--brand-white) ring-[var(--brand-primary)]',
                     value: 'text-(--brand-white)',
-                    label: 'text-(--brand-white)',
+                    // Group headings: uppercase technical micro-label. Separator
+                    // layout only - each item sets its own colour via `class`.
+                    label: 'uppercase tracking-label text-caption font-semibold text-(--brand-white)',
+                    separator: '-mx-1 my-1 h-px',
                 }"
-                @update:model-value="(v: string) => v && emit('selectTrack', v)"
+                @update:model-value="(v?: string) => v && emit('selectTrack', v)"
             />
         </label>
 

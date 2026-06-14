@@ -37,7 +37,6 @@ export function usePlaybackOrchestration(options: UsePlaybackOrchestrationOption
         pauseAudio,
         resumeAudio,
         getPlaybackTimeSeconds,
-        onTrackEnded,
         dispose: disposeWavPlayer,
     } = player;
 
@@ -201,12 +200,6 @@ export function usePlaybackOrchestration(options: UsePlaybackOrchestrationOption
         const index = (autoPlayIndex.value + direction + count) % count;
         void playAutoTrackAtIndex(index);
     };
-
-    onTrackEnded(() => {
-        // Only auto-advance if a demo track was playing (not a user-loaded file)
-        if (autoPlayIndex.value < 0) return;
-        playAdjacentTrack(1);
-    });
 
     /* ---------- Hardware media keys ---------- */
 

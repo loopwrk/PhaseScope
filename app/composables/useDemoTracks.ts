@@ -2,6 +2,7 @@ export interface DemoTrack {
     id: string;
     name: string;
     file: string;
+    group: string;
     corridorOrder: number;
     sphereOrder: number;
 }

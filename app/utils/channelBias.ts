@@ -1,7 +1,5 @@
 /* Channel bias - the stereo field pulled apart into left/right populations.
-   Born as a stage of the (since retired) experimental narrative transform;
-   promoted to a first-class Display Settings toggle, all topologies.
-   Pure so it stays unit-testable. */
+ */
 
 export interface ChannelBiasVector {
     x: number;

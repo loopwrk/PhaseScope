@@ -25,8 +25,8 @@ const rmsDb = ref<number | null>(null);
 const hot = ref(false); // peak within ~0.1dB of full scale
 
 const rmsLabel = computed(() => {
-    if (rmsDb.value === null) return '−∞ dB';
-    return `${rmsDb.value.toFixed(1)} dB`;
+    if (rmsDb.value === null) return '−∞';
+    return `${rmsDb.value.toFixed(1)}`;
 });
 
 let raf: number | null = null;
@@ -147,7 +147,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="ps-glass flex w-[184px] flex-col gap-2 p-3 text-left [clip-path:var(--clip-chamfer-md)]">
+    <div class="ps-glass flex w-[198px] flex-col gap-2 p-3 text-left [clip-path:var(--clip-chamfer-md)]">
         <div class="flex w-full items-center justify-between gap-3">
             <p class="ps-label">Wave</p>
             <p
@@ -155,13 +155,13 @@ onBeforeUnmount(() => {
                 :class="hot ? 'text-(--scope-magenta)' : 'text-(--scope-cyan)'"
                 aria-label="Signal level (RMS)"
             >
-                RMS {{ rmsLabel }}
+                RMS <span class="inline-block min-w-[6ch] text-right">{{ rmsLabel }}</span> dB
             </p>
         </div>
         <canvas
             ref="canvasEl"
             class="block bg-(--surface-sunken) [clip-path:var(--clip-chamfer-sm)]"
-            :style="{ width: `${SIZE}px`, height: `${SIZE}px` }"
+            :style="{ width: `${SIZE + 14}px`, height: `${SIZE}px` }"
             role="img"
             aria-label="Waveform of the current audio: time against amplitude"
         ></canvas>

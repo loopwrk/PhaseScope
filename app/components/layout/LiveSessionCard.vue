@@ -24,11 +24,13 @@ const emit = defineEmits<{
     cancel: [];
 }>();
 
-const CANVASES = [
+// `disabled` greys a canvas out ("track only") - currently unused (no live
+// canvas sets it) but kept and typed optional so the template guards type-check.
+const CANVASES: { id: TopologyMode; label: string; hint: string; icon: string; disabled?: boolean }[] = [
     { id: 'corridor', label: 'Corridor', hint: 'endless tunnel', icon: 'i-lucide-rows-3' },
     { id: 'sphere', label: 'Sphere', hint: 'one globe', icon: 'i-lucide-globe' },
     { id: 'mobius', label: 'Möbius', hint: 'one twisted loop', icon: 'i-lucide-infinity' },
-] as const;
+];
 
 const LENGTH_CHIPS = [
     { label: '30s', value: 30 },

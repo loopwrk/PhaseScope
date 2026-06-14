@@ -85,6 +85,28 @@ const {
     dispose: disposePlayback,
 } = playback;
 
+const DEMO_GROUP_ORDER = ['Stable/Harmonic', 'Experimental', 'Genres'];
+type DemoMenuItem =
+    | { type: 'label'; label: string }
+    | { type: 'separator'; class?: string }
+    | { label: string; value: string };
+const SEP_WHITE = 'bg-(--brand-white)';
+const SEP_RED = 'bg-[var(--brand-primary)]';
+const demoTrackItems = computed(() => {
+    const items: DemoMenuItem[] = [];
+    let first = true;
+    for (const group of DEMO_GROUP_ORDER) {
+        const inGroup = sortedDemoTracks.value.filter((t) => t.group === group);
+        if (!inGroup.length) continue;
+        if (!first) items.push({ type: 'separator', class: SEP_WHITE });
+        items.push({ type: 'label', label: group }); // heading (uppercased via CSS)
+        items.push({ type: 'separator', class: SEP_RED });
+        for (const t of inGroup) items.push({ label: t.name, value: t.id });
+        first = false;
+    }
+    return items;
+});
+
 // Manual camera input: WASD movement and pointer lock both hand the camera
 // to the user (auto-follow disengages via cameraMode = 'free') - EXCEPT in
 // the scope's 2D view, which is dolly-only with the gaze locked.
@@ -712,9 +734,9 @@ onUnmounted(async () => {
                 :audio-loaded="wavLoaded"
                 :started="audio.started"
                 :elapsed="elapsedLabel"
-                :tracks="sortedDemoTracks.map((t) => ({ label: t.name, value: t.id }))"
+                :tracks="demoTrackItems"
                 :tracks-loading="demoTracksLoading"
-                :selected-track="selectedDemoTrackId"
+                :selected-track="selectedDemoTrackId ?? undefined"
                 @play-pause="handlePlayPause"
                 @stop="handleStop"
                 @load-file="handleLoadFile"
