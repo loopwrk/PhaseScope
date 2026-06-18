@@ -85,24 +85,26 @@ const {
     dispose: disposePlayback,
 } = playback;
 
-const DEMO_GROUP_ORDER = ['Stable/Harmonic', 'Experimental', 'Genres'];
 type DemoMenuItem =
     | { type: 'label'; label: string }
     | { type: 'separator'; class?: string }
     | { label: string; value: string };
 const SEP_WHITE = 'bg-(--brand-white)';
 const SEP_RED = 'bg-[var(--brand-primary)]';
+// Groups and their order come entirely from the audio subfolders (see the
+// audio-manifest module): sortedDemoTracks is already in menu order, so a
+// new group heading opens each time the group changes.
 const demoTrackItems = computed(() => {
     const items: DemoMenuItem[] = [];
-    let first = true;
-    for (const group of DEMO_GROUP_ORDER) {
-        const inGroup = sortedDemoTracks.value.filter((t) => t.group === group);
-        if (!inGroup.length) continue;
-        if (!first) items.push({ type: 'separator', class: SEP_WHITE });
-        items.push({ type: 'label', label: group }); // heading (uppercased via CSS)
-        items.push({ type: 'separator', class: SEP_RED });
-        for (const t of inGroup) items.push({ label: t.name, value: t.id });
-        first = false;
+    let currentGroup: string | null = null;
+    for (const t of sortedDemoTracks.value) {
+        if (t.group !== currentGroup) {
+            if (currentGroup !== null) items.push({ type: 'separator', class: SEP_WHITE });
+            items.push({ type: 'label', label: t.group }); // heading (uppercased via CSS)
+            items.push({ type: 'separator', class: SEP_RED });
+            currentGroup = t.group;
+        }
+        items.push({ label: t.name, value: t.id });
     }
     return items;
 });

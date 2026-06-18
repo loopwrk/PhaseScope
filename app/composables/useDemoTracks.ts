@@ -3,8 +3,8 @@ export interface DemoTrack {
     name: string;
     file: string;
     group: string;
-    corridorOrder: number;
-    sphereOrder: number;
+    groupOrder: number;
+    order: number;
 }
 
 export function useDemoTracks() {

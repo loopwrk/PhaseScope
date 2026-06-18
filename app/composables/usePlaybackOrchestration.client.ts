@@ -42,10 +42,9 @@ export function usePlaybackOrchestration(options: UsePlaybackOrchestrationOption
 
     // Demo tracks
     const { tracks: demoTracks, loadDemoTrack, isLoading: demoTracksLoading } = useDemoTracks();
-    const sortedDemoTracks = computed(() => {
-        const orderKey = topologyMode.value === 'sphere' ? 'sphereOrder' : 'corridorOrder';
-        return [...demoTracks.value].sort((a, b) => a[orderKey] - b[orderKey]);
-    });
+    const sortedDemoTracks = computed(() =>
+        [...demoTracks.value].sort((a, b) => a.groupOrder - b.groupOrder || a.order - b.order)
+    );
 
     // Elapsed-time readout for the transport dock. UI-only: polls the player
     // clock at 2Hz, which is plenty for a mm:ss display and never touches the
