@@ -77,6 +77,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
         if (!ring) return;
         geometry.initLive(ring, { durationSeconds: liveDuration.value });
         camera.resetOrbitClock();
+        camera.applyLiveCameraDefaults(); // live opens in Follow, not Orbit
         livePhase.value = 'armed';
     };
 

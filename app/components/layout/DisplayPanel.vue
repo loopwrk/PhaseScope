@@ -44,8 +44,6 @@ const coverage = defineModel<number>('coverage', { default: 100 });
 const renderMode = defineModel<string | number>('renderMode', { default: 'points' });
 const topology = defineModel<string | number>('topology', { default: 'corridor' });
 const oscillation = defineModel<boolean>('oscillation', { default: false });
-const reverse = defineModel<boolean>('reverse', { default: false });
-const colourByPitch = defineModel<boolean>('colourByPitch', { default: false });
 const dream = defineModel<boolean>('dream', { default: false });
 const heavenly = defineModel<boolean>('heavenly', { default: false });
 const channelBias = defineModel<boolean>('channelBias', { default: false });
@@ -230,18 +228,6 @@ const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? S
                         <span class="inline-flex items-center gap-2 text-detail"
                             >Enable Point Oscillation <KeyCap label="O"
                         /></span>
-                    </label>
-                    <!-- Pitch colour overrides the bass->treble ramp, so the
-                         reverse-spectrum toggle has no effect while it is on -->
-                    <label class="flex items-center gap-3" :class="{ 'opacity-40': colourByPitch }">
-                        <Checkbox v-model="reverse" :disabled="colourByPitch" size="xl" color="primary" />
-                        <span class="inline-flex items-center gap-2 text-detail"
-                            >Reverse Colour Spectrum <KeyCap label="V"
-                        /></span>
-                    </label>
-                    <label class="flex items-center gap-3">
-                        <Checkbox v-model="colourByPitch" size="xl" color="primary" />
-                        <span class="inline-flex items-center gap-2 text-detail">Colour by Pitch</span>
                     </label>
                     <!-- Two-way exclusion with Lines: each greys while the
                          other is active -->

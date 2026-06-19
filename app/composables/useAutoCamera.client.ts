@@ -55,6 +55,12 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
         cameraMode.value = 'orbit';
     };
 
+    // Live sessions open in Follow (the corridor head leads, the player watches
+    // their performance build ahead of them); track playback stays in Orbit.
+    const applyLiveCameraDefaults = () => {
+        cameraMode.value = 'follow';
+    };
+
     // Switching topology resets to the default orbit view
     watch(topologyMode, () => {
         applyTopologyCameraDefaults();
@@ -192,6 +198,7 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
         cameraMode,
         resetOrbitClock,
         applyTopologyCameraDefaults,
+        applyLiveCameraDefaults,
         update,
         toggleCameraMode,
         setCameraMode,

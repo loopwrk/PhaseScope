@@ -62,7 +62,6 @@ const {
     corridorMeta,
     trackCoveragePercent,
     useAlternateColors,
-    colourByPitch,
     channelBias,
     effectiveMaxPoints,
     pointsWarningLevel,
@@ -156,6 +155,10 @@ watch(renderMode, (newMode) => {
 
 const showControlsOverlay = ref(true);
 const showSettings = ref(true);
+// Phones only: in the 3D scope the controls button opens the scope settings on
+// demand (so they don't sit over the cube) rather than the camera/movement
+// panel. Desktop shows the scope settings inline and never uses this.
+const showScopeSettings = ref(false);
 
 // First-load quiet: neither side panel exists until there is something
 // to control - a loaded track or a live session. The transport bar is
@@ -175,6 +178,16 @@ watch(
     { immediate: true }
 );
 
+// The goniometer + waveform are large, so default them off on phones; desktop
+// keeps its own default (true) and isn't reset on resize.
+watch(
+    isDesktop,
+    (desktop) => {
+        if (!desktop) showGoniometer.value = false;
+    },
+    { immediate: true }
+);
+
 // On phones the two panels are mutually exclusive so they never stack.
 const toggleControls = () => {
     showControlsOverlay.value = !showControlsOverlay.value;
@@ -183,6 +196,13 @@ const toggleControls = () => {
 const toggleSettings = () => {
     showSettings.value = !showSettings.value;
     if (!isDesktop.value && showSettings.value) showControlsOverlay.value = false;
+};
+
+// The scope-settings gear (phones, in the 3D scope) toggles its panel; closing
+// the display settings keeps the two from stacking.
+const toggleScopeSettings = () => {
+    showScopeSettings.value = !showScopeSettings.value;
+    if (showScopeSettings.value) showSettings.value = false;
 };
 
 /* ---------- Goniometer HUD ---------- */
@@ -202,6 +222,8 @@ const lissajous = useLissajous3D(three, goniometerSource);
 watch(scope3d, (active) => {
     lissajous.active.value = active;
     renderer.setCorridorVisible(!active);
+    // Enter with the cube clear; on phones the controls button reveals the panel
+    if (active) showScopeSettings.value = false;
 });
 
 // The idle fork's Listen door: a page-level file picker + a hand into
@@ -213,6 +235,18 @@ const onForkFile = (e: Event) => {
     const file = input.files?.[0];
     if (file) handleLoadFile(file);
     input.value = '';
+};
+
+// "Pick a demo": on desktop, reach into the transport's dropdown; on phones the
+// transport is hidden during onboarding, so open a dedicated overlay instead.
+const showDemoOverlay = ref(false);
+const onPickDemo = () => {
+    if (isDesktop.value) transportRef.value?.openDemoMenu();
+    else showDemoOverlay.value = true;
+};
+const onPickDemoTrack = (id: string) => {
+    handleSelectDemoTrack(id);
+    showDemoOverlay.value = false;
 };
 
 // The logo is the way home: live exits to wherever it came from;
@@ -323,7 +357,14 @@ onMounted(() => {
 
     // Dev-only escape hatch for inspecting the live engine from the console
     if (import.meta.dev) {
-        (window as unknown as Record<string, unknown>).__scope = { three, renderer, geometry, oscillation, live, livePhase };
+        (window as unknown as Record<string, unknown>).__scope = {
+            three,
+            renderer,
+            geometry,
+            oscillation,
+            live,
+            livePhase,
+        };
     }
 });
 
@@ -404,7 +445,7 @@ onUnmounted(async () => {
                             size="md"
                             icon="i-lucide-disc-3"
                             label="Pick a demo"
-                            @click="transportRef?.openDemoMenu()"
+                            @click="onPickDemo"
                         />
                     </div>
                 </div>
@@ -431,23 +472,77 @@ onUnmounted(async () => {
             <input ref="forkFileInput" type="file" accept="audio/*" class="hidden" @change="onForkFile" />
         </div>
 
+        <!-- Mobile demo picker: the transport's dropdown is hidden during phone
+             onboarding, so "Pick a demo" opens this overlay instead (desktop
+             keeps the bottom-bar dropdown). -->
+        <div
+            v-if="showDemoOverlay"
+            class="absolute inset-0 z-40 flex items-center justify-center bg-[color-mix(in_oklch,var(--bg)_80%,transparent)] px-6"
+            @click.self="showDemoOverlay = false"
+        >
+            <div
+                class="ps-glass flex max-h-[70svh] w-full max-w-sm flex-col border border-(--border-strong) [clip-path:var(--clip-notch)]"
+            >
+                <div class="flex items-center justify-between gap-2 border-b border-(--border-strong) px-4 py-3">
+                    <span class="font-display text-body font-semibold">Pick a demo</span>
+                    <button
+                        type="button"
+                        class="text-(--text-muted) hover:text-(--text) focus-visible:outline-none focus-visible:shadow-(--focus-glow)"
+                        aria-label="Close"
+                        @click="showDemoOverlay = false"
+                    >
+                        <UIcon name="i-lucide-x" class="size-5" />
+                    </button>
+                </div>
+                <ul class="flex flex-col gap-0.5 overflow-y-auto p-2">
+                    <template v-for="(item, i) in demoTrackItems" :key="i">
+                        <li
+                            v-if="item.type === 'label'"
+                            class="px-3 pb-1 pt-3 font-mono text-caption uppercase tracking-label text-(--brand-white)"
+                        >
+                            {{ item.label }}
+                        </li>
+                        <li
+                            v-else-if="item.type === 'separator'"
+                            :class="['mx-2 my-1 h-px', item.class]"
+                            aria-hidden="true"
+                        />
+                        <li v-else>
+                            <button
+                                type="button"
+                                class="w-full px-3 py-2 text-left text-detail text-(--text) hover:bg-(--surface-sunken) focus-visible:outline-none focus-visible:shadow-(--focus-glow)"
+                                @click="onPickDemoTrack((item as { value: string }).value)"
+                            >
+                                {{ item.label }}
+                            </button>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </div>
+
         <!-- Top: floating header -->
         <LayoutAppHeader
             class="absolute inset-x-5 top-5 z-30"
             :controls-open="showControlsOverlay"
             :settings-open="showSettings"
             :goniometer-open="showGoniometer"
+            :scope-active="scope3d"
+            :scope-settings-open="showScopeSettings"
             @toggle-controls="toggleControls"
             @toggle-settings="toggleSettings"
             @toggle-goniometer="showGoniometer = !showGoniometer"
+            @toggle-scope-settings="toggleScopeSettings"
             @toggle-fullscreen="three.toggleFullscreen"
             @exit="goHome"
         />
 
         <!-- Left: display settings (advanced options disclosed in-panel) -->
+        <!-- z-40 on phones puts the settings panel above the bottom bar (z-30);
+             desktop keeps z-20 (they don't overlap there). -->
         <div
             v-if="showSettings && uiActive && !isFullscreen"
-            class="ps-rise absolute left-5 top-24 z-20 max-h-[calc(100svh_-_14rem)] w-[min(100vw_-_2.5rem,37.5rem)] overflow-y-auto"
+            class="ps-rise absolute left-5 top-24 z-40 max-h-[calc(100svh_-_14rem)] w-[min(100vw_-_2.5rem,37.5rem)] overflow-y-auto md:z-20"
         >
             <LayoutDisplayPanel
                 variant="glass"
@@ -458,8 +553,6 @@ onUnmounted(async () => {
                 v-model:renderMode="renderMode"
                 v-model:topology="topologyMode"
                 v-model:oscillation="oscillation.enabled.value"
-                v-model:reverse="useAlternateColors"
-                v-model:colour-by-pitch="colourByPitch"
                 v-model:channel-bias="channelBias"
                 :dream="dreamBg.enabled.value"
                 :heavenly="heavenlyBg.enabled.value"
@@ -492,8 +585,10 @@ onUnmounted(async () => {
         <!-- Positioning wrapper: Panel's scoped position:relative beats the
              absolute utility on its own root, so the offsets live out here
              (same pattern as the Display Settings panel) -->
+        <!-- Camera + movement controls: desktop-only (its toggle is hidden on
+             phones, where camera/movement aren't useful). -->
         <div
-            v-if="showControlsOverlay && uiActive"
+            v-if="showControlsOverlay && uiActive && isDesktop"
             class="ps-rise absolute right-5 top-24 z-20 max-h-[calc(100svh_-_12rem)] overflow-y-auto"
         >
             <LayoutControlsOverlay
@@ -511,12 +606,16 @@ onUnmounted(async () => {
              plus, while the 3D scope is active, its settings rising above. -->
         <!-- On short windows the panel sits beside the goniometer instead of
              above it, so the stack never reaches the header/logo -->
+        <!-- On phones the scopes stack vertically above the (tall, wrapping)
+             bottom bar, scaled down to fit between it and the header; desktop
+             keeps full size, bottom-5 and the short-height row layout. -->
         <div
             v-if="showGoniometer && (wavLoaded || liveMode)"
-            class="absolute bottom-5 left-5 z-20 hidden flex-col items-start gap-3 md:flex [@media(max-height:880px)]:flex-row [@media(max-height:880px)]:items-end"
+            class="absolute bottom-64 left-5 z-20 flex origin-bottom-left flex-col items-start gap-3 md:bottom-5 md:[@media(max-height:880px)]:flex-row md:[@media(max-height:880px)]:items-end"
+            :class="scope3d ? 'max-md:scale-[0.72]' : 'max-md:scale-[0.8]'"
         >
             <LayoutScopeSettingsPanel
-                v-if="scope3d"
+                v-if="scope3d && (isDesktop || showScopeSettings)"
                 class="ps-rise max-h-[calc(100svh_-_8rem)] overflow-y-auto"
                 v-model:dimension="lissajous.dimension.value"
                 v-model:waveform="lissajous.showWaveform.value"
@@ -525,15 +624,17 @@ onUnmounted(async () => {
                 v-model:custom-colour="lissajous.customColour.value"
             />
             <!-- The two scopes stand together: phase (the relationship)
-                 and waveform (the forms) of the same signal -->
-            <div class="flex items-end gap-3">
+                 and waveform (the forms) of the same signal. In the 3D scope on
+                 phones they hide - the cube IS the figure, and the settings
+                 panel needs the room. -->
+            <div class="flex flex-col items-start gap-3 md:flex-row md:items-end" :class="{ 'max-md:hidden': scope3d }">
                 <LayoutGoniometer
                     class="ps-rise"
                     :source="goniometerSource"
                     :active3d="scope3d"
                     @toggle3d="scope3d = !scope3d"
                 />
-                <LayoutWaveform class="ps-rise hidden min-[1400px]:flex" :source="goniometerSource" />
+                <LayoutWaveform class="ps-rise hidden max-md:flex min-[1400px]:flex" :source="goniometerSource" />
             </div>
         </div>
 
@@ -553,7 +654,7 @@ onUnmounted(async () => {
              listening, the live stage from armed onward -->
         <main id="content" tabindex="-1" class="focus-visible:outline-none">
             <LayoutLiveKeys
-                v-if="liveMode && !isFullscreen"
+                v-if="liveMode"
                 class="ps-rise absolute inset-x-4 bottom-5 z-30 mx-auto w-full max-w-2xl"
                 :phase="livePhase === 'armed' ? 'armed' : livePhase === 'playing' ? 'playing' : 'done'"
                 :device-names="live.deviceNames.value"
@@ -573,7 +674,7 @@ onUnmounted(async () => {
                 @exit="live.exitLive"
             />
             <LayoutTransportBar
-                v-if="livePhase === 'off' && !isFullscreen"
+                v-if="livePhase === 'off' && (isDesktop || wavLoaded)"
                 ref="transportRef"
                 class="absolute inset-x-4 bottom-5 z-30 mx-auto w-fit max-w-[calc(100vw_-_2rem)]"
                 :live="liveMode"

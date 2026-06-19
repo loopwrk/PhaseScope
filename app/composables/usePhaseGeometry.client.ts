@@ -90,7 +90,7 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
     // wheel (one cycle per octave) instead of the bass->treble ramp. Toggling
     // repaints the built corridor (like channel bias), so the change is total
     // rather than only applying to frames built from the playhead on.
-    const colourByPitch = usePersistedState('scope:colour-by-pitch', () => false);
+    const colourByPitch = usePersistedState('scope:colour-by-pitch', () => true);
     watch(colourByPitch, () => {
         if (renderer.hasGeometry()) corridorState.value.builtFrames = 0; // rebuild to playhead
     });
