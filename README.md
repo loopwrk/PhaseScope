@@ -140,7 +140,7 @@ Two animated GLSL skyboxes rendered on the inside of a large sphere surrounding 
 
 4. **Attractor spine** - pre-computed at load time using a 4th-order Runge-Kutta integrator. The RMS envelope of the audio modulates ρ between 25 and 38, pulling the trajectory between the two lobes of the butterfly.
 
-5. **Colour** - frequency content per frame is estimated from the ratio of derivative energy to signal energy (a lightweight proxy for spectral centroid). Hue is mapped across 75% of the colour wheel; lightness and saturation scale with amplitude.
+5. **Colour** - each frame's hue comes from its **spectral centroid**, the centre of mass of the magnitude spectrum, computed with a real windowed FFT (a 1024-sample Hann window over the L+R mix - see `createSpectralAnalyzer`). Bass-weighted frames sit at the blue/violet end, treble-weighted frames run to red; hue spans 75% of the colour wheel, and lightness and saturation scale with amplitude. The transform runs once per frame, which is cheap next to the per-point colour loop it feeds.
 
 6. **Progressive build** - frames are written into pre-allocated `Float32Array` buffers. Up to 6 frames are built per animation tick, paced to the audio playback position. Only built frames are in the GPU draw range.
 

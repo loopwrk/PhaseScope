@@ -8,7 +8,7 @@
    for choosing visibly passes when you take the stage.
    Controlled: the parent owns topology + duration state. */
 import Button from '../ds/Button.vue';
-import type { TopologyMode } from '~/composables/usePhaseGeometry.client';
+import type { TopologyMode } from '~/utils/topologies';
 import { LIVE_VOICES, LIVE_VOICE_IDS, type LiveVoiceId } from '~/utils/liveVoices';
 
 const props = defineProps<{

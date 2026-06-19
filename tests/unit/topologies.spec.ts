@@ -1,6 +1,6 @@
 // @vitest-environment nuxt
 import { describe, it, expect } from 'vitest';
-import { TOPOLOGIES, type CorridorState } from '~/composables/usePhaseGeometry.client';
+import { TOPOLOGIES, type CorridorState } from '~/utils/topologies';
 
 /* Geometric invariants of the per-topology frame mappers. The mappers are
    pure (frameIndex, state, meta) -> mapPoint closures, so they can be

@@ -1,5 +1,5 @@
 import type { RenderMode } from '~/composables/useCorridorRenderer.client';
-import type { TopologyMode } from '~/composables/usePhaseGeometry.client';
+import type { TopologyMode } from '~/utils/topologies';
 
 /* useScopeSettings - the user's /phasescope settings, lifted into Nuxt's
    useState so they survive client-side navigation (a trip to /about and

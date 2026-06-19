@@ -1,7 +1,8 @@
 import type { Ref } from 'vue';
 import { useIntervalFn } from '@vueuse/core';
 import type { useThree } from '~/composables/useThree.client';
-import type { usePhaseGeometry, TopologyMode } from '~/composables/usePhaseGeometry.client';
+import type { usePhaseGeometry } from '~/composables/usePhaseGeometry.client';
+import type { TopologyMode } from '~/utils/topologies';
 import type { useAutoCamera } from '~/composables/useAutoCamera.client';
 
 /* usePlaybackOrchestration - everything between "the user wants to hear

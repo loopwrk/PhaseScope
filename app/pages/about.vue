@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Logo from '../components/ds/Logo.vue';
 import IconButton from '../components/ds/IconButton.vue';
-import type { TopologyMode } from '~/composables/usePhaseGeometry.client';
+import type { TopologyMode } from '~/utils/topologies';
 
 // Segmented-control treatment shared with the HUD (ControlsOverlay)
 import { segActive, segBaseMd as segBase, segIdle } from '../components/ds/segmented';

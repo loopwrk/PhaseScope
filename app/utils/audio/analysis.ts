@@ -1,5 +1,6 @@
 // Audio Analysis Utilities
 import { clamp } from '~/utils/utilities';
+import { FFT } from './fft';
 
 // Frequency analysis window sizes (in samples)
 export const ANALYSIS_WINDOW_TEMPORAL = 256; // Fast response, good for percussion/transients
@@ -132,4 +133,81 @@ export const stereoCorrelation = (
 export const pitchChromaHue = (hz: number, refHz: number = 16.3516): number => {
     if (!(hz > 0)) return 0;
     return ((Math.log2(hz / refHz) % 1) + 1) % 1;
+};
+
+/* ---------- Spectral centroid (a real frequency transform) ----------
+
+   The "centre of mass" of the magnitude spectrum is the textbook one-number
+   summary of where a sound sits tonally - low for a bass drone, high for a
+   hi-hat - and it is exactly what the per-frame hue wants. Computing it for
+   real means a windowed FFT, which the rest of the engine assumed was too
+   expensive; but it runs ONCE PER FRAME, next to a per-point loop that already
+   does hundreds of trig + HSL conversions, so it is cheap in context.
+
+   createSpectralAnalyzer preallocates the FFT, a Hann window and the re/im
+   scratch buffers, so analysing a frame is allocation-free: window the L+R
+   mix into the real buffer, transform, take the power-weighted mean bin. */
+
+export interface SpectralAnalyzer {
+    /** FFT length in samples (the analysis window). */
+    readonly size: number;
+    /** Spectral centroid of the windowed L+R mix, in Hz. 0 for silence. */
+    centroidHz: (ch0: Float32Array, ch1: Float32Array, startIdx: number, sampleRate: number) => number;
+    /** Centroid mapped to 0..1 on a log scale over [minHz, maxHz]; the hue
+     *  contract the geometry engine consumes. Silence returns 0.5 (mid). */
+    centroid01: (ch0: Float32Array, ch1: Float32Array, startIdx: number, sampleRate: number) => number;
+    /** Map a frequency in Hz onto the same 0..1 log scale (over [minHz, maxHz]);
+     *  Hz <= 0 returns 0.5. Lets a caller that already has the centroid in Hz
+     *  reuse the mapping without running a second transform. */
+    hzTo01: (hz: number) => number;
+}
+
+export const createSpectralAnalyzer = (size = 2048, minHz = 100, maxHz = 8000): SpectralAnalyzer => {
+    const fft = new FFT(size);
+    const re = new Float32Array(size);
+    const im = new Float32Array(size);
+    // Periodic Hann window: tames spectral leakage so a single tone reads as a
+    // tight peak rather than a smear that drags the centroid around.
+    const window = new Float32Array(size);
+    for (let i = 0; i < size; i++) window[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / size);
+
+    const half = size >> 1;
+    const logRange = Math.log(maxHz / minHz);
+    const SILENCE_POWER = 1e-9;
+
+    const centroidHz = (ch0: Float32Array, ch1: Float32Array, startIdx: number, sampleRate: number): number => {
+        const start = Math.floor(startIdx);
+        const len = ch0.length;
+        // Window the mono mix into the real buffer; out-of-range samples (near
+        // the track edges) read as zero, i.e. zero-padding.
+        for (let i = 0; i < size; i++) {
+            const idx = start + i;
+            const s = idx >= 0 && idx < len ? 0.5 * ((ch0[idx] ?? 0) + (ch1[idx] ?? 0)) : 0;
+            re[i] = s * (window[i] ?? 0);
+            im[i] = 0;
+        }
+
+        fft.transform(re, im);
+
+        // Power-weighted mean bin. Skip DC (k=0): it carries no pitch and would
+        // only pull every centroid toward zero. Weighting by power means no
+        // per-bin sqrt is needed - the magnitude scale cancels in the ratio.
+        let weighted = 0;
+        let total = 0;
+        for (let k = 1; k <= half; k++) {
+            const power = (re[k] ?? 0) * (re[k] ?? 0) + (im[k] ?? 0) * (im[k] ?? 0);
+            weighted += k * power;
+            total += power;
+        }
+        if (total < SILENCE_POWER) return 0;
+        return ((weighted / total) * sampleRate) / size;
+    };
+
+    // silence / undefined -> mid hue, matching the old proxy
+    const hzTo01 = (hz: number): number => (hz > 0 ? clamp(Math.log(hz / minHz) / logRange, 0, 1) : 0.5);
+
+    const centroid01 = (ch0: Float32Array, ch1: Float32Array, startIdx: number, sampleRate: number): number =>
+        hzTo01(centroidHz(ch0, ch1, startIdx, sampleRate));
+
+    return { size, centroidHz, centroid01, hzTo01 };
 };

@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import type { ComputedRef, Ref } from 'vue';
 import type { useThree } from '~/composables/useThree.client';
-import type { usePhaseGeometry, TopologyMode } from '~/composables/usePhaseGeometry.client';
+import type { usePhaseGeometry } from '~/composables/usePhaseGeometry.client';
 import type { useCorridorRenderer } from '~/composables/useCorridorRenderer.client';
-import { TOPOLOGIES } from '~/composables/usePhaseGeometry.client';
+import { TOPOLOGIES, type TopologyMode } from '~/utils/topologies';
 
 /* useAutoCamera - the orbit / follow / free camera brain.
 

@@ -60,6 +60,7 @@ const {
     corridorMeta,
     trackCoveragePercent,
     useAlternateColors,
+    colourByPitch,
     channelBias,
     effectiveMaxPoints,
     pointsWarningLevel,
@@ -615,6 +616,7 @@ onUnmounted(async () => {
                 v-model:topology="topologyMode"
                 v-model:oscillation="oscillation.enabled.value"
                 v-model:reverse="useAlternateColors"
+                v-model:colour-by-pitch="colourByPitch"
                 v-model:channel-bias="channelBias"
                 :dream="dreamBg.enabled.value"
                 :heavenly="heavenlyBg.enabled.value"
