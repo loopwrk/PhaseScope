@@ -537,6 +537,57 @@ onUnmounted(async () => {
             @exit="goHome"
         />
 
+        <div
+            v-if="scope3d"
+            class="ps-rise ps-glass absolute right-5 top-24 z-30 flex items-center gap-1 p-1 [clip-path:var(--clip-chamfer-sm)] md:hidden"
+        >
+            <DsButton
+                variant="ghost"
+                size="md"
+                class="text-(--brand-white)"
+                label="Exit 3D Scope"
+                @click="scope3d = false"
+            />
+            <DsIconButton
+                icon="i-lucide-settings"
+                variant="ghost"
+                size="md"
+                aria-label="Scope settings"
+                @click="toggleScopeSettings"
+            />
+        </div>
+
+        <div
+            v-if="!isDesktop && scope3d && showScopeSettings"
+            class="absolute inset-0 z-40 flex items-center justify-center bg-[color-mix(in_oklch,var(--bg)_80%,transparent)] px-6"
+            @click.self="showScopeSettings = false"
+        >
+            <div
+                class="ps-glass flex max-h-[70svh] w-full max-w-sm flex-col border border-(--border-strong) [clip-path:var(--clip-notch)]"
+            >
+                <div class="flex items-center justify-between gap-2 border-b border-(--border-strong) px-4 py-3">
+                    <span class="font-display text-body font-semibold">Scope Settings</span>
+                    <button
+                        type="button"
+                        class="text-(--text-muted) hover:text-(--text) focus-visible:outline-none focus-visible:shadow-(--focus-glow)"
+                        aria-label="Close"
+                        @click="showScopeSettings = false"
+                    >
+                        <UIcon name="i-lucide-x" class="size-5" />
+                    </button>
+                </div>
+                <div class="overflow-y-auto p-4">
+                    <LayoutScopeSettingsControls
+                        v-model:dimension="lissajous.dimension.value"
+                        v-model:waveform="lissajous.showWaveform.value"
+                        v-model:line-width="lissajous.lineWidth.value"
+                        v-model:colour-mode="lissajous.colourMode.value"
+                        v-model:custom-colour="lissajous.customColour.value"
+                    />
+                </div>
+            </div>
+        </div>
+
         <!-- Left: display settings (advanced options disclosed in-panel) -->
         <!-- z-40 on phones puts the settings panel above the bottom bar (z-30);
              desktop keeps z-20 (they don't overlap there). -->
@@ -615,7 +666,7 @@ onUnmounted(async () => {
             :class="scope3d ? 'max-md:scale-[0.72]' : 'max-md:scale-[0.8]'"
         >
             <LayoutScopeSettingsPanel
-                v-if="scope3d && (isDesktop || showScopeSettings)"
+                v-if="scope3d && isDesktop"
                 class="ps-rise max-h-[calc(100svh_-_8rem)] overflow-y-auto"
                 v-model:dimension="lissajous.dimension.value"
                 v-model:waveform="lissajous.showWaveform.value"
