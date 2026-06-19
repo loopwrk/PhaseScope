@@ -34,9 +34,17 @@ export function usePointerLockCamera(
         if (import.meta.dev) console.warn('Pointer lock error');
     });
 
-    // Click target element to lock pointer
+    // Touch taps drive the orbit camera, not pointer lock; remember the last
+    // pointer type so a tap-generated click doesn't fire a doomed lock request.
+    let lastPointerType = '';
+    useEventListener(targetElement, 'pointerdown', (e: PointerEvent) => {
+        lastPointerType = e.pointerType;
+    });
+
+    // Click target element to lock pointer (mouse only)
     useEventListener(targetElement, 'click', () => {
         if (disabled?.value) return;
+        if (lastPointerType === 'touch') return;
         const ctl = controls.value;
         if (ctl && !isLocked.value) {
             ctl.lock();

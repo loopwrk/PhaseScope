@@ -137,6 +137,17 @@ usePointerLockCamera(three.controls, canvasContainer, {
     },
 });
 
+// Touch camera (mobile): pinch to zoom, one-finger drag to rotate, double-tap
+// to hand back to the auto path. Touch-only - the desktop mouse/WASD fly camera
+// is untouched. 2D scope keeps rotation locked but allows pinch-zoom.
+const touchOrbit = useTouchOrbit({
+    three,
+    camera,
+    topologyMode,
+    scopeActive: scope3d,
+    scope2dLocked,
+});
+
 // Set movement speed level directly (slow / medium / fast = 0 / 1 / 2).
 const setMovementSpeed = (index: number) => {
     movement.speedIndex.value = Math.min(2, Math.max(0, index));
@@ -326,8 +337,9 @@ const animate = (now: number) => {
         } else {
             geometry.updateProgressiveBuild(getPlaybackTimeSeconds());
         }
-        // Update camera based on current mode
-        camera.update(timeInSeconds);
+        // Update camera: touch orbit drives while a gesture owns it (mobile),
+        // otherwise the auto camera (orbit/follow) does.
+        if (!touchOrbit.update()) camera.update(timeInSeconds);
         // Drive the GPU oscillation (four uniform writes; the displacement
         // happens in the vertex shader, off the CPU entirely)
         renderer.setOscillation({
@@ -352,6 +364,7 @@ const animate = (now: number) => {
 
 onMounted(() => {
     three.init();
+    touchOrbit.init(); // wire touch listeners now the renderer DOM + controls exist
     initMediaSessionHandlers();
     requestAnimFrame = requestAnimationFrame(animate);
 
@@ -364,6 +377,8 @@ onMounted(() => {
             oscillation,
             live,
             livePhase,
+            camera,
+            touchOrbit,
         };
     }
 });
@@ -388,7 +403,7 @@ onUnmounted(async () => {
              a transform on the container only - the engine is untouched) -->
         <div
             ref="canvasContainer"
-            class="absolute inset-0 bg-black motion-safe:transition-transform motion-safe:duration-[6000ms] motion-safe:ease-(--motion-ease-standard)"
+            class="absolute inset-0 touch-none bg-black motion-safe:transition-transform motion-safe:duration-[6000ms] motion-safe:ease-(--motion-ease-standard)"
             :class="{ 'motion-safe:scale-[1.04]': !!audio.source }"
         ></div>
 

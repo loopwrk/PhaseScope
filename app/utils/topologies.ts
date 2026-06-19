@@ -118,9 +118,13 @@ const attractorFrameMapper: FrameMapperFactory = (frameIndex, raw) => {
     };
 };
 
+// Centreline radius of the Möbius band; shared by the mapper and the head
+// anchor so the camera tracks the exact point the geometry wraps around.
+const MOBIUS_BAND_RADIUS = 6.0;
+
 const mobiusFrameMapper: FrameMapperFactory = (frameIndex, raw) => {
     const { frameCount, xyScale } = raw;
-    const bandRadius = 6.0; // centreline radius of the band
+    const bandRadius = MOBIUS_BAND_RADIUS; // centreline radius of the band
     const ringRadius = 0.35; // skeleton ring so silence still draws the band
 
     // Time wraps the band in exactly one lap; the cross-section frame
@@ -156,6 +160,28 @@ const mobiusFrameMapper: FrameMapperFactory = (frameIndex, raw) => {
     };
 };
 
+/* ---------- Head anchors ----------
+   Where the corridor "head" (the most recently built frame's centre) sits in
+   object space, per head-anchored topology. The camera follows this point and
+   the touch orbit targets it, so the view tracks the geometry as it grows.
+   Pure like the mappers; channel-bias adjustment (corridor only) is applied by
+   the engine, which owns that reactive state. */
+
+type HeadAnchorFn = (frameIndex: number, raw: CorridorState, meta: CorridorMeta) => FramePoint;
+
+// Corridor: frames stack along Z, centred on the origin.
+const corridorHeadAnchor: HeadAnchorFn = (frameIndex, raw, meta) => ({
+    x: 0,
+    y: 0,
+    z: (frameIndex - raw.frameCount / 2) * meta.zStep,
+});
+
+// Möbius: the head travels the band's centreline, one full lap over the track.
+const mobiusHeadAnchor: HeadAnchorFn = (frameIndex, raw) => {
+    const theta = (frameIndex / raw.frameCount) * Math.PI * 2;
+    return { x: Math.cos(theta) * MOBIUS_BAND_RADIUS, y: 0, z: Math.sin(theta) * MOBIUS_BAND_RADIUS };
+};
+
 /* ---------- Topology registry ----------
    Single home for everything that varies per topology: the frame mapper,
    the renderer's object-space offsets, whether the Lorenz spine must be
@@ -181,6 +207,10 @@ interface TopologyDef {
     };
     needsAttractorSpine?: boolean;
     orbit?: OrbitParams;
+    /** Camera follows the head (corridor, Möbius) instead of orbiting the
+     *  centre; the engine/camera read headAnchor for the head's position. */
+    anchorOnHead?: boolean;
+    headAnchor?: HeadAnchorFn;
 }
 
 export const TOPOLOGIES: Record<TopologyMode, TopologyDef> = {
@@ -188,6 +218,8 @@ export const TOPOLOGIES: Record<TopologyMode, TopologyDef> = {
         frameMapper: corridorFrameMapper,
         // Corridor extends along Z; sphere and attractor are centred at origin
         geometry: { pointsPosition: { x: 0, y: 1.7, z: 0.95 }, linesPosition: { x: 0, y: 1.7, z: 0 } },
+        anchorOnHead: true,
+        headAnchor: corridorHeadAnchor,
     },
     sphere: {
         frameMapper: sphereFrameMapper,
@@ -222,17 +254,9 @@ export const TOPOLOGIES: Record<TopologyMode, TopologyDef> = {
     mobius: {
         frameMapper: mobiusFrameMapper,
         geometry: { pointsPosition: { x: 0, y: 1.7, z: 0 }, linesPosition: { x: 0, y: 1.7, z: 0 } },
-        // Mid-distance orbit; a touch more elevation drift than the sphere
-        // so the half-twist reads from above and below as it passes
-        orbit: {
-            radius: 13,
-            speed: 0.16,
-            elevCosFreq: 0.15,
-            elevCosAmp: 1.0,
-            elevSinFreq: 0.39,
-            elevSinAmp: 0.32,
-            wobbleFreq: 0.5,
-            wobbleAmp: 2.0,
-        },
+        // Like the corridor, the camera rides the head as it laps the band
+        // rather than orbiting the band's centre.
+        anchorOnHead: true,
+        headAnchor: mobiusHeadAnchor,
     },
 };

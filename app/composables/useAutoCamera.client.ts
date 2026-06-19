@@ -94,7 +94,10 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
             // locked); Z belongs to the W/S dolly, clamped at the pane
             targetPos = { x: 0, y: galleryY, z: Math.min(14, Math.max(3.2, camObj.position.z)) };
             lookTarget = new THREE.Vector3(0, galleryY, 0);
-        } else if (lissajousActive?.value || TOPOLOGIES[topologyMode.value].orbit) {
+        } else if (
+            lissajousActive?.value ||
+            (TOPOLOGIES[topologyMode.value].orbit && !TOPOLOGIES[topologyMode.value].anchorOnHead)
+        ) {
             const orbit = lissajousActive?.value ? LISSAJOUS_ORBIT : TOPOLOGIES[topologyMode.value].orbit!;
             // Centre-orbiting topologies (sphere, attractor): a Lissajous-like
             // path around the origin whose constants come from the registry.
@@ -115,12 +118,13 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
 
             lookTarget = new THREE.Vector3(0, galleryY, 0);
         } else {
-            // Corridor mode
+            // Head-anchored topologies (corridor, Möbius): the camera rides the
+            // most recently built frame's centre as the geometry grows.
             const headFrameIndex = geometry.headFrameIndex();
             if (headFrameIndex < 0) return;
 
-            // Where the head ACTUALLY is: channel bias crushes the
-            // corridor's z, so ask the engine rather than assuming.
+            // Where the head ACTUALLY is: the topology's headAnchor, plus the
+            // corridor's channel-bias z-crush. Ask the engine rather than assuming.
             const head = geometry.transformHeadAnchor(headFrameIndex);
 
             if (cameraMode.value === 'orbit') {
@@ -194,6 +198,21 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
         }
     };
 
+    // The point the auto-camera is currently centred on, in world space - the
+    // same centre the head-relative and centre-orbit branches look at. The
+    // touch-orbit layer targets this so manual control picks up exactly where
+    // auto left off (head-anchored topologies follow the head live).
+    const getOrbitTarget = (): THREE.Vector3 => {
+        const galleryY = 1.7;
+        if (!lissajousActive?.value && TOPOLOGIES[topologyMode.value].anchorOnHead) {
+            const headFrameIndex = geometry.headFrameIndex();
+            const head = headFrameIndex < 0 ? { x: 0, y: 0, z: 0 } : geometry.transformHeadAnchor(headFrameIndex);
+            return new THREE.Vector3(head.x, galleryY + head.y, head.z);
+        }
+        // Centre-orbiting topologies and the Lissajous cube all sit at origin
+        return new THREE.Vector3(0, galleryY, 0);
+    };
+
     return {
         cameraMode,
         resetOrbitClock,
@@ -202,5 +221,6 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
         update,
         toggleCameraMode,
         setCameraMode,
+        getOrbitTarget,
     };
 }

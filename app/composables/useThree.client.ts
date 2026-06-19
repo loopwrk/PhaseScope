@@ -1,11 +1,16 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 export function useThree(canvasContainer: Ref<HTMLDivElement | null>) {
     const scene = markRaw(new THREE.Scene());
     const camera = shallowRef<THREE.PerspectiveCamera | null>(null);
     const renderer = shallowRef<THREE.WebGLRenderer | null>(null);
     const controls = shallowRef<PointerLockControls | null>(null);
+    // Touch-only orbit/zoom (mobile); the mouse stays with PointerLockControls.
+    // useTouchOrbit owns the dynamics (target, clamps, handoff); this is just
+    // the shared instance so its lifecycle sits with the other Three objects.
+    const orbitControls = shallowRef<OrbitControls | null>(null);
     const isFullscreen = ref(false);
 
     const updateRendererSize = () => {
@@ -76,6 +81,19 @@ export function useThree(canvasContainer: Ref<HTMLDivElement | null>) {
         // PointerLockControls exposes the camera via the 'object' property
         scene.add(ctl.object);
 
+        // Touch orbit (zoom + rotate, no pan). Starts disabled and mouse-deaf:
+        // useTouchOrbit enables it only for touch input, so the desktop fly
+        // camera and wheel are untouched. Pan off => two-finger gesture is a
+        // pinch-zoom only.
+        const orbit = markRaw(new OrbitControls(c, r.domElement));
+        orbit.enablePan = false;
+        orbit.enableDamping = true;
+        orbit.dampingFactor = 0.08;
+        orbit.mouseButtons = { LEFT: null, MIDDLE: null, RIGHT: null };
+        orbit.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+        orbit.enabled = false;
+        orbitControls.value = orbit;
+
         // Fog (obscures head and tail)
         scene.fog = markRaw(new THREE.Fog(0x000000, 200, 200));
 
@@ -91,6 +109,11 @@ export function useThree(canvasContainer: Ref<HTMLDivElement | null>) {
         if (controls.value) {
             controls.value.dispose();
             scene.remove(controls.value.object);
+        }
+
+        if (orbitControls.value) {
+            orbitControls.value.dispose();
+            orbitControls.value = null;
         }
 
         if (renderer.value) {
@@ -109,6 +132,7 @@ export function useThree(canvasContainer: Ref<HTMLDivElement | null>) {
         camera,
         renderer,
         controls,
+        orbitControls,
         isFullscreen,
         init,
         dispose,

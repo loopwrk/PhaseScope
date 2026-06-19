@@ -472,13 +472,21 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         renderer.uploadBuiltRange(firstFrame * pointsPerFrame, built * pointsPerFrame);
     };
 
-    /** The corridor head's anchor as actually rendered: channel bias
-     *  crushes z, and the camera must follow the crushed head. The split
-     *  centre stays on the axis, so x/y remain 0. Identity when off. */
+    /** The head's anchor as actually rendered, for head-anchored topologies
+     *  (corridor, Möbius). Each topology supplies the pure geometry via its
+     *  headAnchor; the only reactive adjustment is the corridor's channel-bias
+     *  z-crush, so the camera follows the crushed head. { x:0,y:0,z:0 } for
+     *  centre-orbiting topologies that have no head anchor. */
     const transformHeadAnchor = (frameIndex: number) => {
-        const { frameCount } = corridorState.value;
-        const z0 = (frameIndex - frameCount / 2) * corridorMeta.value.zStep;
-        return { x: 0, y: 0, z: channelBias.value ? z0 * CHANNEL_BIAS_Z_KEEP : z0 };
+        const topology = TOPOLOGIES[topologyMode.value];
+        const anchor = topology.headAnchor?.(frameIndex, toRaw(corridorState.value), corridorMeta.value) ?? {
+            x: 0,
+            y: 0,
+            z: 0,
+        };
+        // Corridor's stereo split crushes z; the camera must follow the head.
+        if (topologyMode.value === 'corridor' && channelBias.value) anchor.z *= CHANNEL_BIAS_Z_KEEP;
+        return anchor;
     };
 
     return {
