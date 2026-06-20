@@ -44,9 +44,14 @@ const coverage = defineModel<number>('coverage', { default: 100 });
 const renderMode = defineModel<string | number>('renderMode', { default: 'points' });
 const topology = defineModel<string | number>('topology', { default: 'corridor' });
 const oscillation = defineModel<boolean>('oscillation', { default: false });
-const dream = defineModel<boolean>('dream', { default: false });
-const heavenly = defineModel<boolean>('heavenly', { default: false });
+const background = defineModel<string | number>('background', { default: 'none' });
 const channelBias = defineModel<boolean>('channelBias', { default: false });
+
+const backgroundItems = [
+    { label: 'None', value: 'none' },
+    { label: 'Dream', value: 'dream' },
+    { label: 'Heavenly', value: 'heavenly' },
+];
 
 // Lines would draw long bridges across the split stereo field, so channel
 // bias locks rendering to points
@@ -190,17 +195,10 @@ const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? S
                     />
                 </div>
 
-                <!-- Background skyboxes (mutually exclusive, handled upstream) -->
+                <!-- Background skybox -->
                 <div class="flex flex-col gap-3">
                     <span class="font-display text-label font-semibold text-(--brand-secondary)">Background</span>
-                    <label class="flex items-center gap-3">
-                        <Checkbox v-model="dream" color="primary" size="xl" />
-                        <span class="inline-flex items-center gap-2 text-detail">Dream <KeyCap label="B" /></span>
-                    </label>
-                    <label class="flex items-center gap-3">
-                        <Checkbox v-model="heavenly" color="primary" size="xl" />
-                        <span class="inline-flex items-center gap-2 text-detail">Heavenly <KeyCap label="N" /></span>
-                    </label>
+                    <RadioGroup v-model="background" :items="backgroundItems" size="xl" color="primary" />
                 </div>
             </div>
 

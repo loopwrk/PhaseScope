@@ -108,30 +108,46 @@ the engine file drops to ~480 lines of cohesive build logic.
 
 ## Tier 2 - DRY
 
-### 3. Duplicated derivative-energy ratio in `app/utils/audio/analysis.ts`
+### 3. Duplicated derivative-energy ratio in `app/utils/audio/analysis.ts` - ✅ done
 
-`analyzeFrequencyBand` and `analyzeLocalFrequency` implement the **same idea**
+> **Status:** **done** - both functions now call a shared
+> `derivativeEnergyRatio(changeEnergy, ampEnergy)` helper, with the contrast (3),
+> silence threshold (0.001) and mid fallback (0.5) as named constants in one
+> place. The ratio is scale-invariant, so each caller passes its energies at the
+> scale its silence check expects (per-sample-normalised for `analyzeFrequencyBand`,
+> raw sums for `analyzeLocalFrequency`) - results are bit-identical, `analysis.spec.ts`
+> green.
+>
+> Note: the old "`analyzeFrequencyBand` is only referenced by its own tests" hunch
+> was **stale** - it is live in `useLissajous3D` (the scope trail colour), so this
+> was a genuine DRY, not a retire.
+
+`analyzeFrequencyBand` and `analyzeLocalFrequency` implemented the **same idea**
 twice: `sqrt(changeEnergy) / (sqrt(changeEnergy) + sqrt(ampEnergy))`, the
-`* contrastMultiplier` (3), and the `midFreq` (0.5) silence fallback. Extract a
-private `derivativeEnergyRatio(changeEnergy, ampEnergy)` helper and have both
-call it. ~15 lines saved, and the magic constants live in one place.
-
-> **Related:** `analyzeFrequencyBand` is now **only referenced by its own
-> tests** since the engine moved to the real spectral centroid. Decide whether
-> to keep it as a documented lightweight utility or retire it (and its tests).
+`* contrastMultiplier` (3), and the `midFreq` (0.5) silence fallback - now folded
+into the shared helper.
 
 **Payoff:** medium. **Effort:** low. **Risk:** low (covered by
 `analysis.spec.ts`).
 
-### 4. Mutually-exclusive skybox toggles in `phasescope.vue`
+### 4. Mutually-exclusive skybox toggles in `phasescope.vue` - ✅ done
 
-Dream and Heavenly backgrounds are handled by two near-identical pieces:
-`onDreamBgToggle`/`onHeavenlyBgToggle`, the `b`/`n` shortcuts, and the two
-`@update:dream` / `@update:heavenly` template handlers all encode the same
-"turn me on, turn the other off" rule. A small `exclusiveToggle(a, b)` helper
-(or a `useExclusiveBackgrounds(dreamBg, heavenlyBg)`) would collapse the
-duplication. (The backgrounds themselves are **already exemplary** - see the
-note below - this is only about the toggle plumbing in the page.)
+> **Status:** **done**, and the cleaner way: rather than enforce exclusion across
+> two booleans, the backgrounds are now a single selection -
+> `background: 'none' | 'dream' | 'heavenly'` in `useScopeSettings`. Each
+> skybox's `enabled` is `computed(() => background.value === id)`, so "at most one
+> on" is **structural**, not enforced. The panel renders one `RadioGroup`
+> (None / Dream / Heavenly) instead of two checkboxes, the `b`/`n` shortcuts flip
+> the selection, and the first-pass `useExclusivePair` helper was retired.
+> Mutually-exclusive booleans were a radio in disguise; this is the radio.
+> Adding a background = one more radio item + one `computed`.
+
+Dream and Heavenly backgrounds were handled by two near-identical pieces
+(`onDreamBgToggle`/`onHeavenlyBgToggle`, the `b`/`n` shortcuts, and the two
+`@update:dream` / `@update:heavenly` handlers) all encoding the same rule. The
+single-selection model removes the rule entirely. (The backgrounds themselves are
+**already exemplary** - see the note below - this was only about the toggle
+plumbing in the page.)
 
 **Payoff:** low–medium. **Effort:** low. **Risk:** low.
 
@@ -184,7 +200,7 @@ priority than the app itself for that reason.
 
 1. ~~Extract `topologies.ts` from `usePhaseGeometry`~~ - **done.**
 2. ~~Extract `useLiveSession` from `phasescope.vue`~~ - **done.**
-3. DRY the analysis helper (#3) and skybox toggles (#4) - quick wins.
+3. ~~DRY the analysis helper (#3) and skybox toggles (#4)~~ - **done.**
 4. `useDemoMenu` / `useScopeShortcuts` and the Tier 3 readability passes.
 5. `scripts/lib/wav.mjs` when touching the composers next.
 

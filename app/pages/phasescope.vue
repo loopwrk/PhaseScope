@@ -26,8 +26,15 @@ const canvasContainer = ref<HTMLDivElement | null>(null);
 const three = useThree(canvasContainer);
 const scene = three.scene;
 const renderer = useCorridorRenderer(scene);
-const dreamBg = useDreamBackground(scene, settings.dreamBgEnabled);
-const heavenlyBg = useHeavenlyBackground(scene, settings.heavenlyBgEnabled);
+
+const dreamBg = useDreamBackground(
+    scene,
+    computed(() => settings.background.value === 'dream')
+);
+const heavenlyBg = useHeavenlyBackground(
+    scene,
+    computed(() => settings.background.value === 'heavenly')
+);
 
 // 3D Lissajous scope mode: the live phase portrait in a cube, no time axis.
 // Entered by clicking the goniometer; the corridor hides while it is active.
@@ -267,13 +274,11 @@ const goHome = () => {
     else if (wavLoaded.value) unloadTrack();
 };
 
-/* ---------- Background skyboxes (mutually exclusive) ---------- */
+/* ---------- Background skyboxes ---------- */
 
-const onDreamBgToggle = () => {
-    if (dreamBg.enabled.value) heavenlyBg.enabled.value = false;
-};
-const onHeavenlyBgToggle = () => {
-    if (heavenlyBg.enabled.value) dreamBg.enabled.value = false;
+// Shortcut presses toggle a background on, or off if it's already the one showing.
+const toggleBackground = (id: 'dream' | 'heavenly') => {
+    settings.background.value = settings.background.value === id ? 'none' : id;
 };
 
 /* ---------- Keyboard shortcuts ---------- */
@@ -301,14 +306,8 @@ shortcuts.register('c', () => {
 shortcuts.register('v', () => {
     useAlternateColors.value = !useAlternateColors.value;
 });
-shortcuts.register('b', () => {
-    dreamBg.enabled.value = !dreamBg.enabled.value;
-    onDreamBgToggle();
-});
-shortcuts.register('n', () => {
-    heavenlyBg.enabled.value = !heavenlyBg.enabled.value;
-    onHeavenlyBgToggle();
-});
+shortcuts.register('b', () => toggleBackground('dream'));
+shortcuts.register('n', () => toggleBackground('heavenly'));
 shortcuts.register('g', () => {
     showGoniometer.value = !showGoniometer.value;
 });
@@ -620,26 +619,13 @@ onUnmounted(async () => {
                 v-model:topology="topologyMode"
                 v-model:oscillation="oscillation.enabled.value"
                 v-model:channel-bias="channelBias"
-                :dream="dreamBg.enabled.value"
-                :heavenly="heavenlyBg.enabled.value"
+                v-model:background="settings.background.value"
                 :live="liveMode"
                 :wav-loaded="wavLoaded"
                 :settings-disabled="false"
                 :topology-disabled="audio.started"
                 :perf-level="pointsWarningLevel"
                 :perf-points="formatPointCount(effectiveMaxPoints)"
-                @update:dream="
-                    (v) => {
-                        dreamBg.enabled.value = v;
-                        onDreamBgToggle();
-                    }
-                "
-                @update:heavenly="
-                    (v) => {
-                        heavenlyBg.enabled.value = v;
-                        onHeavenlyBgToggle();
-                    }
-                "
             >
                 <template #advanced>
                     <LayoutAdvancedPanel v-model:open="advancedOptionsOpen" v-model:mode="oscillation.mode.value" />

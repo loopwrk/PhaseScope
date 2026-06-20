@@ -21,15 +21,33 @@ export const getAnalysisWindowSize = (resolution: FrequencyResolution): number =
     }
 };
 
-// Analyze frequency content using derivative energy (rate of change)
+/* The "how fast is this signal changing?" estimate behind both the scope trail
+   colour (analyzeFrequencyBand) and the per-point oscillation
+   (analyzeLocalFrequency): the share of total energy that sits in the
+   derivative vs the signal itself, contrast-boosted into 0..1. More change =
+   higher frequency content. Silence (negligible total energy) returns the
+   neutral mid value. The ratio is scale-invariant, so callers pass their
+   change/amplitude sums at whatever scale their silence threshold expects. */
+const DERIV_CONTRAST = 3; // stretches the ratio so the 0..1 range is used
+const DERIV_SILENCE = 0.001; // below this total energy, the ratio is undefined
+const DERIV_MID_FREQ = 0.5; // neutral fallback for silence / too-short windows
+
+const derivativeEnergyRatio = (changeEnergy: number, ampEnergy: number): number => {
+    const change = Math.sqrt(changeEnergy);
+    const amp = Math.sqrt(ampEnergy);
+    const total = change + amp;
+    if (total < DERIV_SILENCE) return DERIV_MID_FREQ;
+    return clamp((change / total) * DERIV_CONTRAST, 0, 1);
+};
+
+// Analyze frequency content over a window using derivative energy (rate of change)
 export const analyzeFrequencyBand = (data: Float32Array, startIdx: number, windowLen: number): number => {
     // Ensure integer indices to avoid fractional array access (e.g. data[123.5])
     const safeStartIdx = Math.max(0, Math.floor(startIdx));
     const minSamples = 8;
     const endIdx = Math.min(safeStartIdx + windowLen, data.length);
     const actualLen = endIdx - safeStartIdx;
-    const midFreq = 0.5;
-    if (actualLen < minSamples) return midFreq;
+    if (actualLen < minSamples) return DERIV_MID_FREQ;
 
     let amplitudeEnergy = 0; // Energy in the signal itself (slow changes)
     let changeEnergy = 0; // Energy in the derivative (fast changes)
@@ -44,25 +62,15 @@ export const analyzeFrequencyBand = (data: Float32Array, startIdx: number, windo
         changeEnergy += derivative * derivative;
     }
 
-    // Normalize energies
-    amplitudeEnergy = Math.sqrt(amplitudeEnergy / actualLen);
-    changeEnergy = Math.sqrt(changeEnergy / actualLen);
-
-    const totalEnergy = amplitudeEnergy + changeEnergy;
-    if (totalEnergy < 0.001) return midFreq; // Silence
-
-    // More high energy = higher frequencies
-    const highRatio = changeEnergy / totalEnergy;
-
-    // Map to 0-1 range with enhanced contrast
-    const contrastMultiplier = 3;
-    return clamp(highRatio * contrastMultiplier, 0, 1);
+    // Per-sample-normalised energies, so silence is judged at the original scale
+    return derivativeEnergyRatio(changeEnergy / actualLen, amplitudeEnergy / actualLen);
 };
 
 // Lightweight per-point frequency estimate around a single sample: the same
-// derivative-energy ratio as analyzeFrequencyBand, but summed over a tiny
-// window of the L+R mix. Used to drive per-point oscillation while frames
-// are built (a full analysis per point would be far too expensive).
+// derivativeEnergyRatio as analyzeFrequencyBand, but summed over a tiny window
+// of the L+R mix (raw sums - no per-sample normalisation needed). Used to drive
+// per-point oscillation while frames are built (a full analysis per point would
+// be far too expensive).
 export const analyzeLocalFrequency = (
     ch0: Float32Array,
     ch1: Float32Array,
@@ -80,10 +88,7 @@ export const analyzeLocalFrequency = (
         changeEnergy += diff * diff;
         ampEnergy += s0 * s0;
     }
-    const total = Math.sqrt(changeEnergy) + Math.sqrt(ampEnergy);
-    const midFreq = 0.5;
-    const contrastMultiplier = 3;
-    return total > 0.001 ? clamp((Math.sqrt(changeEnergy) / total) * contrastMultiplier, 0, 1) : midFreq;
+    return derivativeEnergyRatio(changeEnergy, ampEnergy);
 };
 
 // Convert normalized frequency content (0-1) to Hz using logarithmic scale
