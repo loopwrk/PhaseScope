@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-/* confirmation-pleasure - a preset composed for PhaseScope, by Fable.
+/* yueji - a preset composed for PhaseScope, by Fable.
  *
  * Written in phase space, where this instrument actually listens: the
  * envelope and spectrum stay calm; the music lives in the relationship
  * between the channels. This file is the score - run it to perform it:
  *
- *     node scripts/compose-confirmation-pleasure.mjs
+ *     node scripts/compose-yueji.mjs
  *
  * Five movements, 66 seconds:
  *
@@ -36,12 +36,11 @@
  *                         ending.
  */
 
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeWav } from './lib/wav.mjs';
+import { SR, TAU } from './lib/synth.mjs';
 
-const SR = 44100;
 const DUR = 66;
 const N = SR * DUR;
-const TAU = Math.PI * 2;
 
 const L = new Float64Array(N);
 const R = new Float64Array(N);
@@ -142,32 +141,4 @@ for (let i = 0; i < N; i++) {
 }
 
 /* ---------- normalize + write 16-bit WAV ---------- */
-
-let peak = 0;
-for (let i = 0; i < N; i++) peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]));
-if (!Number.isFinite(peak) || peak === 0) {
-    throw new Error(`synthesis produced a degenerate signal (peak=${peak}) - refusing to write silence`);
-}
-const gain = 0.78 / peak;
-
-const out = Buffer.alloc(44 + N * 4);
-out.write('RIFF', 0);
-out.writeUInt32LE(36 + N * 4, 4);
-out.write('WAVEfmt ', 8);
-out.writeUInt32LE(16, 16);
-out.writeUInt16LE(1, 20); // PCM
-out.writeUInt16LE(2, 22); // stereo
-out.writeUInt32LE(SR, 24);
-out.writeUInt32LE(SR * 4, 28);
-out.writeUInt16LE(4, 32);
-out.writeUInt16LE(16, 34);
-out.write('data', 36);
-out.writeUInt32LE(N * 4, 40);
-for (let i = 0; i < N; i++) {
-    out.writeInt16LE(Math.round(Math.max(-1, Math.min(1, L[i] * gain)) * 32767), 44 + i * 4);
-    out.writeInt16LE(Math.round(Math.max(-1, Math.min(1, R[i] * gain)) * 32767), 46 + i * 4);
-}
-
-mkdirSync('public/audio', { recursive: true });
-writeFileSync('public/audio/fable-01-confirmation-pleasure.wav', out);
-console.log(`wrote public/audio/fable-01-confirmation-pleasure.wav (${(out.length / 1e6).toFixed(1)} MB, ${DUR}s)`);
+writeWav(L, R, { path: 'public/audio/fable-01-yueji.wav', sampleRate: SR });

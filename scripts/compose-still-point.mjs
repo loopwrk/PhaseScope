@@ -35,23 +35,20 @@
  *                       melody floats above, dead-centre.
  *   V    still point    Everything converges to MONO UNISON: the figure
  *        (62-72)        collapses to the single diagonal line, the
- *                       simplest figure there is. confirmation-pleasure
+ *                       simplest figure there is. yueji
  *                       ended at correlation -1.00; this piece ends at
  *                       +1.00. The end of one arrives as the mirror of
  *                       the other - Mobius rules apply.
  */
 
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeWav } from './lib/wav.mjs';
+import { SR, TAU, NOTE } from './lib/synth.mjs';
 
-const SR = 44100;
 const DUR = 72;
 const N = SR * DUR;
-const TAU = Math.PI * 2;
 
 const L = new Float64Array(N);
 const R = new Float64Array(N);
-
-const NOTE = (semisFromC4) => 261.6256 * 2 ** (semisFromC4 / 12);
 
 /* The one voice this piece needs: a sine pair with independent left and
  * right frequencies, an initial right-channel phase offset, and an
@@ -143,31 +140,4 @@ console.log(`  IV  wheel mid    [52.5-54] ${corr(52.5, 1.5)}  (expect ~-1: count
 console.log(`  V   still point  [64-70s]  ${corr(64, 6)}   (expect +1.00: home)`);
 
 /* ---- normalize + write 16-bit WAV ---- */
-let peak = 0;
-for (let i = 0; i < N; i++) peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]));
-if (!Number.isFinite(peak) || peak === 0) {
-    throw new Error(`synthesis produced a degenerate signal (peak=${peak}) - refusing to write silence`);
-}
-const gain = 0.78 / peak;
-
-const out = Buffer.alloc(44 + N * 4);
-out.write('RIFF', 0);
-out.writeUInt32LE(36 + N * 4, 4);
-out.write('WAVEfmt ', 8);
-out.writeUInt32LE(16, 16);
-out.writeUInt16LE(1, 20);
-out.writeUInt16LE(2, 22);
-out.writeUInt32LE(SR, 24);
-out.writeUInt32LE(SR * 4, 28);
-out.writeUInt16LE(4, 32);
-out.writeUInt16LE(16, 34);
-out.write('data', 36);
-out.writeUInt32LE(N * 4, 40);
-for (let i = 0; i < N; i++) {
-    out.writeInt16LE(Math.round(Math.max(-1, Math.min(1, L[i] * gain)) * 32767), 44 + i * 4);
-    out.writeInt16LE(Math.round(Math.max(-1, Math.min(1, R[i] * gain)) * 32767), 46 + i * 4);
-}
-
-mkdirSync('public/audio', { recursive: true });
-writeFileSync('public/audio/fable-03-the-still-point.wav', out);
-console.log(`wrote public/audio/fable-03-the-still-point.wav (${(out.length / 1e6).toFixed(1)} MB, ${DUR}s)`);
+writeWav(L, R, { path: 'public/audio/fable-03-the-still-point.wav', sampleRate: SR });

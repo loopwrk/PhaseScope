@@ -1,14 +1,12 @@
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeWav } from './lib/wav.mjs';
+import { SR, TAU, NOTE } from './lib/synth.mjs';
 
-const SR = 44100;
 const DUR = 64;
 const N = SR * DUR;
-const TAU = Math.PI * 2;
 
 const L = new Float64Array(N);
 const R = new Float64Array(N);
 
-const NOTE = (semisFromC4) => 261.6256 * 2 ** (semisFromC4 / 12);
 const CENTS = (c) => 2 ** (c / 1200);
 
 // Additive voice: writes a sine with a raised-cosine envelope into both
@@ -100,31 +98,4 @@ const gliss = (startS, durS, hz0, hz1, amp, channel) => {
 }
 
 /* ---- normalize + write 16-bit WAV ---- */
-let peak = 0;
-for (let i = 0; i < N; i++) peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]));
-if (!Number.isFinite(peak) || peak === 0) {
-    throw new Error(`synthesis produced a degenerate signal (peak=${peak}) - refusing to write silence`);
-}
-const gain = 0.78 / peak;
-
-const out = Buffer.alloc(44 + N * 4);
-out.write('RIFF', 0);
-out.writeUInt32LE(36 + N * 4, 4);
-out.write('WAVEfmt ', 8);
-out.writeUInt32LE(16, 16);
-out.writeUInt16LE(1, 20);
-out.writeUInt16LE(2, 22);
-out.writeUInt32LE(SR, 24);
-out.writeUInt32LE(SR * 4, 28);
-out.writeUInt16LE(4, 32);
-out.writeUInt16LE(16, 34);
-out.write('data', 36);
-out.writeUInt32LE(N * 4, 40);
-for (let i = 0; i < N; i++) {
-    out.writeInt16LE(Math.round(Math.max(-1, Math.min(1, L[i] * gain)) * 32767), 44 + i * 4);
-    out.writeInt16LE(Math.round(Math.max(-1, Math.min(1, R[i] * gain)) * 32767), 46 + i * 4);
-}
-
-mkdirSync('public/audio', { recursive: true });
-writeFileSync('public/audio/fable-02-chromatic-orrery.wav', out);
-console.log(`wrote public/audio/fable-02-chromatic-orrery.wav (${(out.length / 1e6).toFixed(1)} MB, ${DUR}s)`);
+writeWav(L, R, { path: 'public/audio/fable-02-chromatic-orrery.wav', sampleRate: SR });

@@ -151,19 +151,27 @@ plumbing in the page.)
 
 **Payoff:** low–medium. **Effort:** low. **Risk:** low.
 
-### 5. `scripts/compose-*.mjs` - five copies of a WAV/synth engine
+### 5. `scripts/compose-*.mjs` - five copies of a WAV/synth engine - ✅ done
 
-The five preset composers (`chromatic-orrery`, `confirmation-pleasure`,
-`enfold`, `still-point`, `tessellate`, ~910 lines total) each carry their own
-`writeWav`/RIFF encoder, and at least `tessellate` is described in its own
-header as reusing "Enfold's fold engine" - i.e. copy-paste. A shared
-`scripts/lib/wav.mjs` (PCM/RIFF writer) plus common oscillator/envelope/Lissajous
-helpers would let each composer be just its score + timbre.
+> **Status:** **done** - the shared 16-bit stereo writer now lives in
+> `scripts/lib/wav.mjs` (`writeWav(L, R, { path, sampleRate })`), and the common
+> constants/note math in `scripts/lib/synth.mjs` (`SR`, `TAU`, `NOTE`). Each
+> composer is back to just its score + timbre and its bespoke voice helpers;
+> the ~28-line RIFF tail collapsed to a one-liner in all of them.
+>
+> Also done as part of this pass: `confirmation-pleasure` was renamed to
+> `yueji` (file, title, run command, output `fable-01-yueji.wav`, and the
+> cross-reference in `still-point`), and `enfold` + `tessellate` were deleted.
+> The surviving three (`chromatic-orrery`, `still-point`, `yueji`) were
+> regenerated and **diffed byte-for-byte against their pre-refactor output** -
+> identical (yueji's bytes match the old confirmation-pleasure exactly).
+
+The preset composers each carried their own `writeWav`/RIFF encoder (copy-paste),
+now folded into `scripts/lib/wav.mjs` + `scripts/lib/synth.mjs`.
 
 **Payoff:** medium (big line reduction). **Effort:** medium. **Risk:** low -
 these are **build-time tooling**, not shipped app code, and their output
-(`public/audio/*`) can be regenerated and diffed to confirm parity. Lower
-priority than the app itself for that reason.
+(`public/audio/*`) was regenerated and diffed to confirm parity.
 
 ---
 
@@ -202,7 +210,7 @@ priority than the app itself for that reason.
 2. ~~Extract `useLiveSession` from `phasescope.vue`~~ - **done.**
 3. ~~DRY the analysis helper (#3) and skybox toggles (#4)~~ - **done.**
 4. `useDemoMenu` / `useScopeShortcuts` and the Tier 3 readability passes.
-5. `scripts/lib/wav.mjs` when touching the composers next.
+5. ~~`scripts/lib/wav.mjs` when touching the composers next~~ - **done.**
 
 Each step is independently shippable and unit-testable; do them one PR at a time
 and re-run `npm test` (the topology and analysis suites cover the riskiest
