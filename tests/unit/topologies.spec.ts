@@ -11,6 +11,7 @@ const FRAME_COUNT = 128;
 
 const state = (over: Partial<CorridorState> = {}): CorridorState => ({
     buffer: null,
+    live: false,
     sr: 44100,
     ch0: null,
     ch1: null,
@@ -19,9 +20,10 @@ const state = (over: Partial<CorridorState> = {}): CorridorState => ({
     ringRadius: 1.8,
     builtFrames: 0,
     pos: null,
-    attractorSpine: null,
-    attractorNormals: null,
-    attractorBinormals: null,
+    spine: null,
+    spineNormals: null,
+    spineBinormals: null,
+    framePitch: null,
     ...over,
 });
 
@@ -120,5 +122,77 @@ describe('mobius mapper', () => {
                 expect(Number.isFinite(p.z)).toBe(true);
             }
         }
+    });
+});
+
+describe('helix mapper', () => {
+    it('puts each base pair on the backbone radius, with the head anchor on the axis at the same height', () => {
+        const f0 = TOPOLOGIES.helix.frameMapper(0, state(), meta)!;
+        const start = f0.mapPoint(0, 0, 0, 0); // t = 0 -> strand 1 start
+        expect(Math.hypot(start.x, start.y)).toBeGreaterThan(1); // out on the backbone, not the axis
+        // The head climbs the axis; its height matches the strand-1 start of the frame.
+        const anchor = TOPOLOGIES.helix.headAnchor!(0, state(), meta);
+        expect(anchor.x).toBeCloseTo(0, 6);
+        expect(anchor.y).toBeCloseTo(0, 6);
+        expect(anchor.z).toBeCloseTo(start.z, 6);
+    });
+
+    it('winds by a constant pitch: successive base pairs advance steadily in Z at a fixed radius', () => {
+        // framePitch null -> no twist wobble, so the closed-form arcs are uniform
+        const a = TOPOLOGIES.helix.frameMapper(5, state(), meta)!.mapPoint(0, 0, 0, 0);
+        const b = TOPOLOGIES.helix.frameMapper(6, state(), meta)!.mapPoint(0, 0, 0, 0);
+        const c = TOPOLOGIES.helix.frameMapper(7, state(), meta)!.mapPoint(0, 0, 0, 0);
+        expect(b.z - a.z).toBeCloseTo(c.z - b.z, 6); // constant rise
+        expect(Math.hypot(b.x, b.y)).toBeCloseTo(Math.hypot(a.x, a.y), 6); // constant radius
+    });
+
+    it('draws the rung between the strands at the step mid-height when silent', () => {
+        const f = TOPOLOGIES.helix.frameMapper(10, state(), meta)!;
+        const next = TOPOLOGIES.helix.frameMapper(11, state(), meta)!;
+        const z0 = f.mapPoint(0, 0, 0, 0).z; // strand-1 start height
+        const rise = next.mapPoint(0, 0, 0, 0).z - z0;
+        const rung = f.mapPoint(Math.PI, 0, 0, 0); // t = 0.5 -> middle of the rung
+        expect(rung.z).toBeCloseTo(z0 + 0.5 * rise, 6);
+        // a chord between two backbone points sits inside the backbone radius
+        const radius = Math.hypot(f.mapPoint(0, 0, 0, 0).x, f.mapPoint(0, 0, 0, 0).y);
+        expect(Math.hypot(rung.x, rung.y)).toBeLessThan(radius + 1e-6);
+    });
+
+    it('produces finite points across the whole ring for extreme samples', () => {
+        const f = TOPOLOGIES.helix.frameMapper(20, state(), meta)!;
+        for (const u of [0, 1.5, Math.PI, 4.5, 6.0]) {
+            for (const [L, R] of [
+                [1, -1],
+                [-1, 1],
+                [0, 0],
+            ] as const) {
+                const p = f.mapPoint(u, L, R, 1);
+                expect(Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z)).toBe(true);
+            }
+        }
+    });
+
+    it('sequences the colour from the stereo quadrant (different fields, different bases)', () => {
+        const n = meta.windowSize + meta.hopSize * 2;
+        const fill = (l: number, r: number) => {
+            const ch0 = new Float32Array(n);
+            const ch1 = new Float32Array(n);
+            ch0.fill(l);
+            ch1.fill(r);
+            return { ch0, ch1 };
+        };
+        // left-dominant, in-phase -> S1 > 0, S2 > 0 (one base)
+        const a = fill(0.8, 0.2);
+        const hueA = TOPOLOGIES.helix.frameHue!(0, state({ ch0: a.ch0, ch1: a.ch1 }), meta);
+        // right-dominant, anti-phase -> S1 < 0, S2 < 0 (a different base)
+        const b = fill(0.2, -0.8);
+        const hueB = TOPOLOGIES.helix.frameHue!(0, state({ ch0: b.ch0, ch1: b.ch1 }), meta);
+        expect(hueA).not.toBeNull();
+        expect(hueB).not.toBeNull();
+        expect(hueA).not.toBe(hueB);
+    });
+
+    it('has no colour to give without channels (falls back to the centroid hue)', () => {
+        expect(TOPOLOGIES.helix.frameHue!(0, state(), meta)).toBeNull();
     });
 });

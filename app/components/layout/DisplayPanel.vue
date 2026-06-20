@@ -45,7 +45,6 @@ const renderMode = defineModel<string | number>('renderMode', { default: 'points
 const topology = defineModel<string | number>('topology', { default: 'corridor' });
 const oscillation = defineModel<boolean>('oscillation', { default: false });
 const background = defineModel<string | number>('background', { default: 'none' });
-const channelBias = defineModel<boolean>('channelBias', { default: false });
 
 const backgroundItems = [
     { label: 'None', value: 'none' },
@@ -53,8 +52,6 @@ const backgroundItems = [
     { label: 'Heavenly', value: 'heavenly' },
 ];
 
-// Lines would draw long bridges across the split stereo field, so channel
-// bias locks rendering to points
 const liveVoice = defineModel<LiveVoiceId>('liveVoice', { default: 'warm' });
 // RadioGroup speaks string | number; this proxy keeps the model typed
 const liveVoiceProxy = computed<string | number>({
@@ -72,27 +69,44 @@ const voiceItems = computed(() =>
 
 const renderItems = computed(() => [
     { label: 'Points', value: 'points' },
-    { label: 'Lines', value: 'lines', disabled: channelBias.value },
+    { label: 'Lines', value: 'lines' },
 ]);
 const topologyLabels: Record<string, string> = {
     corridor: 'Corridor',
     sphere: 'Sphere',
     attractor: 'Attractor',
     mobius: 'Möbius',
+    poincare: 'Poincaré',
+    harmonics: 'Harmonics',
+    knot: 'Knot',
+    helix: 'Double Helix',
+    hopf: 'Hopf Fibration',
 };
 const topologyDescriptions: Record<string, string> = {
     corridor: 'Time unfolds along the Z-axis as a traversable tunnel.',
     sphere: 'Audio wraps around a sphere from north to south pole.',
     attractor: 'Audio traces a Lorenz strange attractor - amplitude drives the chaos parameter.',
     mobius: 'Time loops a half-twisted band - the end of the track arrives as the mirror of its beginning.',
+    poincare: 'The stereo field as light polarization, traced on the Poincaré sphere - poles are quadrature circles, the equator in/anti-phase, the centre decorrelation.',
+    harmonics: 'A vibrating-sphere bloom - pitch sets the number of lobes, loudness their depth. Higher notes grow more intricate.',
+    knot: 'A torus knot whose woundness is the harmonic richness of the track - simple sounds make simple knots, busy ones tangle.',
+    helix: 'A DNA double helix - pitch winds the strands, the stereo image bows each base-pair rung, and the stereo field is sequenced into four colours (A/C/G/T).',
+    hopf: 'The stereo state lifted off the Poincaré/Bloch sphere - each moment becomes a linked ring (a Hopf fibre), and the track threads them into nested, interlocking circles.',
 };
+// Kept in the engine but withheld from the picker: Poincaré is superseded by the
+// Hopf fibration that lifts it, and the double helix is parked. Their labels and
+// descriptions stay above so the active-topology badge still names them if they
+// are selected by other means (e.g. a persisted setting).
+const HIDDEN_TOPOLOGIES = new Set(['poincare', 'helix']);
 // Description rides on the selected option only, like the comp.
 const topologyItems = computed(() =>
-    Object.keys(topologyLabels).map((value) => ({
-        label: topologyLabels[value]!,
-        value,
-        description: topology.value === value ? topologyDescriptions[value] : undefined,
-    }))
+    Object.keys(topologyLabels)
+        .filter((value) => !HIDDEN_TOPOLOGIES.has(value))
+        .map((value) => ({
+            label: topologyLabels[value]!,
+            value,
+            description: topology.value === value ? topologyDescriptions[value] : undefined,
+        }))
 );
 const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? String(topology.value));
 </script>
@@ -226,12 +240,6 @@ const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? S
                         <span class="inline-flex items-center gap-2 text-detail"
                             >Enable Point Oscillation <KeyCap label="O"
                         /></span>
-                    </label>
-                    <!-- Two-way exclusion with Lines: each greys while the
-                         other is active -->
-                    <label class="flex items-center gap-3" :class="{ 'opacity-40': renderMode === 'lines' }">
-                        <Checkbox v-model="channelBias" :disabled="renderMode === 'lines'" size="xl" />
-                        <span class="inline-flex items-center gap-2 text-detail">Channel Bias</span>
                     </label>
                 </div>
 

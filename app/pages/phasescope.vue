@@ -614,7 +614,6 @@ onUnmounted(async () => {
                 v-model:renderMode="renderMode"
                 v-model:topology="topologyMode"
                 v-model:oscillation="oscillation.enabled.value"
-                v-model:channel-bias="channelBias"
                 v-model:background="settings.background.value"
                 :live="liveMode"
                 :wav-loaded="wavLoaded"

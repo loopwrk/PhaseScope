@@ -27,6 +27,11 @@ const ZOOM_CLAMPS: Record<TopologyMode, [number, number]> = {
     sphere: [5, 30],
     attractor: [6, 40],
     mobius: [5, 30],
+    poincare: [5, 30],
+    harmonics: [5, 30],
+    knot: [5, 30],
+    helix: [2, 24], // head-anchored and slim, like the corridor
+    hopf: [5, 40], // nested rings can splay wide, like the attractor
 };
 // The Lissajous cube is small and centred; tighter range than the topologies.
 const SCOPE_ZOOM_CLAMP: [number, number] = [3, 20];

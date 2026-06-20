@@ -8,7 +8,6 @@ import {
     createSpectralAnalyzer,
     pitchChromaHue,
 } from '~/utils/audio/analysis';
-import { precomputeAttractorSpine } from '~/utils/attractor';
 import { channelBiasTransform, CHANNEL_BIAS_Z_KEEP } from '~/utils/channelBias';
 import { TOPOLOGIES } from '~/utils/topologies';
 import type { CorridorState, CorridorMeta, TopologyMode } from '~/utils/topologies';
@@ -54,9 +53,10 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         ringRadius: 1.8,
         builtFrames: 0,
         pos: null,
-        attractorSpine: null,
-        attractorNormals: null,
-        attractorBinormals: null,
+        spine: null,
+        spineNormals: null,
+        spineBinormals: null,
+        framePitch: null,
     });
 
     // GPU-bound oscillation side buffer (half floats: pointFreq, pointAmp,
@@ -92,12 +92,14 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         if (renderer.hasGeometry()) corridorState.value.builtFrames = 0; // rebuild to playhead
     });
 
-    // Channel bias: the stereo field pulled apart into left/right
-    // populations - works in every topology. Lines would bridge the gap
-    // with long jumps, so the toggle locks render mode to points; and the
-    // time-budgeted build makes a full retro-rebuild cheap, so flipping it
-    // repaints the whole structure rather than only new frames.
-    const channelBias = usePersistedState('scope:channel-bias', () => false);
+    // Channel bias: the stereo field pulled apart into left/right populations -
+    // works in every topology. Parked: kept in the engine (the transform in
+    // buildOneFrame and the corridor z-crush still honour it) but unexposed in
+    // the UI, so it stays a constant ref rather than a user-toggled persisted
+    // setting - which also means nobody can be stranded with it stuck on. Flip
+    // this back to usePersistedState('scope:channel-bias', () => false) to
+    // re-expose it; lines stay locked to points while it is on.
+    const channelBias = ref(false);
     watch(channelBias, (on) => {
         if (on) renderMode.value = 'points';
         if (renderer.hasGeometry()) corridorState.value.builtFrames = 0; // rebuild to playhead
@@ -157,9 +159,10 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         corridorState.value.builtFrames = 0;
         corridorState.value.pos = null;
         oscData = null;
-        corridorState.value.attractorSpine = null;
-        corridorState.value.attractorNormals = null;
-        corridorState.value.attractorBinormals = null;
+        corridorState.value.spine = null;
+        corridorState.value.spineNormals = null;
+        corridorState.value.spineBinormals = null;
+        corridorState.value.framePitch = null;
     };
 
     const initFromBuffer = (buffer: AudioBuffer) => {
@@ -190,12 +193,36 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
 
         const topology = TOPOLOGIES[topologyMode.value];
 
-        // Attractor topology: pre-compute Lorenz spine and Frenet frames at load time
-        if (topology.needsAttractorSpine) {
-            const { spine, normals, binormals } = precomputeAttractorSpine(frameCount, ch0, hopSize);
-            corridorState.value.attractorSpine = spine;
-            corridorState.value.attractorNormals = normals;
-            corridorState.value.attractorBinormals = binormals;
+        // Trajectory topologies (attractor, Poincaré, knot) precompute a spine +
+        // tube frames at load time. Modular: the engine just calls whatever the
+        // topology provides, with no per-topology branching here.
+        if (topology.buildSpine) {
+            const { spine, normals, binormals } = topology.buildSpine({
+                frameCount,
+                ch0,
+                ch1,
+                hopSize,
+                windowSize,
+                sr,
+            });
+            corridorState.value.spine = spine;
+            corridorState.value.spineNormals = normals;
+            corridorState.value.spineBinormals = binormals;
+        }
+
+        // Pitch-shaped topologies (spherical harmonics) want a smoothed per-frame
+        // pitch curve, computed once here off the same spectral analyzer the
+        // colour uses. Equally modular - driven by the topology's flag, not a branch.
+        if (topology.needsFramePitch) {
+            const framePitch = new Float32Array(frameCount);
+            let ema = 0.5;
+            for (let f = 0; f < frameCount; f++) {
+                const centre = f * hopSize + windowSize / 2;
+                const p01 = spectral.centroid01(ch0, ch1, centre - spectral.size / 2, sr);
+                ema = f === 0 ? p01 : ema + 0.2 * (p01 - ema);
+                framePitch[f] = ema;
+            }
+            corridorState.value.framePitch = framePitch;
         }
 
         // Create geometries using the renderer, at the topology's object-space offsets
@@ -328,7 +355,8 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         if (!pos || !ch0 || !ch1 || !renderer.hasGeometry()) return;
         if (!oscData) return;
 
-        const frame = TOPOLOGIES[topologyMode.value].frameMapper(frameIndex, rawState, meta);
+        const topology = TOPOLOGIES[topologyMode.value];
+        const frame = topology.frameMapper(frameIndex, rawState, meta);
         if (!frame) return;
 
         // Live mode passes the slot's address in the audio ring; track mode
@@ -358,8 +386,14 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         //    so a pitch keeps its colour in every octave - vivid, and far more
         //    reactive on tonal material.
         const hueRangeMultiplier = 0.75;
+        // A topology may encode an identity in colour (the double helix's base
+        // sequence) via an optional frameHue hook; it wins over the centroid
+        // mappings when it returns a hue, and falls back when it returns null.
+        const customHue = topology.frameHue?.(frameIndex, rawState, meta);
         let hue: number;
-        if (colourByPitch.value) {
+        if (customHue != null) {
+            hue = customHue;
+        } else if (colourByPitch.value) {
             hue = pitchChromaHue(centroidHz);
         } else {
             const freqContent = spectral.hzTo01(centroidHz); // 0 = low freq, 1 = high freq

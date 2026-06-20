@@ -62,7 +62,10 @@ export function useLiveSession(options: UseLiveSessionOptions) {
     // connected device; geometry waits for "Take the stage".
     const enterLiveSetup = async () => {
         stopPlayback(); // the stage belongs to one signal at a time
-        if (topologyMode.value === 'attractor') topologyMode.value = 'corridor'; // card offers it greyed
+        // Some topologies (attractor, Poincaré, knot, harmonics, double helix,
+        // Hopf fibration) precompute from the whole track, so they sit live mode
+        // out; only the progressive ones are offered. Reset off any of the others.
+        if (!['corridor', 'sphere', 'mobius'].includes(topologyMode.value)) topologyMode.value = 'corridor';
         if (!(await synth.enable({ ringQuantum: geometry.corridorMeta.value.hopSize }))) return;
         await midi.connect(); // no device is fine - the on-screen keys play the same synth
         midi.onNote((e) => liveNote(e.note, e.velocity, e.on));
@@ -103,6 +106,11 @@ export function useLiveSession(options: UseLiveSessionOptions) {
         sphere: 'sphere',
         attractor: 'attractor',
         mobius: 'Möbius band',
+        poincare: 'Poincaré sphere',
+        harmonics: 'harmonic bloom',
+        knot: 'knot',
+        helix: 'double helix',
+        hopf: 'Hopf fibration',
     };
     const liveCanvasName = computed(() => LIVE_CANVAS_NAMES[topologyMode.value] ?? topologyMode.value);
 
