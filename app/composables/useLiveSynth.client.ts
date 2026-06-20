@@ -50,7 +50,7 @@ export function useLiveSynth() {
 
     // The brush: which preset new notes are built with (held notes keep
     // the timbre they were struck with - a natural crossfade)
-    const voicePreset = usePersistedState<LiveVoiceId>('scope:live-voice', () => 'warm');
+    const voicePreset = usePersistedState<LiveVoiceId>('scope:live-voice', () => 'pure');
 
     let ctx: AudioContext | null = null;
     let master: GainNode | null = null;

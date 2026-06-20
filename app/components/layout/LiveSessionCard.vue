@@ -17,7 +17,7 @@ const props = defineProps<{
 
 const topology = defineModel<TopologyMode>('topology', { default: 'corridor' });
 const duration = defineModel<number>('duration', { default: 60 });
-const voice = defineModel<LiveVoiceId>('voice', { default: 'warm' });
+const voice = defineModel<LiveVoiceId>('voice', { default: 'pure' });
 
 const emit = defineEmits<{
     start: [];

@@ -5,17 +5,17 @@
    is tuned for a FIGURE as much as a sound: the visualiser eats
    harmonics, so timbre choices are geometry choices.
 
+     pure    a single undetuned sine - the canonical Lissajous input.
+             Intervals draw their textbook curves.
      warm    two detuned saws through a lowpass - harmonic fur for the
              corridor, slow beating that sets the Lissajous figure
              precessing. The original instrument.
-     pure    a single undetuned sine - the canonical Lissajous input.
-             Intervals draw their textbook curves: silk, not fur.
      hollow  detuned squares - ODD harmonics only, the clarinet recipe;
              a different symmetry family of figures.
      glass   sine plus a quiet octave partial - every note carries a
              faint figure-of-eight inside it, bell-adjacent. */
 
-export type LiveVoiceId = 'warm' | 'pure' | 'hollow' | 'glass';
+export type LiveVoiceId = 'pure' | 'warm' | 'hollow' | 'glass';
 
 export interface LiveVoiceDef {
     label: string;
@@ -35,16 +35,6 @@ export interface LiveVoiceDef {
 }
 
 export const LIVE_VOICES: Record<LiveVoiceId, LiveVoiceDef> = {
-    warm: {
-        label: 'Warm',
-        hint: 'Two detuned saws - furry texture, slowly turning figures.',
-        wave: 'sawtooth',
-        detune: 12,
-        bRatio: 1,
-        bLevel: 1,
-        filterMult: 6,
-        gain: 1,
-    },
     pure: {
         label: 'Pure',
         hint: 'A single sine - textbook Lissajous curves, silk-clean.',
@@ -54,6 +44,16 @@ export const LIVE_VOICES: Record<LiveVoiceId, LiveVoiceDef> = {
         bLevel: 0,
         filterMult: 0,
         gain: 1.3,
+    },
+    warm: {
+        label: 'Warm',
+        hint: 'Two detuned saws - furry texture, slowly turning figures.',
+        wave: 'sawtooth',
+        detune: 12,
+        bRatio: 1,
+        bLevel: 1,
+        filterMult: 6,
+        gain: 1,
     },
     hollow: {
         label: 'Hollow',

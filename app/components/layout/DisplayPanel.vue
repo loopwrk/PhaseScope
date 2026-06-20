@@ -52,7 +52,7 @@ const backgroundItems = [
     { label: 'Heavenly', value: 'heavenly' },
 ];
 
-const liveVoice = defineModel<LiveVoiceId>('liveVoice', { default: 'warm' });
+const liveVoice = defineModel<LiveVoiceId>('liveVoice', { default: 'pure' });
 // RadioGroup speaks string | number; this proxy keeps the model typed
 const liveVoiceProxy = computed<string | number>({
     get: () => liveVoice.value,
