@@ -68,7 +68,6 @@ const {
     corridorState,
     corridorMeta,
     trackCoveragePercent,
-    useAlternateColors,
     channelBias,
     effectiveMaxPoints,
     pointsWarningLevel,
@@ -302,9 +301,6 @@ shortcuts.register('h', () => {
 });
 shortcuts.register('c', () => {
     toggleCameraMode();
-});
-shortcuts.register('v', () => {
-    useAlternateColors.value = !useAlternateColors.value;
 });
 shortcuts.register('b', () => toggleBackground('dream'));
 shortcuts.register('n', () => toggleBackground('heavenly'));

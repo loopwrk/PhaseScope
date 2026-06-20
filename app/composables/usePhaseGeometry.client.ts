@@ -83,9 +83,6 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
     // Track coverage as percentage (0-100)
     const trackCoveragePercent = usePersistedState('scope:track-coverage', () => 100);
 
-    // Reverse colour spectrum (the V shortcut / settings toggle)
-    const useAlternateColors = usePersistedState('scope:reverse-colours', () => false);
-
     // Colour by pitch: the spectral centroid's chroma drives the FULL colour
     // wheel (one cycle per octave) instead of the bass->treble ramp. Toggling
     // repaints the built corridor (like channel bias), so the change is total
@@ -366,9 +363,7 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
             hue = pitchChromaHue(centroidHz);
         } else {
             const freqContent = spectral.hzTo01(centroidHz); // 0 = low freq, 1 = high freq
-            hue = useAlternateColors.value
-                ? freqContent * hueRangeMultiplier
-                : hueRangeMultiplier - freqContent * hueRangeMultiplier;
+            hue = hueRangeMultiplier - freqContent * hueRangeMultiplier;
         }
         const baseSaturation = 0.92;
         const baseLightness = 0.35;
@@ -495,7 +490,6 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         corridorState,
         corridorMeta,
         trackCoveragePercent,
-        useAlternateColors,
         colourByPitch,
         channelBias,
         effectiveMaxPoints,
