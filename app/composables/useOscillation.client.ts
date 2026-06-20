@@ -10,7 +10,7 @@ import type { OscillationMode } from '~/utils/oscillation';
    their anchors instantly - no restore pass needed. */
 export function useOscillation() {
     const enabled = usePersistedState('scope:oscillation-enabled', () => true);
-    const mode = usePersistedState<OscillationMode>('scope:oscillation-mode', () => 'wave');
+    const mode = usePersistedState<OscillationMode>('scope:oscillation-mode', () => 'expressiveness');
 
     return { enabled, mode };
 }

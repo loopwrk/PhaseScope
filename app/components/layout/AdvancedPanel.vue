@@ -7,17 +7,20 @@
 import RadioGroup from '../ds/RadioGroup.vue';
 
 const open = defineModel<boolean>('open', { default: false });
-const mode = defineModel<string | number>('mode', { default: 'wave' });
+const mode = defineModel<string | number>('mode', { default: 'expressiveness' });
 
 const OSCILLATION_LABELS: Record<string, string> = {
-    wave: 'Wave',
-    'per-point': 'Per-point',
-    'per-frame': 'Per-frame',
+    expressiveness: 'Expressiveness',
+    intensity: 'Intensity',
+    frequency: 'Frequency',
 };
 const OSCILLATION_DESCRIPTIONS: Record<string, string> = {
-    wave: 'Loudness as a ripple propagating through the structure. Oscillates at a fixed visible speed; intensity tracks amplitude.',
-    'per-point': 'Local frequency content. Each point oscillates at its own rate, derived from the audio there.',
-    'per-frame':
+    expressiveness:
+        'Each point orbits its anchor at a speed set by the local frequency content when and where it was drawn, and at a width set by the loudness.',
+    intensity:
+        'Loudness as a ripple propagating through the structure. Oscillates at a fixed visible speed; intensity tracks amplitude.',
+
+    frequency:
         'Average frequency per frame. Points in a frame move together - bass-heavy moments slower, treble faster.',
 };
 // Description rides on the selected option only, like the topology list

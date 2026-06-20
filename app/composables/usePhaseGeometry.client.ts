@@ -374,8 +374,9 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         const baseLightness = 0.35;
         const amplitudeBrightnessFactor = 0.35;
 
-        // Frame averages for the per-frame and wave oscillation modes
-        let sumFreq = 0;
+        // Frame-average amplitude for the intensity / frequency modes (the
+        // frame's oscillation frequency is the real spectral centroid above, not
+        // an average of the per-point proxies)
         let sumAmp = 0;
 
         for (let k = 0; k < pointsPerFrame; k++) {
@@ -411,19 +412,20 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
             const o = (frameIndex * pointsPerFrame + k) * 4;
             oscData[o] = THREE.DataUtils.toHalfFloat(pointFreq);
             oscData[o + 1] = THREE.DataUtils.toHalfFloat(pointAmp);
-            sumFreq += pointFreq;
             sumAmp += pointAmp;
 
             p += 3;
         }
 
-        // Stamp the frame's averages into every point's aOsc.zw - the GPU
-        // can't reduce across vertices, so the reduction happens here, once
-        const avgFreqHalf = THREE.DataUtils.toHalfFloat(sumFreq / pointsPerFrame);
+        // Stamp the frame's oscillation summary into every point's aOsc.zw - the
+        // GPU can't reduce across vertices, so it happens here, once. aOsc.z is
+        // the real spectral centroid (Hz) that the Frequency mode oscillates at;
+        // aOsc.w is the mean amplitude.
+        const centroidHalf = THREE.DataUtils.toHalfFloat(centroidHz);
         const avgAmpHalf = THREE.DataUtils.toHalfFloat(sumAmp / pointsPerFrame);
         const frameBase = frameIndex * pointsPerFrame * 4;
         for (let k = 0; k < pointsPerFrame; k++) {
-            oscData[frameBase + k * 4 + 2] = avgFreqHalf;
+            oscData[frameBase + k * 4 + 2] = centroidHalf;
             oscData[frameBase + k * 4 + 3] = avgAmpHalf;
         }
     };

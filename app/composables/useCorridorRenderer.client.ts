@@ -13,9 +13,9 @@ export interface CorridorConfig {
 /* Renders the corridor as Points and Lines objects over ONE pair of shared
    BufferAttributes: both geometries reference the same attribute instances,
    so the GPU holds a single copy of positions/colours and every upload
-   happens once, not twice.
+   happens once.
 
-   Upload contract (this is where long tracks live or die):
+   Upload contract:
    - The progressive build appends frames to a contiguous span, so build
      ticks call uploadBuiltRange() and only that span is sent to the GPU
      (three.js updateRanges -> gl.bufferSubData).
@@ -23,7 +23,7 @@ export interface CorridorConfig {
      which clears pending ranges - empty updateRanges means three.js
      uploads the whole buffer.
 
-   Oscillation runs ON THE GPU: positions stay pristine anchors, uploaded
+   Oscillation runs on the GPU: positions stay pristine anchors, uploaded
    once at build; per-point oscillation data travels in a single half-float
    vec4 attribute (pointFreq, pointAmp, frameAvgFreq, frameAvgAmp); the
    frame index derives from gl_VertexID; and a vertex-shader patch displaces
@@ -33,30 +33,33 @@ export interface CorridorConfig {
 
 const OSC_MODE_INT: Record<OscillationMode | 'off', number> = {
     off: 0,
-    wave: 1,
-    'per-frame': 2,
-    'per-point': 3,
+    expressiveness: 1,
+    intensity: 2,
+    frequency: 3,
 };
 
 // Mirrors utils/oscillation.ts (PHASE_SHIFT_Y/Z, WAVE_SPEED, WAVE_LENGTH)
 const OSC_GLSL = /* glsl */ `
 uniform float uOscTime;
-uniform int uOscMode; // 0 off, 1 wave, 2 per-frame, 3 per-point
+uniform int uOscMode; // 0 off, 1 expressiveness, 2 intensity, 3 frequency
 uniform float uBuiltFrames;
 uniform float uPointsPerFrame;
-attribute vec4 aOsc; // pointFreq, pointAmp, frameAvgFreq, frameAvgAmp
+attribute vec4 aOsc; // pointFreq, pointAmp, frameCentroidHz, frameAvgAmp
 
 vec3 psOscOffset() {
     if (uOscMode == 0) return vec3(0.0);
-    float freq = (uOscMode == 3) ? aOsc.x : aOsc.z;
-    float amp = (uOscMode == 3) ? aOsc.y : aOsc.w;
+    // expressiveness reads the per-point data; intensity/frequency the frame summary
+    float freq = (uOscMode == 1) ? aOsc.x : aOsc.z;
+    float amp = (uOscMode == 1) ? aOsc.y : aOsc.w;
     float phase;
-    if (uOscMode == 1) {
+    if (uOscMode == 2) {
+        // intensity: loudness ripple backward from the head, fixed visible speed
         float frameIndex = floor(float(gl_VertexID) / uPointsPerFrame);
         float spatialPhase = ((uBuiltFrames - 1.0 - frameIndex) / 15.0) * 6.28318530718;
         phase = 6.28318530718 * 1.5 * uOscTime - spatialPhase;
         amp = aOsc.w;
     } else {
+        // expressiveness (per-point freq) and frequency (frame centroid)
         phase = 6.28318530718 * freq * uOscTime;
     }
     return vec3(sin(phase), sin(phase + 1.04719755), sin(phase + 2.09439510)) * amp;
