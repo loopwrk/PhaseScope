@@ -32,6 +32,6 @@ export default defineNuxtConfig({
     },
     devtools: { enabled: true },
 
-    modules: ['@nuxt/eslint', '@nuxt/test-utils', '@nuxt/ui'],
+    modules: ['@nuxt/eslint', '@nuxt/test-utils', '@nuxt/ui', '@vercel/analytics/nuxt'],
     css: ['~/assets/css/main.css'],
 });

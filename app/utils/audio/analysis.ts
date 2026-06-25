@@ -135,7 +135,9 @@ export const stereoCorrelation = (
 // Pitch-chroma hue: the fractional octave position of a frequency, so the
 // full colour wheel cycles once per octave and a note keeps its colour in
 // every octave. Reference defaults to C0 (hue 0 = C = red).
-export const pitchChromaHue = (hz: number, refHz: number = 16.3516): number => {
+
+const C = 16.3516;
+export const pitchChromaHue = (hz: number, refHz: number = C): number => {
     if (!(hz > 0)) return 0;
     return ((Math.log2(hz / refHz) % 1) + 1) % 1;
 };
