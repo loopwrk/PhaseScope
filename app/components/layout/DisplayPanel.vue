@@ -73,25 +73,26 @@ const renderItems = computed(() => [
 ]);
 const topologyLabels: Record<string, string> = {
     corridor: 'Corridor',
+    harmonics: 'Harmonics',
+    hopf: 'Hopf Fibration',
+    knot: 'Knot',
+    mobius: 'Möbius',
     sphere: 'Sphere',
     attractor: 'Attractor',
-    mobius: 'Möbius',
+    // Hidden from the picker (HIDDEN_TOPOLOGIES); kept so the badge still names them
     poincare: 'Poincaré',
-    harmonics: 'Harmonics',
-    knot: 'Knot',
     helix: 'Double Helix',
-    hopf: 'Hopf Fibration',
 };
 const topologyDescriptions: Record<string, string> = {
     corridor: 'Time unfolds along the Z-axis as a traversable tunnel.',
+    harmonics: 'A vibrating-sphere bloom - pitch sets the number of lobes, loudness their depth. Higher notes grow more intricate.',
+    hopf: 'The stereo state lifted off the Poincaré/Bloch sphere - each moment becomes a linked ring (a Hopf fibre), and the track threads them into nested, interlocking circles.',
+    knot: 'A torus knot whose woundness is the harmonic richness of the track - simple sounds make simple knots, busy ones tangle.',
+    mobius: 'Time loops a half-twisted band - the end of the track arrives as the mirror of its beginning.',
     sphere: 'Audio wraps around a sphere from north to south pole.',
     attractor: 'Audio traces a Lorenz strange attractor - amplitude drives the chaos parameter.',
-    mobius: 'Time loops a half-twisted band - the end of the track arrives as the mirror of its beginning.',
     poincare: 'The stereo field as light polarization, traced on the Poincaré sphere - poles are quadrature circles, the equator in/anti-phase, the centre decorrelation.',
-    harmonics: 'A vibrating-sphere bloom - pitch sets the number of lobes, loudness their depth. Higher notes grow more intricate.',
-    knot: 'A torus knot whose woundness is the harmonic richness of the track - simple sounds make simple knots, busy ones tangle.',
     helix: 'A DNA double helix - pitch winds the strands, the stereo image bows each base-pair rung, and the stereo field is sequenced into four colours (A/C/G/T).',
-    hopf: 'The stereo state lifted off the Poincaré/Bloch sphere - each moment becomes a linked ring (a Hopf fibre), and the track threads them into nested, interlocking circles.',
 };
 // Kept in the engine but withheld from the picker: Poincaré is superseded by the
 // Hopf fibration that lifts it, and the double helix is parked. Their labels and

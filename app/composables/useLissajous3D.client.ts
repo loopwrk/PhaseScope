@@ -38,7 +38,7 @@ const SIGNAL_SCALE = 2.6; // full-scale samples stay inside the cube walls
 const CENTRE_Y = 1.7; // gallery height, matching the topologies
 const C0_HZ = 16.3516; // pitch-chroma reference: hue wraps each octave from C
 
-const CUBE_RGB = 0x343b50; // --border-strong graphite
+const CUBE_RGB = 0x5e7a7d;
 const WAVE_L_RGB = 0x2fd4e6; // --scope-cyan, matching the HUD waveform's L
 const WAVE_R_RGB = 0xff2d9b; // --scope-magenta, its R
 const WAVE_POINTS = 256;

@@ -9,7 +9,7 @@ import type { OscillationMode } from '~/utils/oscillation';
    useScopeSettings. Disabling is a uniform write, so points return to
    their anchors instantly - no restore pass needed. */
 export function useOscillation() {
-    const enabled = usePersistedState('scope:oscillation-enabled', () => true);
+    const enabled = usePersistedState('scope:oscillation-enabled', () => false);
     const mode = usePersistedState<OscillationMode>('scope:oscillation-mode', () => 'expressiveness');
 
     return { enabled, mode };
