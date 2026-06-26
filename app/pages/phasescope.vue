@@ -31,10 +31,6 @@ const dreamBg = useDreamBackground(
     scene,
     computed(() => settings.background.value === 'dream')
 );
-const heavenlyBg = useHeavenlyBackground(
-    scene,
-    computed(() => settings.background.value === 'heavenly')
-);
 const starfieldBg = useStarfieldBackground(
     scene,
     computed(() => settings.background.value === 'starfield')
@@ -280,7 +276,7 @@ const goHome = () => {
 /* ---------- Background skyboxes ---------- */
 
 // Shortcut presses toggle a background on, or off if it's already the one showing.
-const toggleBackground = (id: 'dream' | 'heavenly') => {
+const toggleBackground = (id: 'dream') => {
     settings.background.value = settings.background.value === id ? 'none' : id;
 };
 
@@ -307,7 +303,6 @@ shortcuts.register('c', () => {
     toggleCameraMode();
 });
 shortcuts.register('b', () => toggleBackground('dream'));
-shortcuts.register('n', () => toggleBackground('heavenly'));
 shortcuts.register('g', () => {
     showGoniometer.value = !showGoniometer.value;
 });
@@ -354,7 +349,6 @@ const animate = (now: number) => {
     const r = three.renderer.value;
     const c = three.camera.value;
     dreamBg.update(now / 1000, c?.position);
-    heavenlyBg.update(now / 1000, c?.position);
     starfieldBg.update(now / 1000, c?.position);
     if (r && c) r.render(scene, c);
     requestAnimFrame = requestAnimationFrame(animate);
@@ -392,7 +386,6 @@ onUnmounted(async () => {
     await disposePlayback();
     lissajous.dispose();
     dreamBg.dispose();
-    heavenlyBg.dispose();
     starfieldBg.dispose();
     three.dispose();
 });

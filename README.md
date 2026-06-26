@@ -68,7 +68,7 @@ Run the tests with `npm test`.
 - **Oscillation** - points can gently move around their anchors (press `O`). Three flavours: **Expressiveness**, each point rotating around a central anchor at it's local frequency, with the distance from the anchor determined by it's amplitude, **Intensity**, a loudness ripple, and **Frequency** the whole frame sways at its pitch.
 - **Camera** - **Orbit**, **Follow**, or **Free** (cycle with `C`). Free mode is full first-person flight: WASD to move, mouse to look. On a phone, just **drag to rotate, pinch to zoom, and double-tap** to hand control back to the auto-camera.
 - **Goniometer & 3D scope** - toggle the live phase-portrait HUD with `G`; click the figure to enter the full 3D scope, click again to return.
-- **Backgrounds** - two animated GLSL skyboxes, **Dream** and **Heavenly** (or none).
+- **Backgrounds** - animated GLSL skyboxes: a **Starfield** (the default) and **Dream** (or none).
 - **Go live** - press **Go Live** and play with a MIDI keyboard or the on-screen keys; the synth's stereo output draws the geometry in real time.
 
 ### ⌨️ Keyboard shortcuts
@@ -81,7 +81,6 @@ Run the tests with `npm test`.
 | `C`       | Cycle camera (Orbit → Follow → Free) |
 | `F`       | Toggle fullscreen                    |
 | `B`       | Toggle Dream background              |
-| `N`       | Toggle Heavenly background           |
 | `G`       | Toggle goniometer                    |
 | `H`       | Toggle controls overlay              |
 | `{` / `}` | Previous / next demo                 |

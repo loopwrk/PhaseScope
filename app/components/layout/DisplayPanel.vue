@@ -44,13 +44,12 @@ const coverage = defineModel<number>('coverage', { default: 100 });
 const renderMode = defineModel<string | number>('renderMode', { default: 'points' });
 const topology = defineModel<string | number>('topology', { default: 'corridor' });
 const oscillation = defineModel<boolean>('oscillation', { default: false });
-const background = defineModel<string | number>('background', { default: 'none' });
+const background = defineModel<string | number>('background', { default: 'starfield' });
 
 const backgroundItems = [
     { label: 'None', value: 'none' },
-    { label: 'Dream', value: 'dream' },
-    { label: 'Heavenly', value: 'heavenly' },
     { label: 'Starfield', value: 'starfield' },
+    { label: 'Dream', value: 'dream' },
 ];
 
 const liveVoice = defineModel<LiveVoiceId>('liveVoice', { default: 'pure' });

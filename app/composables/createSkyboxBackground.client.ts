@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 /* Skybox background factory.
 
-   Both animated GLSL backgrounds (Dream, Heavenly) are the same construct:
+   The animated GLSL backgrounds (Dream, Starfield) are the same construct:
    a camera-tracking inverted sphere with a time-driven ShaderMaterial,
    toggled by an `enabled` ref. Only the fragment shader differs, so each
    background module supplies its shader and delegates everything else here.

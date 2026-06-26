@@ -22,10 +22,12 @@ const fragmentShader = /* glsl */ `
     return v;
   }
 
-  // One layer of jittered point-stars. 'scale' sets the cell density, 'sparsity'
-  // the fraction of empty cells (higher -> fewer stars), 'seed' offsets the grid
-  // so layers don't align. Each star twinkles at its own rate and phase.
-  float starLayer(vec3 dir, float scale, float sparsity, float seed, float t) {
+  // One layer of jittered point-stars, returning the star's colour * brightness.
+  // 'scale' sets the cell density, 'sparsity' the fraction of empty cells (higher
+  // -> fewer stars), 'seed' offsets the grid so layers don't align. Each star is
+  // a crisp pinpoint with only a faint sparkle, twinkling at its own rate, and
+  // tinted per star: mostly blue, some white, a few red dotted around.
+  vec3 starLayer(vec3 dir, float scale, float sparsity, float seed, float t) {
     vec3 p = dir * scale + seed;
     vec3 cell = floor(p);
     vec3 f = fract(p);
@@ -33,11 +35,19 @@ const fragmentShader = /* glsl */ `
     // jitter the star within its cell, kept off the edges to avoid clipping
     vec3 jitter = 0.2 + 0.6 * vec3(hash(cell + 11.0), hash(cell + 23.0), hash(cell + 37.0));
     float d = length(f - jitter);
-    float size = 0.5 + 0.5 * hash(cell + 17.0);
-    float core = 1.0 - smoothstep(0.0, 0.05 * size, d); // crisp, anti-aliased point
-    float halo = pow(max(0.0, 1.0 - d * 2.2), 4.0) * 0.35; // soft surrounding glow
-    float tw = 0.6 + 0.4 * sin(t * (0.8 + 2.0 * hash(cell + 5.0)) + hash(cell) * 6.2831);
-    return present * (core + halo) * tw;
+    float size = 0.7 + 0.9 * hash(cell + 17.0);
+    float r = 0.085 * size;
+    float core = 1.0 - smoothstep(r * 0.4, r, d); // solid bright disc, crisp edge
+    float halo = pow(max(0.0, 1.0 - d * 2.6), 6.0) * 0.22; // modest, tight bloom
+    float tw = 0.7 + 0.3 * sin(t * (0.8 + 2.0 * hash(cell + 5.0)) + hash(cell) * 6.2831);
+    float bright = present * (core + halo) * tw;
+
+    // per-star colour class: mostly blue, some white, a rare few red
+    float ch = hash(cell + 7.0);
+    vec3 col = vec3(0.92, 0.96, 1.0); // white (default)
+    col = mix(col, vec3(0.50, 0.70, 1.0), step(0.25, ch)); // blue (the majority)
+    col = mix(col, vec3(1.0, 0.36, 0.30), step(0.92, ch)); // red (a rare few)
+    return col * bright;
   }
 
   void main() {
@@ -63,17 +73,12 @@ const fragmentShader = /* glsl */ `
     sky += nebCol * neb * 0.6;
 
     // -- stars: three layers for parallax depth (faint+dense -> sparse+bright) --
-    float s = 0.0;
-    s += starLayer(dir, 90.0, 0.86, 0.0, t) * 0.9;
-    s += starLayer(dir, 48.0, 0.90, 50.0, t) * 1.3;
-    s += starLayer(dir, 24.0, 0.93, 90.0, t) * 1.9;
+    vec3 starCol = vec3(0.0);
+    starCol += starLayer(dir, 90.0, 0.82, 0.0, t) * 1.0;
+    starCol += starLayer(dir, 48.0, 0.87, 50.0, t) * 1.5;
+    starCol += starLayer(dir, 24.0, 0.90, 90.0, t) * 2.1;
 
-    // star colour: blue-white to warm, brightest cores burn out to white
-    float ctint = hash(floor(dir * 24.0) + 9.0);
-    vec3 starTint = mix(vec3(0.72, 0.84, 1.0), vec3(1.0, 0.9, 0.76), ctint);
-    vec3 starCol = mix(starTint, vec3(1.0), clamp(s, 0.0, 1.0));
-
-    vec3 color = sky + starCol * s;
+    vec3 color = sky + starCol;
 
     gl_FragColor = vec4(color, 1.0);
   }

@@ -1,7 +1,7 @@
 import type { RenderMode } from '~/composables/useCorridorRenderer.client';
 import type { TopologyMode } from '~/utils/topologies';
 
-export type BackgroundId = 'none' | 'dream' | 'heavenly' | 'starfield';
+export type BackgroundId = 'none' | 'dream' | 'starfield';
 
 /* useScopeSettings - the user's /phasescope settings, lifted into Nuxt's
    useState so they survive client-side navigation (a trip to /about and
@@ -14,6 +14,6 @@ export function useScopeSettings() {
         topologyMode: usePersistedState<TopologyMode>('scope:topology', () => 'corridor'),
         showGoniometer: usePersistedState<boolean>('scope:goniometer', () => true),
         advancedOptionsOpen: usePersistedState<boolean>('scope:advanced-open', () => false),
-        background: usePersistedState<BackgroundId>('scope:background', () => 'none'),
+        background: usePersistedState<BackgroundId>('scope:background', () => 'starfield'),
     };
 }
