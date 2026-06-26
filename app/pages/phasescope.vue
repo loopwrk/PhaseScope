@@ -35,6 +35,10 @@ const heavenlyBg = useHeavenlyBackground(
     scene,
     computed(() => settings.background.value === 'heavenly')
 );
+const starfieldBg = useStarfieldBackground(
+    scene,
+    computed(() => settings.background.value === 'starfield')
+);
 
 // 3D Lissajous scope mode: the live phase portrait in a cube, no time axis.
 // Entered by clicking the goniometer; the corridor hides while it is active.
@@ -351,6 +355,7 @@ const animate = (now: number) => {
     const c = three.camera.value;
     dreamBg.update(now / 1000, c?.position);
     heavenlyBg.update(now / 1000, c?.position);
+    starfieldBg.update(now / 1000, c?.position);
     if (r && c) r.render(scene, c);
     requestAnimFrame = requestAnimationFrame(animate);
 };
@@ -388,6 +393,7 @@ onUnmounted(async () => {
     lissajous.dispose();
     dreamBg.dispose();
     heavenlyBg.dispose();
+    starfieldBg.dispose();
     three.dispose();
 });
 </script>

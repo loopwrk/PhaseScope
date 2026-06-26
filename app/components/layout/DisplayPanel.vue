@@ -50,6 +50,7 @@ const backgroundItems = [
     { label: 'None', value: 'none' },
     { label: 'Dream', value: 'dream' },
     { label: 'Heavenly', value: 'heavenly' },
+    { label: 'Starfield', value: 'starfield' },
 ];
 
 const liveVoice = defineModel<LiveVoiceId>('liveVoice', { default: 'pure' });
