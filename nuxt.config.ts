@@ -27,8 +27,10 @@ export default defineNuxtConfig({
     // from browser-only state (media queries, colour mode, the Three.js engine).
     // The rest of the site keeps SSR.
     routeRules: {
-        '/': { redirect: '/phasescope' },
-        '/phasescope': { ssr: false },
+        '/': { ssr: false },
+        // Old route of the visualiser - kept as a redirect so existing
+        // links and bookmarks to /phasescope still resolve.
+        '/phasescope': { redirect: '/' },
     },
     devtools: { enabled: true },
 

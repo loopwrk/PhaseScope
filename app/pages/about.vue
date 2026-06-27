@@ -9,7 +9,7 @@ import { segActive, segBaseMd as segBase, segIdle } from '../components/ds/segme
 useSeoMeta({
     title: 'About - PhaseScope',
     description:
-        'What PhaseScope is and how it works: a real-time 3D audio visualiser that renders stereo sound as explorable phase-space geometry - a corridor, sphere, Lorenz attractor or Möbius band built from the music itself, or drawn live from a MIDI keyboard.',
+        'What PhaseScope is and how it works: a real-time 3D audio visualiser that renders stereo sound as explorable phase-space geometry - a corridor, spherical-harmonic bloom, Hopf fibration, torus knot, Möbius band, sphere or Lorenz attractor built from the music itself, or drawn live from a MIDI keyboard.',
 });
 
 interface TopologyCopy {
@@ -23,32 +23,50 @@ const topologies: TopologyCopy[] = [
         id: 'corridor',
         label: 'Corridor',
         paragraphs: [
-            'The straight road: time runs along one axis. Each window of audio becomes a ring of points - the phase portrait wrapped around a circular spine - and the rings stack one behind another at a fixed spacing, building a tunnel as the track plays. The near rings are the present; the far ones are the opening bars. Flying down the corridor is moving the shape the audio has made sonically through time.',
-            'The music shapes every ring. Stereo width sets the flare - a mono passage tightens the ring toward a thin blade, a wide mix blooms it into a full wreath - while loudness brightens the points and tonal content colours them, bass glowing blue-violet, treble running to red.',
+            'Time uncoils like a weightless snake through space along one axis. Each window of audio becomes a ring of points. The phase data of the audio is wrapped around a circular spine, and the rings stack one behind another at a fixed spacing, building a tunnel as the track plays. The near rings are the present; the far ones are the opening bars. Flying down the corridor is moving the shape the audio has made sonically through time. Stereo width sets the flare - a mono passage tightens the ring toward a thin blade, a wide mix blooms it into a full wreath - while loudness brightens the points and tonal content maps each point to a colour in the visible spectrum. Each octave is assigned a full colour spectrum.',
         ],
     },
     {
-        id: 'sphere',
-        label: 'Sphere',
+        id: 'harmonics',
+        label: 'Harmonics',
         paragraphs: [
-            'Time becomes latitude. The first window of audio sits at the north pole, the last arrives at the south, and everything in between wraps the globe ring by ring. A whole track becomes a planet you can orbit: the first half of the song is the northern hemisphere.',
-            'Here the music works as terrain. Each point is pushed outward from the surface in proportion to loudness - quiet passages hug the sphere, loud ones raise mountain ranges out of it - so a chorus reads as a band of high relief and a breakdown as a smooth latitude. Colour and brightness follow tone and amplitude as everywhere else.',
+            'Frequency made into form. Time runs pole to pole. The note being played decides how many lobes bloom around each latitude: low notes raise a few broad petals, high notes break the surface into many fine ones. Pitch sets the lobe count, loudness their depth, and tone the colour - so a melody climbing the scale is a sphere growing visibly more intricate, octave by octave.',
         ],
     },
     {
-        id: 'attractor',
-        label: 'Attractor',
+        id: 'hopf',
+        label: 'Hopf',
         paragraphs: [
-            'Audio steers a storm. Before drawing anything, PhaseScope integrates a Lorenz system - the strange attractor of chaos theory, the butterfly - using the track’s own loudness envelope to push the chaos parameter ρ between 25 and 38. Loud sections drive the trajectory across the divide between the butterfly’s two lobes; quiet ones let it settle into circling a single wing.',
-            'The geometry is a tube around that trajectory: each window of audio forms the tube’s cross-section, breathing wider with amplitude. Chaos here is deterministic - the same song always draws the same storm - but no two songs ever draw the same one.',
+            'Lifted out of quantum mechanics. Every instant of stereo has a polarization state - a single point on a sphere physicists call the Bloch sphere. The Hopf map turns each such point into a whole circle, and the circles of neighbouring moments thread through one another like the links of a chain. A track becomes a tangle of luminous, interlocking rings - the very structure that maps the states of a spinning particle.',
+            'How the left and right channels relate decides where each ring sits and how it links its neighbours; loudness and tone light it. A dead-centre mono signal collapses to a single ring, while a restless stereo field threads space with them.',
+        ],
+    },
+    {
+        id: 'knot',
+        label: 'Knot',
+        paragraphs: [
+            "A single closed loop, tied off. Before drawing, PhaseScope takes the measure of the whole track's brightness and picks a torus knot to suit - a darker, simpler piece becomes the gentle three-fold trefoil; a bright, restless one winds into something far more tangled. The knot's curves thread over and through an invisible doughnut, and a tube wrapped along it carries the music. The knot's woundness is the harmonic richness of the entire track, fixed before a note sounds; moment to moment, loudness makes the tube breathe and tone sets its colour.",
         ],
     },
     {
         id: 'mobius',
         label: 'Möbius',
         paragraphs: [
-            'Time loops once around a band with a half-twist in it. Each window’s phase portrait is the band’s cross-section, and as the track progresses the cross-section slowly turns - a quarter-turn by the halfway mark, a half-turn by the end.',
-            'The consequence is the Möbius band’s old trick. The track’s final moments arrive back where it began, but mirrored: the portrait of the ending is the polarity-inverse of the opening. On a non-orientable surface there is no consistent left or right - a fitting place to draw a stereo signal. The music returns to where it started, but it cannot return as itself.',
+            "Time loops once around a band with a half-twist in it. The phase correlation of each snapshot of the audio becomes the band's cross-section, and as the track progresses the cross-section slowly turns - a quarter-turn by the halfway mark, a half-turn by the end. The consequence is the Möbius bands old trick. The track's final moments arrive back where it began, but mirrored: the portrait of the ending is the polarity-inverse of the opening. On a non-orientable surface there is no consistent left or right - a fitting place to draw a stereo signal. The music returns to where it started, but it cannot return as itself.",
+        ],
+    },
+    {
+        id: 'sphere',
+        label: 'Sphere',
+        paragraphs: [
+            'Time becomes latitude. The first window of audio sits at the north pole, the last arrives at the south, and everything in between wraps the globe ring by ring. A whole track becomes a planet you can orbit: the first half of the song is the northern hemisphere. Here the music works as terrain. Each point is pushed outward from the surface in proportion to loudness - quiet passages hug the sphere, loud ones create visible peaks. Colour and brightness follow tone and amplitude as everywhere else.',
+        ],
+    },
+    {
+        id: 'attractor',
+        label: 'Attractor',
+        paragraphs: [
+            "Audio steers a storm. Before drawing anything, PhaseScope integrates a Lorenz system - the strange attractor of chaos theory, the butterfly - using the tracks own loudness envelope to push the chaos parameter ρ between 25 and 38. Loud sections drive the trajectory across the divide between the butterfly's two lobes; quiet ones let it settle into circling a single wing. The geometry is a tube around that trajectory: each window of audio forms the tube's cross-section, breathing wider with amplitude. Chaos here is deterministic - the same song always draws the same storm - but no two songs ever draw the same one.",
         ],
     },
 ];
@@ -60,7 +78,7 @@ const activeTopology = ref<TopologyMode>('corridor');
 const router = useRouter();
 const close = () => {
     if (window.history.length > 1) router.back();
-    else router.push('/phasescope');
+    else router.push('/');
 };
 
 // "Walk through it" opens the scope in the topology being read: the
@@ -79,7 +97,7 @@ const launchActiveTopology = () => {
         <div class="mx-auto flex w-full max-w-[31em] flex-col gap-12">
             <div class="flex items-center justify-between gap-4">
                 <NuxtLink
-                    to="/phasescope"
+                    to="/"
                     class="inline-flex w-fit items-center gap-3 text-(--text) no-underline hover:no-underline focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
                     aria-label="Back to the visualiser"
                 >
@@ -96,6 +114,7 @@ const launchActiveTopology = () => {
             <nav aria-label="Page section" class="flex flex-wrap gap-1.5">
                 <span :class="[segBase, segActive]" aria-current="page">About</span>
                 <NuxtLink :to="'/influences'" :class="[segBase, segIdle]">Influences</NuxtLink>
+                <NuxtLink :to="'/contact'" :class="[segBase, segIdle]">Contact</NuxtLink>
             </nav>
 
             <div class="flex flex-col gap-12">
@@ -141,10 +160,10 @@ const launchActiveTopology = () => {
                 <section class="flex flex-col gap-5" aria-labelledby="topologies-heading">
                     <div class="flex flex-col gap-2">
                         <h2 id="topologies-heading" class="font-display text-title font-semibold tracking-display">
-                            The four topologies
+                            The seven topologies
                         </h2>
                         <p class="text-body leading-(--line-height-normal) text-(--text-muted)">
-                            The same music, four different journeys through space. Choose one to read how it works.
+                            The same music, seven different journeys through space. Choose one to read how it works.
                         </p>
                     </div>
 
@@ -187,7 +206,7 @@ const launchActiveTopology = () => {
                 </section>
 
                 <NuxtLink
-                    to="/phasescope"
+                    to="/"
                     class="mt-2 w-fit font-display text-detail font-semibold text-(--accent) no-underline hover:underline focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
                     @click="launchActiveTopology"
                 >

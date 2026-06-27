@@ -64,13 +64,8 @@ const seedInfluences: Influence[] = [
     },
 ];
 
-// Close = the back button: return wherever the reader came from. Direct
-// visits (no in-app history) fall back to the scope itself.
 const router = useRouter();
-const close = () => {
-    if (window.history.length > 1) router.back();
-    else router.push('/phasescope');
-};
+const close = () => router.push('/');
 </script>
 
 <template>
@@ -80,7 +75,7 @@ const close = () => {
         <div class="mx-auto flex w-full max-w-[31em] flex-col gap-12">
             <div class="flex items-center justify-between gap-4">
                 <NuxtLink
-                    to="/phasescope"
+                    to="/"
                     class="inline-flex w-fit items-center gap-3 text-(--text) no-underline hover:no-underline focus-visible:shadow-(--focus-glow) focus-visible:outline-none"
                     aria-label="Back to the visualiser"
                 >
@@ -89,7 +84,12 @@ const close = () => {
                         Phase<span class="text-(--accent)">Scope</span>
                     </span>
                 </NuxtLink>
-                <IconButton icon="i-lucide-x" variant="ghost" aria-label="Close and go back" @click="close" />
+                <IconButton
+                    icon="i-lucide-x"
+                    variant="ghost"
+                    aria-label="Close and return to the visualiser"
+                    @click="close"
+                />
             </div>
 
             <!-- Page sections: real navigation between /about and /influences,
@@ -97,6 +97,7 @@ const close = () => {
             <nav aria-label="Page section" class="flex flex-wrap gap-1.5">
                 <NuxtLink :to="'/about'" :class="[segBase, segIdle]">About</NuxtLink>
                 <span :class="[segBase, segActive]" aria-current="page">Influences</span>
+                <NuxtLink :to="'/contact'" :class="[segBase, segIdle]">Contact</NuxtLink>
             </nav>
 
             <section class="flex flex-col gap-7">

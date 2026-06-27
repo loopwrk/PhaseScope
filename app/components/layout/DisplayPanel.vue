@@ -79,19 +79,20 @@ const topologyLabels: Record<string, string> = {
     mobius: 'Möbius',
     sphere: 'Sphere',
     attractor: 'Attractor',
-    // Hidden from the picker (HIDDEN_TOPOLOGIES); kept so the badge still names them
     poincare: 'Poincaré',
     helix: 'Double Helix',
 };
 const topologyDescriptions: Record<string, string> = {
     corridor: 'Time unfolds along the Z-axis as a traversable tunnel.',
-    harmonics: 'A vibrating-sphere bloom - pitch sets the number of lobes, loudness their depth. Higher notes grow more intricate.',
-    hopf: 'The stereo state lifted off the Poincaré/Bloch sphere - each moment becomes a linked ring (a Hopf fibre), and the track threads them into nested, interlocking circles.',
+    harmonics:
+        'A vibrating-sphere bloom: pitch sets the number of lobes, loudness their depth. Higher notes grow more intricate.',
+    hopf: 'The stereo state lifted off the Poincaré/Bloch sphere: each moment becomes a linked ring (a Hopf fibre), and the track threads them into nested, interlocking circles.',
     knot: 'A torus knot whose woundness is the harmonic richness of the track - simple sounds make simple knots, busy ones tangle.',
     mobius: 'Time loops a half-twisted band - the end of the track arrives as the mirror of its beginning.',
     sphere: 'Audio wraps around a sphere from north to south pole.',
     attractor: 'Audio traces a Lorenz strange attractor - amplitude drives the chaos parameter.',
-    poincare: 'The stereo field as light polarization, traced on the Poincaré sphere - poles are quadrature circles, the equator in/anti-phase, the centre decorrelation.',
+    poincare:
+        'The stereo field as light polarization, traced on the Poincaré sphere - poles are quadrature circles, the equator in/anti-phase, the centre decorrelation.',
     helix: 'A DNA double helix - pitch winds the strands, the stereo image bows each base-pair rung, and the stereo field is sequenced into four colours (A/C/G/T).',
 };
 // Kept in the engine but withheld from the picker: Poincaré is superseded by the

@@ -3,9 +3,17 @@ import { toRaw } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import type { LivePhase } from '~/composables/useLiveSession.client';
 
-// Full-bleed canvas dashboard - opt out of the default site chrome (header /
-// container / footer); this page paints the whole viewport itself.
+// Full-bleed canvas dashboard
 definePageMeta({ layout: false });
+
+// The home page needs its own title/description so client-side navigation
+// back here (e.g. closing /about) resets the document head - without it,
+// the previous page's title would persist on the tab.
+useSeoMeta({
+    title: 'PhaseScope - See the shape of your music',
+    description:
+        'PhaseScope turns any stereo track into a luminous 3D structure you can fly through - a real-time, in-browser audio visualiser built from the sound itself, coloured by pitch. Play it live with a MIDI keyboard, too.',
+});
 
 // Desktop shows the side panels by default; phones start with them collapsed
 // (they overlay the canvas) and the user opens them from the header.
@@ -13,9 +21,10 @@ const isDesktop = useMediaQuery('(min-width: 768px)');
 
 /* ---------- Engine assembly ----------
    The page is wiring: scene plumbing (useThree + renderer + backgrounds),
-   the geometry engine (usePhaseGeometry), the camera brain (useAutoCamera)
+   the geometry engine (usePhaseGeometry), the camera (useAutoCamera)
    and the playback orchestrator (usePlaybackOrchestration), joined by the
-   render loop below. All engine behaviour lives in the composables. */
+   render loop
+   . All engine behaviour lives in the composables. */
 
 // User settings survive navigation (e.g. /about and back) via useState -
 // see useScopeSettings for the full key inventory.
@@ -37,16 +46,11 @@ const starfieldBg = useStarfieldBackground(
 );
 
 // 3D Lissajous scope mode: the live phase portrait in a cube, no time axis.
-// Entered by clicking the goniometer; the corridor hides while it is active.
 const scope3d = ref(false);
 
 const player = useWavPlayer();
 const geometry = usePhaseGeometry({ renderer, renderMode, topologyMode, audio: player.audio });
-/* The live session phase lives at the composition root because the camera's
-   wavLoaded gate (below) reads liveMode before useLiveSession is built. The
-   logic that acts on the phase lives in useLiveSession; 'setup' is the stage
-   door, a session is on stage from 'armed' onward, and liveMode gates
-   geometry/camera/panels. */
+
 const livePhase = ref<LivePhase>('off');
 const liveMode = computed(
     () => livePhase.value === 'armed' || livePhase.value === 'playing' || livePhase.value === 'done'
@@ -63,7 +67,6 @@ const camera = useAutoCamera({
 });
 const playback = usePlaybackOrchestration({ three, geometry, camera, topologyMode, player });
 
-// Flat bindings for the template
 const {
     corridorState,
     corridorMeta,
@@ -93,10 +96,7 @@ const {
     dispose: disposePlayback,
 } = playback;
 
-// The live-input feature (MIDI keyboard + on-screen keys): the three-act
-// session machine, the ghost demo, the dock's narration, and the synth + MIDI
-// it owns. The phase ref is shared (the camera gates on liveMode); everything
-// that drives it lives in the composable.
+// The live-input feature (MIDI input)
 const live = useLiveSession({ livePhase, geometry, camera, topologyMode, player, stopPlayback: handleStop });
 
 type DemoMenuItem =
@@ -106,8 +106,7 @@ type DemoMenuItem =
 const SEP_WHITE = 'bg-(--brand-white)';
 const SEP_RED = 'bg-[var(--brand-primary)]';
 // Groups and their order come entirely from the audio subfolders (see the
-// audio-manifest module): sortedDemoTracks is already in menu order, so a
-// new group heading opens each time the group changes.
+// audio-manifest module)
 const demoTrackItems = computed(() => {
     const items: DemoMenuItem[] = [];
     let currentGroup: string | null = null;
@@ -177,15 +176,9 @@ const showSettings = ref(true);
 // panel. Desktop shows the scope settings inline and never uses this.
 const showScopeSettings = ref(false);
 
-// First-load quiet: neither side panel exists until there is something
-// to control - a loaded track or a live session. The transport bar is
-// the whole interface until then.
 const uiActive = computed(() => wavLoaded.value || liveMode.value);
 
-// Floating side panels: both open on desktop, both collapsed on phones (they
-// overlay the canvas). Crossing the breakpoint resets them. `immediate` means
-// this also sets the correct initial state (isDesktop is false during SSR /
-// first paint, so phones start collapsed without depending on mount timing).
+// Floating side panels: both open on desktop, both collapsed on phones.
 watch(
     isDesktop,
     (desktop) => {
@@ -225,9 +218,7 @@ const toggleScopeSettings = () => {
 /* ---------- Goniometer HUD ---------- */
 
 // Pull-based source: the component samples this inside its own ~30fps rAF
-// loop (no reactive churn, no contact with the WebGL path). Shows the
-// window at the playhead whether playing or paused - a scope reads
-// whatever is at the probe.
+// loop (no reactive churn, no contact with the WebGL path).
 const goniometerSource = () => {
     if (liveMode.value) return live.liveSource();
     const raw = toRaw(corridorState.value);
@@ -254,7 +245,7 @@ const onForkFile = (e: Event) => {
     input.value = '';
 };
 
-// "Pick a demo": on desktop, reach into the transport's dropdown; on phones the
+// "Pick a demo": on desktop, reach into the transport's dropdown; on mobile the
 // transport is hidden during onboarding, so open a dedicated overlay instead.
 const showDemoOverlay = ref(false);
 const onPickDemo = () => {
@@ -393,17 +384,13 @@ onUnmounted(async () => {
 
 <template>
     <div class="fixed inset-0 overflow-hidden bg-(--bg) text-(--text)">
-        <!-- Live canvas fills the viewport; slow-zooms while playing (plan 2.8,
-             a transform on the container only - the engine is untouched) -->
+        <!-- Live canvas fills the viewport; slow-zooms while playing -->
         <div
             ref="canvasContainer"
             class="absolute inset-0 touch-none bg-black motion-safe:transition-transform motion-safe:duration-[6000ms] motion-safe:ease-(--motion-ease-standard)"
             :class="{ 'motion-safe:scale-[1.04]': !!audio.source }"
         ></div>
 
-        <!-- Vignette + scrim so the floating glass chrome clears AA over the
-             canvas: a radial vignette plus top/bottom linear scrims (per the
-             design comp), with a faint scanline grain blended over the top. -->
         <div
             class="pointer-events-none absolute inset-0 z-0"
             style="
@@ -627,12 +614,6 @@ onUnmounted(async () => {
             </LayoutDisplayPanel>
         </div>
 
-        <!-- Right: live controls HUD -->
-        <!-- Positioning wrapper: Panel's scoped position:relative beats the
-             absolute utility on its own root, so the offsets live out here
-             (same pattern as the Display Settings panel) -->
-        <!-- Camera + movement controls: desktop-only (its toggle is hidden on
-             phones, where camera/movement aren't useful). -->
         <div
             v-if="showControlsOverlay && uiActive && isDesktop"
             class="ps-rise absolute right-5 top-24 z-20 max-h-[calc(100svh_-_12rem)] overflow-y-auto"
