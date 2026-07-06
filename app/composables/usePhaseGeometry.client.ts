@@ -9,6 +9,7 @@ import {
     pitchChromaHue,
 } from '~/utils/audio/analysis';
 import { channelBiasTransform, CHANNEL_BIAS_Z_KEEP } from '~/utils/channelBias';
+import { FALLBACK_SR } from '~/utils/audio/constants';
 import { TOPOLOGIES } from '~/utils/topologies';
 import type { CorridorState, CorridorMeta, TopologyMode } from '~/utils/topologies';
 import type { RenderMode, useCorridorRenderer } from '~/composables/useCorridorRenderer.client';
@@ -24,6 +25,15 @@ import type { RenderMode, useCorridorRenderer } from '~/composables/useCorridorR
    The per-topology frame mappers, the TOPOLOGIES registry and the shared
    geometry types (TopologyMode, CorridorState, CorridorMeta, OrbitParams)
    now live in ~/utils/topologies; this file owns only the build engine. */
+
+// Per-tick time budget for building frames (live and track alike): enough
+// to catch up quickly after a seek or stall, small enough never to starve
+// the render loop on slow machines.
+const BUILD_BUDGET_MS = 4;
+
+// How fast the per-frame pitch curve tracks the centroid (EMA alpha):
+// smooth enough that the pitch-shaped topologies breathe rather than jitter.
+const FRAME_PITCH_SMOOTHING = 0.2;
 
 interface UsePhaseGeometryOptions {
     renderer: ReturnType<typeof useCorridorRenderer>;
@@ -184,7 +194,7 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
             for (let f = 0; f < frameCount; f++) {
                 const centre = f * hopSize + windowSize / 2;
                 const p01 = spectral.centroid01(ch0, ch1, centre - spectral.size / 2, sr);
-                ema = f === 0 ? p01 : ema + 0.2 * (p01 - ema);
+                ema = f === 0 ? p01 : ema + FRAME_PITCH_SMOOTHING * (p01 - ema);
                 framePitch[f] = ema;
             }
             corridorState.value.framePitch = framePitch;
@@ -277,7 +287,6 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         const targetHops = Math.min(frameCount, Math.floor((effectiveSamples - windowSize) / hopSize));
         if (targetHops <= liveHops) return;
 
-        const BUILD_BUDGET_MS = 4;
         const MAX_FRAMES_PER_TICK = 64;
         const startedAt = performance.now();
 
@@ -364,7 +373,12 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         // plenty - and cheap next to the per-point loop below. The analyzer
         // windows and zero-pads internally, so the centre can sit anywhere.
         const frameCenterSample = clamp(frameStart + windowSize / 2, 0, ch0.length - 1);
-        const centroidHz = spectral.centroidHz(ch0, ch1, frameCenterSample - spectral.size / 2, rawState.sr || 48000);
+        const centroidHz = spectral.centroidHz(
+            ch0,
+            ch1,
+            frameCenterSample - spectral.size / 2,
+            rawState.sr || FALLBACK_SR
+        );
 
         // One colour per frame - see resolveFrameHue for the precedence.
         const hue = resolveFrameHue(topology, frameIndex, rawState, meta, centroidHz);
@@ -448,12 +462,10 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         const remaining = targetFrame - corridorState.value.builtFrames;
         if (remaining <= 0) return;
 
-        // Time-budgeted building: spend at most ~4ms of the frame, however
-        // many frames that buys on this machine (always at least one). After
-        // a seek or a heavy load the corridor catches up at CPU speed
-        // instead of a fixed 6 frames/tick crawl, and on slow machines the
-        // budget keeps build ticks from starving the render loop.
-        const BUILD_BUDGET_MS = 4;
+        // Time-budgeted building: spend at most the build budget per frame,
+        // however many frames that buys on this machine (always at least one).
+        // After a seek or a heavy load the corridor catches up at CPU speed
+        // instead of a fixed 6 frames/tick crawl.
         const MAX_FRAMES_PER_TICK = 256; // bound the per-tick GPU upload span
         const startedAt = performance.now();
         const firstFrame = corridorState.value.builtFrames;

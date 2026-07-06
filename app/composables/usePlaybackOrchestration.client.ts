@@ -48,15 +48,15 @@ export function usePlaybackOrchestration(options: UsePlaybackOrchestrationOption
     );
 
     // Elapsed-time readout for the transport dock. UI-only: polls the player
-    // clock at 2Hz, which is plenty for a mm:ss display and never touches the
-    // audio engine itself.
+    // clock (plenty for a mm:ss display) and never touches the audio engine.
+    const ELAPSED_POLL_MS = 500;
     const elapsedLabel = ref('00:00');
     useIntervalFn(() => {
         const t = wavLoaded.value ? Math.max(0, getPlaybackTimeSeconds()) : 0;
         const m = String(Math.floor(t / 60)).padStart(2, '0');
         const s = String(Math.floor(t % 60)).padStart(2, '0');
         elapsedLabel.value = `${m}:${s}`;
-    }, 500);
+    }, ELAPSED_POLL_MS);
 
     /* ---------- Loading ---------- */
 

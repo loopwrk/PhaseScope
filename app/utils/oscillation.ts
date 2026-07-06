@@ -2,8 +2,9 @@
  *
  * The live displacement runs on the GPU (injected into the point/line
  * vertex shaders by useCorridorRenderer); this function is its TypeScript
- * twin, kept in lockstep so the behaviour stays testable. If you change
- * one, change both - the GLSL mirrors this line for line.
+ * twin, kept in lockstep so the behaviour stays testable. The GLSL imports
+ * the constants below directly (values cannot drift); the formulas are
+ * mirrored by hand - if you change one, change both.
  *
  * All modes displace a point from its anchor along a three-axis sine with
  * fixed per-axis phase offsets (60/120 degrees) so motion reads as 3D:

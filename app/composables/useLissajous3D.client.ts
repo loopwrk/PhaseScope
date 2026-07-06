@@ -56,6 +56,14 @@ const SIGNAL_SCALE = 2.6; // full-scale samples stay inside the cube walls
 export const SCOPE_2D_MIN_Z = CUBE_SIZE / 2 + 0.2;
 export const SCOPE_2D_MAX_Z = 14;
 
+// Trail colour: hue sweeps a slightly wider range than the corridor's 0.75
+// (the trail reads thinner, so it can afford more of the wheel); saturation
+// and lightness are shared by the spectrum and average modes.
+const TRAIL_HUE_RANGE = 0.83;
+const TRAIL_SATURATION = 0.9;
+const TRAIL_LIGHTNESS = 0.62;
+const AVG_COLOUR_SMOOTHING = 0.15; // EMA alpha: glide between colours, no flicker
+
 const CUBE_RGB = 0x5e7a7d;
 const WAVE_L_RGB = 0x2fd4e6; // --scope-cyan, matching the HUD waveform's L
 const WAVE_R_RGB = 0xff2d9b; // --scope-magenta, its R
@@ -183,12 +191,11 @@ export function useLissajous3D(
         if (colourMode.value === 'average') {
             // One colour for the whole figure, from the window's average
             // spectral balance (the same derivative-energy measure as the
-            // corridor): bass lands red, treble violet. Smoothed so the
-            // figure glides between colours instead of flickering.
+            // corridor): bass lands red, treble violet.
             const content =
                 (analyzeFrequencyBand(ch0, start, TRAIL_WINDOW) + analyzeFrequencyBand(ch1, start, TRAIL_WINDOW)) / 2;
-            avgContent += (content - avgContent) * 0.15;
-            colourScratch.setHSL(0.83 * avgContent, 0.9, 0.62);
+            avgContent += (content - avgContent) * AVG_COLOUR_SMOOTHING;
+            colourScratch.setHSL(TRAIL_HUE_RANGE * avgContent, TRAIL_SATURATION, TRAIL_LIGHTNESS);
         }
 
         const stride = TRAIL_WINDOW / TRAIL_POINTS;
@@ -209,7 +216,7 @@ export function useLissajous3D(
                 // full ROYGBIV wheel cycles once per octave and each part of
                 // the figure takes the colour of the frequency local to it
                 const hz = freqContentToHz(analyzeLocalFrequency(ch0, ch1, i));
-                colourScratch.setHSL(pitchChromaHue(hz), 0.9, 0.62);
+                colourScratch.setHSL(pitchChromaHue(hz), TRAIL_SATURATION, TRAIL_LIGHTNESS);
             }
             colors[k * 3] = colourScratch.r * ramp;
             colors[k * 3 + 1] = colourScratch.g * ramp;

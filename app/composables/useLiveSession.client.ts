@@ -1,4 +1,5 @@
 import { midiNoteName } from '~/utils/midi';
+import { FALLBACK_SR } from '~/utils/audio/constants';
 import type { Ref } from 'vue';
 import type { usePhaseGeometry } from '~/composables/usePhaseGeometry.client';
 import type { useAutoCamera } from '~/composables/useAutoCamera.client';
@@ -126,7 +127,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
     });
     const liveProgressLabel = computed(() => {
         const { frameCount, builtFrames, sr } = geometry.corridorState.value;
-        const secondsLeft = ((frameCount - builtFrames) * geometry.corridorMeta.value.hopSize) / (sr || 48000);
+        const secondsLeft = ((frameCount - builtFrames) * geometry.corridorMeta.value.hopSize) / (sr || FALLBACK_SR);
         return `${fmtSessionTime(secondsLeft)} left`;
     });
     const livePrimaryLine = computed(() => {
@@ -174,6 +175,11 @@ export function useLiveSession(options: UseLiveSessionOptions) {
         { t: 4650, note: 72, dur: 1500, vel: 88 },
     ];
 
+    // The stage hands back a beat after the score's last note releases -
+    // derived, so extending the score never truncates the performance.
+    const CURTAIN_PAUSE_MS = 650;
+    const GHOST_END_MS = Math.max(...GHOST_SCORE.map((ev) => ev.t + ev.dur)) + CURTAIN_PAUSE_MS;
+
     const playGhost = () => {
         if (ghostActive.value || livePhase.value !== 'armed') return;
         ghostActive.value = true;
@@ -191,7 +197,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
             setTimeout(() => {
                 stopGhost();
                 startSession();
-            }, 6800)
+            }, GHOST_END_MS)
         );
     };
 

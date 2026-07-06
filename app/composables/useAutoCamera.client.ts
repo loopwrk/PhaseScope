@@ -132,21 +132,24 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
             const head = geometry.transformHeadAnchor(headFrameIndex);
 
             if (cameraMode.value === 'orbit') {
-                // Drone-like orbit around the corridor head
-                // Uses Lissajous-like path
+                // Drone-like orbit around the corridor head: three axis
+                // frequencies in different ratios trace a figure-8-ish path
+                // that never quite repeats.
                 const orbitRadius = 8.0;
                 const verticalAmplitude = 3.0;
                 const orbitSpeed = 0.15;
+                const verticalFreqRatio = 0.7;
+                const tiltFreqRatio = 0.3;
+                const radiusWobbleDepth = 0.3;
+                const headLift = 2;
 
-                // Different frequencies for each axis create figure-8 like patterns
                 const horizontalAngle = time * orbitSpeed;
-                const verticalAngle = time * orbitSpeed * 0.7; // Slower vertical oscillation
-                const tiltAngle = time * orbitSpeed * 0.3; // Even slower tilt
+                const verticalAngle = time * orbitSpeed * verticalFreqRatio;
+                const tiltAngle = time * orbitSpeed * tiltFreqRatio;
 
-                // Orbit in XZ plane around the head, with Y oscillation
                 targetPos = {
-                    x: head.x + Math.cos(horizontalAngle) * orbitRadius * (1 + Math.sin(tiltAngle) * 0.3),
-                    y: SCENE_CENTRE_Y + head.y + 2 + Math.sin(verticalAngle) * verticalAmplitude,
+                    x: head.x + Math.cos(horizontalAngle) * orbitRadius * (1 + Math.sin(tiltAngle) * radiusWobbleDepth),
+                    y: SCENE_CENTRE_Y + head.y + headLift + Math.sin(verticalAngle) * verticalAmplitude,
                     z: head.z + Math.sin(horizontalAngle) * orbitRadius,
                 };
             } else {

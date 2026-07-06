@@ -1,6 +1,6 @@
 import { midiNoteToHz, pitchToPan, velocityToGain } from '~/utils/midi';
 import { LIVE_VOICES, type LiveVoiceId } from '~/utils/liveVoices';
-import { OUTPUT_GAIN } from '~/utils/audio/levels';
+import { OUTPUT_GAIN } from '~/utils/audio/constants';
 import type { GoniometerSource } from '~/components/layout/Goniometer.vue';
 
 /* useLiveSynth - the sound engine of live-input mode.
@@ -36,6 +36,12 @@ class PsCapture extends AudioWorkletProcessor {
 }
 registerProcessor('ps-capture', PsCapture);
 `;
+
+// Envelope shape shared by every preset: a fast strike into a held sustain
+// (per-voice character comes from the presets, not the envelope).
+const ATTACK_S = 0.01;
+const DECAY_S = 0.13;
+const SUSTAIN_RATIO = 0.72; // sustain level as a share of the struck peak
 
 interface Voice {
     oscA: OscillatorNode;
@@ -121,8 +127,8 @@ export function useLiveSynth() {
 
         const env = ctx.createGain();
         env.gain.setValueAtTime(0, t);
-        env.gain.linearRampToValueAtTime(peak, t + 0.01); // attack
-        env.gain.exponentialRampToValueAtTime(Math.max(peak * 0.72, 1e-4), t + 0.13); // decay to sustain
+        env.gain.linearRampToValueAtTime(peak, t + ATTACK_S);
+        env.gain.exponentialRampToValueAtTime(Math.max(peak * SUSTAIN_RATIO, 1e-4), t + DECAY_S);
 
         const pan = ctx.createStereoPanner();
         pan.pan.value = pitchToPan(note);

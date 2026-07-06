@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { OscillationMode } from '~/utils/oscillation';
+import { PHASE_SHIFT_Y, PHASE_SHIFT_Z, WAVE_SPEED, WAVE_LENGTH, type OscillationMode } from '~/utils/oscillation';
 import { SCENE_CENTRE_Y } from '~/utils/topologies';
 
 export type RenderMode = 'points' | 'lines';
@@ -29,7 +29,8 @@ export interface CorridorConfig {
    vec4 attribute (pointFreq, pointAmp, frameAvgFreq, frameAvgAmp); the
    frame index derives from gl_VertexID; and a vertex-shader patch displaces
    each point with the same maths as utils/oscillation.ts (the testable
-   reference - keep the two in lockstep). Toggling modes or disabling is a
+   reference - its constants are interpolated into the GLSL below, its
+   formulas mirrored by hand). Toggling modes or disabling is a
    uniform write: no CPU loop, no re-upload, instant restore to anchors. */
 
 const OSC_MODE_INT: Record<OscillationMode | 'off', number> = {
@@ -39,7 +40,9 @@ const OSC_MODE_INT: Record<OscillationMode | 'off', number> = {
     frequency: 3,
 };
 
-// Mirrors utils/oscillation.ts (PHASE_SHIFT_Y/Z, WAVE_SPEED, WAVE_LENGTH)
+// The maths of utils/oscillation.ts with its named constants interpolated
+// in, so shader and reference cannot drift on values; the formulas
+// themselves are still mirrored by hand - change both together.
 const OSC_GLSL = /* glsl */ `
 uniform float uOscTime;
 uniform int uOscMode; // 0 off, 1 expressiveness, 2 intensity, 3 frequency
@@ -56,14 +59,14 @@ vec3 psOscOffset() {
     if (uOscMode == 2) {
         // intensity: loudness ripple backward from the head, fixed visible speed
         float frameIndex = floor(float(gl_VertexID) / uPointsPerFrame);
-        float spatialPhase = ((uBuiltFrames - 1.0 - frameIndex) / 15.0) * 6.28318530718;
-        phase = 6.28318530718 * 1.5 * uOscTime - spatialPhase;
+        float spatialPhase = ((uBuiltFrames - 1.0 - frameIndex) / ${WAVE_LENGTH.toFixed(1)}) * ${2 * Math.PI};
+        phase = ${2 * Math.PI} * ${WAVE_SPEED} * uOscTime - spatialPhase;
         amp = aOsc.w;
     } else {
         // expressiveness (per-point freq) and frequency (frame centroid)
-        phase = 6.28318530718 * freq * uOscTime;
+        phase = ${2 * Math.PI} * freq * uOscTime;
     }
-    return vec3(sin(phase), sin(phase + 1.04719755), sin(phase + 2.09439510)) * amp;
+    return vec3(sin(phase), sin(phase + ${PHASE_SHIFT_Y}), sin(phase + ${PHASE_SHIFT_Z})) * amp;
 }
 `;
 

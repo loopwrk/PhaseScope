@@ -1,4 +1,4 @@
-import { OUTPUT_GAIN } from '~/utils/audio/levels';
+import { OUTPUT_GAIN } from '~/utils/audio/constants';
 
 interface AudioState {
     ctx: AudioContext | null;
