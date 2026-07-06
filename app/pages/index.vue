@@ -27,8 +27,10 @@ const isDesktop = useMediaQuery('(min-width: 768px)');
    render loop
    . All engine behaviour lives in the composables. */
 
-// User settings survive navigation (e.g. /about and back) via useState -
-// see useScopeSettings for the full key inventory.
+// User settings survive navigation AND reloads via usePersistedState
+// (useState + localStorage). useScopeSettings owns only the page-level
+// display settings; other composables own their own keys - grep
+// usePersistedState for the full set.
 const settings = useScopeSettings();
 const { renderMode, topologyMode, showGoniometer, advancedOptionsOpen } = settings;
 const canvasContainer = ref<HTMLDivElement | null>(null);
@@ -116,6 +118,25 @@ const { demoTrackItems, showDemoOverlay, onPickDemo, onPickDemoTrack } = useDemo
 // the lazily-imported bar below) is statically absent from production.
 const devPlaylist = import.meta.dev ? useDevPlaylist({ player, playback }) : null;
 
+/* ---------- Goniometer HUD ---------- */
+
+// Pull-based source: the component samples this inside its own ~30fps rAF
+// loop (no reactive churn, no contact with the WebGL path).
+const goniometerSource = () => {
+    if (liveMode.value) return live.liveSource();
+    const raw = toRaw(corridorState.value);
+    if (!raw.ch0 || !raw.ch1 || !raw.buffer) return null;
+    return { ch0: raw.ch0, ch1: raw.ch1, index: Math.floor(getPlaybackTimeSeconds() * raw.sr), sr: raw.sr };
+};
+
+// Declared before anything closes over it (scope2dLocked just below) so the
+// dependency reads top-to-bottom rather than leaning on lazy evaluation.
+const lissajous = useLissajous3D(three, goniometerSource);
+watch(scope3d, (active) => {
+    lissajous.active.value = active;
+    renderer.setCorridorVisible(!active);
+});
+
 // Manual camera input: WASD movement and pointer lock both hand the camera
 // to the user (auto-follow disengages via cameraMode = 'free') - EXCEPT in
 // the scope's 2D view, which is dolly-only with the gaze locked.
@@ -173,23 +194,6 @@ const uiActive = computed(() => wavLoaded.value || liveMode.value);
 // The two floating side panels share their rise animation and top anchor;
 // each side adds its own edge, stacking and size constraints in the template.
 const SIDE_PANEL_CLASS = 'ps-rise absolute top-24 overflow-y-auto';
-
-/* ---------- Goniometer HUD ---------- */
-
-// Pull-based source: the component samples this inside its own ~30fps rAF
-// loop (no reactive churn, no contact with the WebGL path).
-const goniometerSource = () => {
-    if (liveMode.value) return live.liveSource();
-    const raw = toRaw(corridorState.value);
-    if (!raw.ch0 || !raw.ch1 || !raw.buffer) return null;
-    return { ch0: raw.ch0, ch1: raw.ch1, index: Math.floor(getPlaybackTimeSeconds() * raw.sr), sr: raw.sr };
-};
-
-const lissajous = useLissajous3D(three, goniometerSource);
-watch(scope3d, (active) => {
-    lissajous.active.value = active;
-    renderer.setCorridorVisible(!active);
-});
 
 // The logo is the way home: live exits to wherever it came from;
 // listening unloads back to the two doors; home is a no-op

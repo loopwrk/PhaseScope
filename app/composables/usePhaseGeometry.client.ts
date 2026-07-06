@@ -65,8 +65,8 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
     // of per-frame build time, behind the per-point colour loop.
     const spectral = createSpectralAnalyzer(1024);
 
-    // User-tweakable settings live in useState (keys documented in
-    // useScopeSettings) so they survive navigation away from the page.
+    // User-tweakable settings persist via usePersistedState (useState +
+    // localStorage), so they survive navigation away from the page and reloads.
     const corridorMeta = usePersistedState<CorridorMeta>('scope:corridor-meta', () => ({
         zStep: 0.08, // distance between frames along Z axis
         pointsPerFrame: 512,
