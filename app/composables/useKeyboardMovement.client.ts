@@ -104,6 +104,12 @@ export function useKeyboardMovement(
         }
     });
 
+    /** Set the speed level directly (slow / medium / fast = 0 / 1 / 2),
+     *  clamped - the controls overlay's buttons land here. */
+    const setSpeedLevel = (index: number) => {
+        speedIndex.value = Math.min(speedLevels.length - 1, Math.max(0, index));
+    };
+
     const update = (deltaTime: number) => {
         const ctl = controls.value;
         if (!ctl) return;
@@ -153,6 +159,7 @@ export function useKeyboardMovement(
     return {
         isMoving,
         speedIndex,
+        setSpeedLevel,
         update,
     };
 }

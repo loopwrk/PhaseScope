@@ -3,8 +3,21 @@ import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { analyzeFrequencyBand, analyzeLocalFrequency, freqContentToHz, pitchChromaHue } from '~/utils/audio/analysis';
+import type { Ref } from 'vue';
 import type { GoniometerSource } from '~/components/layout/Goniometer.vue';
 import type { useThree } from '~/composables/useThree.client';
+
+/** The scope's display settings as one bindable model. ScopeSettingsControls
+ *  edits these refs directly, so the five-way binding lives in exactly one
+ *  place - the page hands the whole store to the desktop panel and the
+ *  mobile modal as a single `:model`. */
+export interface ScopeSettingsModel {
+    dimension: Ref<'3d' | '2d'>;
+    showWaveform: Ref<boolean>;
+    lineWidth: Ref<number>;
+    colourMode: Ref<'spectrum' | 'average' | 'custom'>;
+    customColour: Ref<string>;
+}
 
 /* useLissajous3D - the live 3D phase portrait. No time axis: where the
    topologies extrude history through space, this is the instantaneous
@@ -52,7 +65,7 @@ export function useLissajous3D(
     // the first toggle is a no-change and the watcher never builds the scene
     const active = ref(false);
 
-    // Scope display settings (persisted; bound by ScopeSettingsPanel)
+    // Scope display settings (persisted; the ScopeSettingsModel above)
     const dimension = usePersistedState<'3d' | '2d'>('scope:liss-dimension', () => '3d');
     // In-cube waveform overlay: time across the cube's width, amplitude on
     // Y, sitting on the mid-Z plane - head-on in 2D it reads as a classic

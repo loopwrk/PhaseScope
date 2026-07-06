@@ -2,12 +2,11 @@
 import RadioGroup from '../ds/RadioGroup.vue';
 import Slider from '../ds/Slider.vue';
 import Checkbox from '../ds/Checkbox.vue';
+import type { ScopeSettingsModel } from '~/composables/useLissajous3D.client';
 
-const dimension = defineModel<'3d' | '2d'>('dimension', { default: '3d' });
-const lineWidth = defineModel<number>('lineWidth', { default: 1 });
-const colourMode = defineModel<'spectrum' | 'average' | 'custom'>('colourMode', { default: 'spectrum' });
-const customColour = defineModel<string>('customColour', { default: '#2fd4e6' });
-const waveform = defineModel<boolean>('waveform', { default: false });
+// The one place the scope settings are bound to inputs: every surface
+// (desktop panel, mobile modal) hands the model straight through.
+defineProps<{ model: ScopeSettingsModel }>();
 
 const dimensionItems = [
     { label: '3D', value: '3d', description: 'Takens embedding: z is the mid signal, delayed 6 ms.' },
@@ -32,19 +31,26 @@ const colourItems = [
     <div class="flex flex-col gap-5">
         <div class="flex flex-col gap-2.5">
             <span class="font-display text-detail font-semibold text-(--accent)">Dimension</span>
-            <RadioGroup v-model="dimension" color="primary" :items="dimensionItems" orientation="horizontal" />
+            <RadioGroup
+                v-model="model.dimension.value"
+                color="primary"
+                :items="dimensionItems"
+                orientation="horizontal"
+            />
         </div>
 
         <div class="flex flex-col gap-2">
             <div class="flex items-baseline justify-between gap-2">
                 <span class="font-display text-detail font-medium">Line Thickness</span>
-                <span class="font-mono text-detail tracking-label text-(--accent) tabular-nums">{{ lineWidth }}px</span>
+                <span class="font-mono text-detail tracking-label text-(--accent) tabular-nums"
+                    >{{ model.lineWidth.value }}px</span
+                >
             </div>
-            <Slider v-model="lineWidth" :min="1" :max="6" :step="1" />
+            <Slider v-model="model.lineWidth.value" :min="1" :max="6" :step="1" />
         </div>
 
         <label class="flex items-center gap-3">
-            <Checkbox v-model="waveform" size="lg" />
+            <Checkbox v-model="model.showWaveform.value" size="lg" />
             <span class="flex flex-col">
                 <span class="text-detail">Waveform overlay</span>
                 <span class="text-caption text-(--text-muted)">Time across the cube, amplitude on Y.</span>
@@ -53,9 +59,14 @@ const colourItems = [
 
         <div class="flex flex-col gap-2.5">
             <span class="font-display text-detail font-semibold text-(--accent)">Colour</span>
-            <RadioGroup v-model="colourMode" color="primary" :items="colourItems" />
-            <div v-if="colourMode === 'custom'" class="pt-1">
-                <UColorPicker v-model="customColour" format="hex" size="sm" aria-label="Custom trail colour" />
+            <RadioGroup v-model="model.colourMode.value" color="primary" :items="colourItems" />
+            <div v-if="model.colourMode.value === 'custom'" class="pt-1">
+                <UColorPicker
+                    v-model="model.customColour.value"
+                    format="hex"
+                    size="sm"
+                    aria-label="Custom trail colour"
+                />
             </div>
         </div>
     </div>

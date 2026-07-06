@@ -2,7 +2,6 @@
 import { toRaw } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import type { LivePhase } from '~/composables/useLiveSession.client';
-import type { BackgroundId } from '~/composables/useScopeSettings';
 
 // Full-bleed canvas dashboard
 definePageMeta({ layout: false });
@@ -168,11 +167,6 @@ const touchOrbit = useTouchOrbit({
     scope2dLocked,
 });
 
-// Set movement speed level directly (slow / medium / fast = 0 / 1 / 2).
-const setMovementSpeed = (index: number) => {
-    movement.speedIndex.value = Math.min(2, Math.max(0, index));
-};
-
 // Point oscillation controls - the displacement itself runs in the vertex
 // shader, driven by renderer.setOscillation() in the render loop below.
 const oscillation = useOscillation();
@@ -202,13 +196,6 @@ const goHome = () => {
     else if (wavLoaded.value) unloadTrack();
 };
 
-/* ---------- Background skyboxes ---------- */
-
-// Shortcut presses toggle a background on, or off if it's already the one showing.
-const toggleBackground = (id: Exclude<BackgroundId, 'none'>) => {
-    settings.background.value = settings.background.value === id ? 'none' : id;
-};
-
 /* ---------- Keyboard shortcuts ---------- */
 
 // The whole keymap lives in useScopeShortcuts - one table to read or extend.
@@ -221,7 +208,7 @@ useScopeShortcuts({
     handlePlayPause,
     toggleControls,
     toggleCameraMode,
-    toggleBackground,
+    toggleBackground: settings.toggleBackground,
     playAdjacentTrack,
 });
 
@@ -295,6 +282,8 @@ onMounted(() => {
             camera,
             touchOrbit,
             devPlaylist,
+            lissajous,
+            scope3d,
         };
     }
 });
@@ -322,26 +311,7 @@ onUnmounted(async () => {
             :class="{ 'motion-safe:scale-[1.04]': !!audio.source }"
         />
 
-        <div
-            class="pointer-events-none absolute inset-0 z-0"
-            style="
-                background:
-                    radial-gradient(
-                        120% 90% at 50% 35%,
-                        transparent 0%,
-                        color-mix(in oklch, var(--bg) 72%, transparent) 78%,
-                        var(--bg) 100%
-                    ),
-                    linear-gradient(
-                        to bottom,
-                        color-mix(in oklch, var(--bg) 55%, transparent),
-                        transparent 22%,
-                        transparent 60%,
-                        color-mix(in oklch, var(--bg) 70%, transparent)
-                    );
-            "
-        />
-        <div class="ps-striation pointer-events-none absolute inset-0 z-0 opacity-50 mix-blend-overlay" />
+        <LayoutCanvasVignette />
 
         <!-- Source picker: two doors into the same hall. Listen loads a
              track; Play opens the live session card. -->
@@ -402,13 +372,7 @@ onUnmounted(async () => {
             @close="showScopeSettings = false"
         >
             <div class="overflow-y-auto p-4">
-                <LayoutScopeSettingsControls
-                    v-model:dimension="lissajous.dimension.value"
-                    v-model:waveform="lissajous.showWaveform.value"
-                    v-model:line-width="lissajous.lineWidth.value"
-                    v-model:colour-mode="lissajous.colourMode.value"
-                    v-model:custom-colour="lissajous.customColour.value"
-                />
+                <LayoutScopeSettingsControls :model="lissajous" />
             </div>
         </DsGlassModal>
 
@@ -455,7 +419,7 @@ onUnmounted(async () => {
                 :moving="movement.isMoving.value"
                 :disabled="!wavLoaded && !liveMode"
                 @set-camera-mode="setCameraMode"
-                @set-speed="setMovementSpeed"
+                @set-speed="movement.setSpeedLevel"
                 @close="showControlsOverlay = false"
             />
         </div>
@@ -474,12 +438,8 @@ onUnmounted(async () => {
         >
             <LayoutScopeSettingsPanel
                 v-if="scope3d && isDesktop"
-                v-model:dimension="lissajous.dimension.value"
-                v-model:waveform="lissajous.showWaveform.value"
-                v-model:line-width="lissajous.lineWidth.value"
-                v-model:colour-mode="lissajous.colourMode.value"
-                v-model:custom-colour="lissajous.customColour.value"
                 class="ps-rise max-h-[calc(100svh_-_8rem)] overflow-y-auto"
+                :model="lissajous"
             />
             <!-- The two scopes stand together: phase (the relationship)
                  and waveform (the forms) of the same signal. In the 3D scope on
