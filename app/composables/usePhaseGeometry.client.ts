@@ -25,12 +25,6 @@ import type { RenderMode, useCorridorRenderer } from '~/composables/useCorridorR
    geometry types (TopologyMode, CorridorState, CorridorMeta, OrbitParams)
    now live in ~/utils/topologies; this file owns only the build engine. */
 
-// Performance warning thresholds. Tuned for the optimised engine (ranged
-// GPU uploads, shared buffers, shader-side oscillation): the old limits
-// were upload/CPU-bound; the remaining ceiling is raw vertex throughput.
-const POINTS_WARNING_THRESHOLD = 8_000_000;
-const POINTS_DANGER_THRESHOLD = 20_000_000;
-
 interface UsePhaseGeometryOptions {
     renderer: ReturnType<typeof useCorridorRenderer>;
     renderMode: Ref<RenderMode>;
@@ -110,39 +104,9 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         if (mode === 'lines' && channelBias.value) renderMode.value = 'points';
     });
 
-    /* ---------- Point budget / performance computeds ---------- */
-
-    // Total frames possible for the loaded audio
-    const totalFramesForTrack = computed(() => {
-        if (!audio.buffer) return 0;
-        const { windowSize, hopSize } = corridorMeta.value;
-        return Math.max(0, Math.floor((audio.buffer.length - windowSize) / hopSize));
-    });
-
-    // Total points needed for the full track at current pointsPerFrame
-    const totalPointsForFullTrack = computed(() => {
-        return totalFramesForTrack.value * corridorMeta.value.pointsPerFrame;
-    });
-
-    // Effective max points after the coverage slider
-    const effectiveMaxPoints = computed(() => {
-        const fullPoints = totalPointsForFullTrack.value;
-        return Math.floor(fullPoints * (trackCoveragePercent.value / 100));
-    });
-
-    const pointsWarningLevel = computed<'none' | 'warning' | 'danger'>(() => {
-        const points = effectiveMaxPoints.value;
-        if (points >= POINTS_DANGER_THRESHOLD) return 'danger';
-        if (points >= POINTS_WARNING_THRESHOLD) return 'warning';
-        return 'none';
-    });
-
-    // Format large numbers for display
-    const formatPointCount = (count: number): string => {
-        if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
-        if (count >= 1_000) return `${(count / 1_000).toFixed(0)}K`;
-        return count.toString();
-    };
+    // The vertex-count arithmetic (frames possible, coverage, warning levels)
+    // lives in usePointBudget; the engine spreads it into its API below.
+    const pointBudget = usePointBudget({ audio, corridorMeta, trackCoveragePercent });
 
     /* ---------- Lifecycle ---------- */
 
@@ -345,6 +309,28 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
 
     /* ---------- Frame building (shared pipeline) ---------- */
 
+    /* The frame's hue, by precedence:
+       1. The topology's own colour identity (the optional frameHue hook - the
+          double helix's base sequence); null falls through.
+       2. Pitch (default): the centroid's chroma walks the FULL wheel once per
+          octave, so a pitch keeps its colour in every octave - vivid, and far
+          more reactive on tonal material.
+       3. Spectrum: bass = BLUE/MAGENTA -> treble = RED across 75% of the wheel. */
+    const SPECTRUM_HUE_RANGE = 0.75;
+    const resolveFrameHue = (
+        topology: (typeof TOPOLOGIES)[TopologyMode],
+        frameIndex: number,
+        rawState: CorridorState,
+        meta: CorridorMeta,
+        centroidHz: number
+    ): number => {
+        const customHue = topology.frameHue?.(frameIndex, rawState, meta);
+        if (customHue != null) return customHue;
+        if (colourByPitch.value) return pitchChromaHue(centroidHz);
+        const freqContent = spectral.hzTo01(centroidHz); // 0 = low freq, 1 = high freq
+        return SPECTRUM_HUE_RANGE - freqContent * SPECTRUM_HUE_RANGE;
+    };
+
     const buildOneFrame = (frameIndex: number, sampleStart?: number) => {
         // Writes a single frame into the preallocated position/colour buffers.
         const meta = corridorMeta.value;
@@ -379,26 +365,8 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         const frameCenterSample = clamp(frameStart + windowSize / 2, 0, ch0.length - 1);
         const centroidHz = spectral.centroidHz(ch0, ch1, frameCenterSample - spectral.size / 2, rawState.sr || 48000);
 
-        // Hue from the spectral centroid (one colour per frame). Two mappings:
-        //  - Spectrum (default): bass = BLUE/MAGENTA -> treble = RED across 75%
-        //    of the wheel; reverse flips it.
-        //  - Pitch: the centroid's chroma walks the FULL wheel once per octave,
-        //    so a pitch keeps its colour in every octave - vivid, and far more
-        //    reactive on tonal material.
-        const hueRangeMultiplier = 0.75;
-        // A topology may encode an identity in colour (the double helix's base
-        // sequence) via an optional frameHue hook; it wins over the centroid
-        // mappings when it returns a hue, and falls back when it returns null.
-        const customHue = topology.frameHue?.(frameIndex, rawState, meta);
-        let hue: number;
-        if (customHue != null) {
-            hue = customHue;
-        } else if (colourByPitch.value) {
-            hue = pitchChromaHue(centroidHz);
-        } else {
-            const freqContent = spectral.hzTo01(centroidHz); // 0 = low freq, 1 = high freq
-            hue = hueRangeMultiplier - freqContent * hueRangeMultiplier;
-        }
+        // One colour per frame - see resolveFrameHue for the precedence.
+        const hue = resolveFrameHue(topology, frameIndex, rawState, meta, centroidHz);
         const baseSaturation = 0.92;
         const baseLightness = 0.35;
         const amplitudeBrightnessFactor = 0.35;
@@ -526,9 +494,7 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         trackCoveragePercent,
         colourByPitch,
         channelBias,
-        effectiveMaxPoints,
-        pointsWarningLevel,
-        formatPointCount,
+        ...pointBudget,
         clear,
         initFromBuffer,
         updateProgressiveBuild,

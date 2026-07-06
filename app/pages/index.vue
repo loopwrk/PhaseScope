@@ -170,6 +170,10 @@ const { showControlsOverlay, showSettings, showScopeSettings, toggleControls, to
 
 const uiActive = computed(() => wavLoaded.value || liveMode.value);
 
+// The two floating side panels share their rise animation and top anchor;
+// each side adds its own edge, stacking and size constraints in the template.
+const SIDE_PANEL_CLASS = 'ps-rise absolute top-24 overflow-y-auto';
+
 /* ---------- Goniometer HUD ---------- */
 
 // Pull-based source: the component samples this inside its own ~30fps rAF
@@ -219,6 +223,24 @@ useScopeShortcuts({
 
 /* ---------- Render loop ---------- */
 
+// Build points progressively: paced by the playback clock for tracks, by
+// the synth's sample clock for live input
+const updateGeometryBuild = () => {
+    if (liveMode.value) live.updateBuild();
+    else geometry.updateProgressiveBuild(getPlaybackTimeSeconds());
+};
+
+// Drive the GPU oscillation (four uniform writes; the displacement happens
+// in the vertex shader, off the CPU entirely)
+const driveOscillation = (timeInSeconds: number) => {
+    renderer.setOscillation({
+        time: timeInSeconds,
+        mode: oscillation.enabled.value ? oscillation.mode.value : 'off',
+        builtFrames: liveMode.value ? geometry.headFrameIndex() + 1 : corridorState.value.builtFrames,
+        pointsPerFrame: corridorMeta.value.pointsPerFrame,
+    });
+};
+
 let requestAnimFrame: number | null = null;
 let lastFrameTime = 0;
 
@@ -232,24 +254,11 @@ const animate = (now: number) => {
 
     if (renderer.hasGeometry()) {
         const timeInSeconds = now / 1000;
-        // Build points progressively: paced by the playback clock for
-        // tracks, by the synth's sample clock for live input
-        if (liveMode.value) {
-            live.updateBuild();
-        } else {
-            geometry.updateProgressiveBuild(getPlaybackTimeSeconds());
-        }
-        // Update camera: touch orbit drives while a gesture owns it (mobile),
+        updateGeometryBuild();
+        // Touch orbit drives the camera while a gesture owns it (mobile);
         // otherwise the auto camera (orbit/follow) does.
         if (!touchOrbit.update()) camera.update(timeInSeconds);
-        // Drive the GPU oscillation (four uniform writes; the displacement
-        // happens in the vertex shader, off the CPU entirely)
-        renderer.setOscillation({
-            time: timeInSeconds,
-            mode: oscillation.enabled.value ? oscillation.mode.value : 'off',
-            builtFrames: liveMode.value ? geometry.headFrameIndex() + 1 : corridorState.value.builtFrames,
-            pointsPerFrame: corridorMeta.value.pointsPerFrame,
-        });
+        driveOscillation(timeInSeconds);
     }
 
     if (scope3d.value) lissajous.update();
@@ -404,7 +413,10 @@ onUnmounted(async () => {
              desktop keeps z-20 (they don't overlap there). -->
         <div
             v-if="showSettings && uiActive && !isFullscreen"
-            class="ps-rise absolute left-5 top-24 z-40 max-h-[calc(100svh_-_14rem)] w-[min(100vw_-_2.5rem,37.5rem)] overflow-y-auto md:z-20"
+            :class="[
+                SIDE_PANEL_CLASS,
+                'left-5 z-40 max-h-[calc(100svh_-_14rem)] w-[min(100vw_-_2.5rem,37.5rem)] md:z-20',
+            ]"
         >
             <LayoutDisplayPanel
                 variant="glass"
@@ -431,7 +443,7 @@ onUnmounted(async () => {
 
         <div
             v-if="showControlsOverlay && uiActive && isDesktop"
-            class="ps-rise absolute right-5 top-24 z-20 max-h-[calc(100svh_-_12rem)] overflow-y-auto"
+            :class="[SIDE_PANEL_CLASS, 'right-5 z-20 max-h-[calc(100svh_-_12rem)]']"
         >
             <LayoutControlsOverlay
                 :camera-mode="cameraMode"

@@ -81,11 +81,15 @@ and all **keyboard-shortcut** registration. That's four or five concerns in one
 **Effort:** medium. **Risk:** low–medium (lots of refs to thread through, but
 no logic changes; verify live mode + ghost by hand afterward).
 
-### 2. `app/composables/usePhaseGeometry.client.ts` (725 lines) - ✅ topology split done
+### 2. `app/composables/usePhaseGeometry.client.ts` (725 lines) - ✅ done
 
-> **Status:** the `topologies.ts` extraction below is **done** - the mappers,
-> `TOPOLOGIES`, and shared types now live in `app/utils/topologies.ts` and the
-> engine is down to ~500 lines. The optional `usePointBudget` split remains.
+> **Status:** **done.** The `topologies.ts` extraction landed first (mappers,
+> `TOPOLOGIES`, shared types in `app/utils/topologies.ts`), then the
+> `usePointBudget` split: the point-budget computeds, thresholds and
+> `formatPointCount` now live in `app/composables/usePointBudget.ts`
+> (unit-tested in `point-budget.spec.ts`); the engine composes it and spreads
+> it into its API, so callers see no change. The engine is ~505 lines of
+> cohesive build logic.
 
 Two distinct things live here: the **topology definitions** (pure geometry) and
 the **build engine** (stateful, GPU-bound). They change for different reasons.
@@ -189,17 +193,17 @@ these are **build-time tooling**, not shipped app code, and their output
 
 ## Tier 3 - readability (smaller, localised)
 
-- **`phasescope.vue` repeated class strings** - ✅ the source picker's `DsButton`
-  costume is hoisted to a constant inside `layout/SourcePicker.vue`. Remaining: the
-  two floating-panel wrappers (settings / controls) still share
-  positioning/animation utilities in the page template.
-- **`phasescope.vue` `animate()` loop** - dense; the live-vs-track build branch
-  and the oscillation-uniform write could each be a named helper for a more
-  scannable loop body.
-- **`usePhaseGeometry` `buildOneFrame`** (~100 lines) - cohesive but long; the
-  per-frame colour/analysis setup and the per-point write loop read as two
-  phases and could be named sub-steps. Lower priority (hot path - keep it
-  allocation-free; refactor for names only, not structure).
+- **`phasescope.vue` repeated class strings** - ✅ done. The source picker's
+  `DsButton` costume is a constant inside `layout/SourcePicker.vue`, and the
+  two floating-panel wrappers share a `SIDE_PANEL_CLASS` constant (rise
+  animation + top anchor), each side adding only its own edge/stacking/size.
+- **`phasescope.vue` `animate()` loop** - ✅ done. The live-vs-track build
+  branch is `updateGeometryBuild()` and the oscillation-uniform write is
+  `driveOscillation()`; the loop body reads as five verbs.
+- **`usePhaseGeometry` `buildOneFrame`** - ✅ done (names only, as prescribed).
+  The hue precedence (topology `frameHue` hook > pitch-chroma > spectrum ramp)
+  is `resolveFrameHue()` - returns a primitive, so the hot path stays
+  allocation-free; the per-point write loop is untouched.
 
 ---
 
@@ -221,8 +225,8 @@ these are **build-time tooling**, not shipped app code, and their output
 2. ~~Extract `useLiveSession` from `phasescope.vue`~~ - **done.**
 3. ~~DRY the analysis helper (#3) and skybox toggles (#4)~~ - **done.**
 4. ~~`useDemoMenu` / `useScopeShortcuts` (+ `usePanelLayout` and the template
-   overlay components)~~ - **done.** Of the Tier 3 passes, the source picker's class
-   string went with it; the `animate()` and `buildOneFrame` naming passes remain.
+   overlay components), then `usePointBudget` and the Tier 3 naming passes~~ -
+   **done.** Nothing on this list remains open.
 5. ~~`scripts/lib/wav.mjs` when touching the composers next~~ - **done.**
 
 Each step is independently shippable and unit-testable; do them one PR at a time
