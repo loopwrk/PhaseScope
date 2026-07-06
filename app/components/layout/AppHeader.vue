@@ -23,7 +23,6 @@ defineEmits<{
     toggleControls: [];
     toggleSettings: [];
     toggleGoniometer: [];
-    toggleScopeSettings: [];
     toggleFullscreen: [];
     exit: [];
 }>();

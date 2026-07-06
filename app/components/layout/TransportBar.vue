@@ -50,7 +50,7 @@ const emit = defineEmits<{
 
 const fileInput = ref<HTMLInputElement | null>(null);
 
-// The idle fork's "Pick a demo" door reaches in and opens the menu
+// The source picker's "Pick a demo" door reaches in and opens the menu
 const demoMenuOpen = ref(false);
 defineExpose({ openDemoMenu: () => (demoMenuOpen.value = true) });
 

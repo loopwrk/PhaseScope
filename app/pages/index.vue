@@ -2,6 +2,7 @@
 import { toRaw } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import type { LivePhase } from '~/composables/useLiveSession.client';
+import type { BackgroundId } from '~/composables/useScopeSettings';
 
 // Full-bleed canvas dashboard
 definePageMeta({ layout: false });
@@ -99,28 +100,21 @@ const {
 // The live-input feature (MIDI input)
 const live = useLiveSession({ livePhase, geometry, camera, topologyMode, player, stopPlayback: handleStop });
 
-type DemoMenuItem =
-    | { type: 'label'; label: string }
-    | { type: 'separator'; class?: string }
-    | { label: string; value: string };
-const SEP_WHITE = 'bg-(--brand-white)';
-const SEP_RED = 'bg-[var(--brand-primary)]';
-// Groups and their order come entirely from the audio subfolders (see the
-// audio-manifest module)
-const demoTrackItems = computed(() => {
-    const items: DemoMenuItem[] = [];
-    let currentGroup: string | null = null;
-    for (const t of sortedDemoTracks.value) {
-        if (t.group !== currentGroup) {
-            if (currentGroup !== null) items.push({ type: 'separator', class: SEP_WHITE });
-            items.push({ type: 'label', label: t.group }); // heading (uppercased via CSS)
-            items.push({ type: 'separator', class: SEP_RED });
-            currentGroup = t.group;
-        }
-        items.push({ label: t.name, value: t.id });
-    }
-    return items;
+// Demo menu model + the "Pick a demo" doors (desktop: the transport's
+// dropdown; phones: the overlay). Rows and groups come from the audio
+// manifest - see useDemoMenu / the audio-manifest module.
+const transportRef = ref<{ openDemoMenu: () => void } | null>(null);
+const { demoTrackItems, showDemoOverlay, onPickDemo, onPickDemoTrack } = useDemoMenu({
+    sortedDemoTracks,
+    isDesktop,
+    transportRef,
+    selectTrack: handleSelectDemoTrack,
 });
+
+// DEV-ONLY playback tools: auto-play next track + folder playlists. The
+// import.meta.dev guard is a build-time constant, so this whole branch (and
+// the lazily-imported bar below) is statically absent from production.
+const devPlaylist = import.meta.dev ? useDevPlaylist({ player, playback }) : null;
 
 // Manual camera input: WASD movement and pointer lock both hand the camera
 // to the user (auto-follow disengages via cameraMode = 'free') - EXCEPT in
@@ -169,51 +163,12 @@ watch(renderMode, (newMode) => {
 
 /* ---------- Floating panels (UI state) ---------- */
 
-const showControlsOverlay = ref(true);
-const showSettings = ref(true);
-// Phones only: in the 3D scope the controls button opens the scope settings on
-// demand (so they don't sit over the cube) rather than the camera/movement
-// panel. Desktop shows the scope settings inline and never uses this.
-const showScopeSettings = ref(false);
+// The visibility choreography (desktop defaults, phone never-stack rules,
+// scope entry clearing) lives in usePanelLayout; the page only consumes it.
+const { showControlsOverlay, showSettings, showScopeSettings, toggleControls, toggleSettings, toggleScopeSettings } =
+    usePanelLayout({ isDesktop, showGoniometer, scope3d });
 
 const uiActive = computed(() => wavLoaded.value || liveMode.value);
-
-// Floating side panels: both open on desktop, both collapsed on phones.
-watch(
-    isDesktop,
-    (desktop) => {
-        showControlsOverlay.value = desktop;
-        showSettings.value = desktop;
-    },
-    { immediate: true }
-);
-
-// The goniometer + waveform are large, so default them off on phones; desktop
-// keeps its own default (true) and isn't reset on resize.
-watch(
-    isDesktop,
-    (desktop) => {
-        if (!desktop) showGoniometer.value = false;
-    },
-    { immediate: true }
-);
-
-// On phones the two panels are mutually exclusive so they never stack.
-const toggleControls = () => {
-    showControlsOverlay.value = !showControlsOverlay.value;
-    if (!isDesktop.value && showControlsOverlay.value) showSettings.value = false;
-};
-const toggleSettings = () => {
-    showSettings.value = !showSettings.value;
-    if (!isDesktop.value && showSettings.value) showControlsOverlay.value = false;
-};
-
-// The scope-settings gear (phones, in the 3D scope) toggles its panel; closing
-// the display settings keeps the two from stacking.
-const toggleScopeSettings = () => {
-    showScopeSettings.value = !showScopeSettings.value;
-    if (showScopeSettings.value) showSettings.value = false;
-};
 
 /* ---------- Goniometer HUD ---------- */
 
@@ -230,32 +185,7 @@ const lissajous = useLissajous3D(three, goniometerSource);
 watch(scope3d, (active) => {
     lissajous.active.value = active;
     renderer.setCorridorVisible(!active);
-    // Enter with the cube clear; on phones the controls button reveals the panel
-    if (active) showScopeSettings.value = false;
 });
-
-// The idle fork's Listen door: a page-level file picker + a hand into
-// the transport's demo menu
-const forkFileInput = ref<HTMLInputElement | null>(null);
-const transportRef = ref<{ openDemoMenu: () => void } | null>(null);
-const onForkFile = (e: Event) => {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (file) handleLoadFile(file);
-    input.value = '';
-};
-
-// "Pick a demo": on desktop, reach into the transport's dropdown; on mobile the
-// transport is hidden during onboarding, so open a dedicated overlay instead.
-const showDemoOverlay = ref(false);
-const onPickDemo = () => {
-    if (isDesktop.value) transportRef.value?.openDemoMenu();
-    else showDemoOverlay.value = true;
-};
-const onPickDemoTrack = (id: string) => {
-    handleSelectDemoTrack(id);
-    showDemoOverlay.value = false;
-};
 
 // The logo is the way home: live exits to wherever it came from;
 // listening unloads back to the two doors; home is a no-op
@@ -267,38 +197,25 @@ const goHome = () => {
 /* ---------- Background skyboxes ---------- */
 
 // Shortcut presses toggle a background on, or off if it's already the one showing.
-const toggleBackground = (id: 'dream') => {
+const toggleBackground = (id: Exclude<BackgroundId, 'none'>) => {
     settings.background.value = settings.background.value === id ? 'none' : id;
 };
 
 /* ---------- Keyboard shortcuts ---------- */
 
-const shortcuts = useKeyboardShortcuts();
-shortcuts.register('r', () => {
-    if (channelBias.value) return; // lines unavailable while the field is split
-    renderMode.value = renderMode.value === 'points' ? 'lines' : 'points';
+// The whole keymap lives in useScopeShortcuts - one table to read or extend.
+useScopeShortcuts({
+    renderMode,
+    channelBias,
+    oscillationEnabled: oscillation.enabled,
+    showGoniometer,
+    toggleFullscreen: three.toggleFullscreen,
+    handlePlayPause,
+    toggleControls,
+    toggleCameraMode,
+    toggleBackground,
+    playAdjacentTrack,
 });
-shortcuts.register('o', () => {
-    oscillation.enabled.value = !oscillation.enabled.value;
-});
-shortcuts.register('f', () => {
-    three.toggleFullscreen();
-});
-shortcuts.register('enter', () => {
-    handlePlayPause();
-});
-shortcuts.register('h', () => {
-    toggleControls();
-});
-shortcuts.register('c', () => {
-    toggleCameraMode();
-});
-shortcuts.register('b', () => toggleBackground('dream'));
-shortcuts.register('g', () => {
-    showGoniometer.value = !showGoniometer.value;
-});
-shortcuts.register('{', () => playAdjacentTrack(-1));
-shortcuts.register('}', () => playAdjacentTrack(1));
 
 /* ---------- Render loop ---------- */
 
@@ -364,6 +281,7 @@ onMounted(() => {
             livePhase,
             camera,
             touchOrbit,
+            devPlaylist,
         };
     }
 });
@@ -412,110 +330,25 @@ onUnmounted(async () => {
         ></div>
         <div class="ps-striation pointer-events-none absolute inset-0 z-0 opacity-50 mix-blend-overlay"></div>
 
-        <!-- Idle fork: two doors into the same hall. Listen loads a track;
-             Play opens the live session card. -->
-        <div
+        <!-- Source picker: two doors into the same hall. Listen loads a
+             track; Play opens the live session card. -->
+        <LayoutSourcePicker
             v-if="!wavLoaded && livePhase === 'off'"
-            class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-7"
-        >
-            <DsLogo :size="56" mono class="text-(--text-muted)" />
-            <p class="ps-label">No signal</p>
-            <div class="flex flex-col gap-4 sm:flex-row">
-                <div
-                    class="ps-glass flex w-60 flex-col items-center gap-2 border border-(--border-strong) px-6 py-5 [clip-path:var(--clip-notch)]"
-                >
-                    <UIcon name="i-lucide-headphones" class="size-7 text-(--accent)" />
-                    <span class="font-display text-body font-semibold">Listen</span>
-                    <div class="mx-auto mt-1 flex w-fit flex-col items-stretch gap-2">
-                        <DsButton
-                            variant="secondary"
-                            class="mr-0 py-2 ring-(--brand-primary) text-(--brand-white)"
-                            size="md"
-                            icon="i-lucide-upload"
-                            label="Load audio"
-                            @click="forkFileInput?.click()"
-                        />
-                        <DsButton
-                            variant="secondary"
-                            class="mr-0 py-2 ring-(--brand-primary) text-(--brand-white)"
-                            size="md"
-                            icon="i-lucide-disc-3"
-                            label="Pick a demo"
-                            @click="onPickDemo"
-                        />
-                    </div>
-                </div>
-                <div
-                    class="ps-glass flex w-60 flex-col items-center gap-2 border border-(--border-strong) px-6 py-5 [clip-path:var(--clip-notch)]"
-                >
-                    <UIcon name="i-lucide-keyboard-music" class="size-7 text-(--accent)" />
-                    <span class="font-display text-body font-semibold">Play</span>
-                    <span class="text-caption text-center text-(--text-muted)"
-                        >Play with a MIDI keyboard or on-screen keys</span
-                    >
-                    <div class="mx-auto mt-1 flex w-fit flex-col items-stretch">
-                        <DsButton
-                            variant="secondary"
-                            class="mr-0 py-2 ring-(--brand-primary) text-(--brand-white)"
-                            size="md"
-                            icon="i-lucide-keyboard-music"
-                            label="Go live"
-                            @click="live.toggleLive"
-                        />
-                    </div>
-                </div>
-            </div>
-            <input ref="forkFileInput" type="file" accept="audio/*" class="hidden" @change="onForkFile" />
-        </div>
+            class="absolute inset-0 z-10"
+            @load-file="handleLoadFile"
+            @pick-demo="onPickDemo"
+            @go-live="live.toggleLive"
+        />
 
         <!-- Mobile demo picker: the transport's dropdown is hidden during phone
              onboarding, so "Pick a demo" opens this overlay instead (desktop
              keeps the bottom-bar dropdown). -->
-        <div
+        <LayoutDemoPickerOverlay
             v-if="showDemoOverlay"
-            class="absolute inset-0 z-40 flex items-center justify-center bg-[color-mix(in_oklch,var(--bg)_80%,transparent)] px-6"
-            @click.self="showDemoOverlay = false"
-        >
-            <div
-                class="ps-glass flex max-h-[70svh] w-full max-w-sm flex-col border border-(--border-strong) [clip-path:var(--clip-notch)]"
-            >
-                <div class="flex items-center justify-between gap-2 border-b border-(--border-strong) px-4 py-3">
-                    <span class="font-display text-body font-semibold">Pick a demo</span>
-                    <button
-                        type="button"
-                        class="text-(--text-muted) hover:text-(--text) focus-visible:outline-none focus-visible:shadow-(--focus-glow)"
-                        aria-label="Close"
-                        @click="showDemoOverlay = false"
-                    >
-                        <UIcon name="i-lucide-x" class="size-5" />
-                    </button>
-                </div>
-                <ul class="flex flex-col gap-0.5 overflow-y-auto p-2">
-                    <template v-for="(item, i) in demoTrackItems" :key="i">
-                        <li
-                            v-if="item.type === 'label'"
-                            class="px-3 pb-1 pt-3 font-mono text-caption uppercase tracking-label text-(--brand-white)"
-                        >
-                            {{ item.label }}
-                        </li>
-                        <li
-                            v-else-if="item.type === 'separator'"
-                            :class="['mx-2 my-1 h-px', item.class]"
-                            aria-hidden="true"
-                        />
-                        <li v-else>
-                            <button
-                                type="button"
-                                class="w-full px-3 py-2 text-left text-detail text-(--text) hover:bg-(--surface-sunken) focus-visible:outline-none focus-visible:shadow-(--focus-glow)"
-                                @click="onPickDemoTrack((item as { value: string }).value)"
-                            >
-                                {{ item.label }}
-                            </button>
-                        </li>
-                    </template>
-                </ul>
-            </div>
-        </div>
+            :items="demoTrackItems"
+            @pick="onPickDemoTrack"
+            @close="showDemoOverlay = false"
+        />
 
         <!-- Top: floating header -->
         <LayoutAppHeader
@@ -523,12 +356,9 @@ onUnmounted(async () => {
             :controls-open="showControlsOverlay"
             :settings-open="showSettings"
             :goniometer-open="showGoniometer"
-            :scope-active="scope3d"
-            :scope-settings-open="showScopeSettings"
             @toggle-controls="toggleControls"
             @toggle-settings="toggleSettings"
             @toggle-goniometer="showGoniometer = !showGoniometer"
-            @toggle-scope-settings="toggleScopeSettings"
             @toggle-fullscreen="three.toggleFullscreen"
             @exit="goHome"
         />
@@ -553,36 +383,21 @@ onUnmounted(async () => {
             />
         </div>
 
-        <div
+        <DsGlassModal
             v-if="!isDesktop && scope3d && showScopeSettings"
-            class="absolute inset-0 z-40 flex items-center justify-center bg-[color-mix(in_oklch,var(--bg)_80%,transparent)] px-6"
-            @click.self="showScopeSettings = false"
+            title="Scope Settings"
+            @close="showScopeSettings = false"
         >
-            <div
-                class="ps-glass flex max-h-[70svh] w-full max-w-sm flex-col border border-(--border-strong) [clip-path:var(--clip-notch)]"
-            >
-                <div class="flex items-center justify-between gap-2 border-b border-(--border-strong) px-4 py-3">
-                    <span class="font-display text-body font-semibold">Scope Settings</span>
-                    <button
-                        type="button"
-                        class="text-(--text-muted) hover:text-(--text) focus-visible:outline-none focus-visible:shadow-(--focus-glow)"
-                        aria-label="Close"
-                        @click="showScopeSettings = false"
-                    >
-                        <UIcon name="i-lucide-x" class="size-5" />
-                    </button>
-                </div>
-                <div class="overflow-y-auto p-4">
-                    <LayoutScopeSettingsControls
-                        v-model:dimension="lissajous.dimension.value"
-                        v-model:waveform="lissajous.showWaveform.value"
-                        v-model:line-width="lissajous.lineWidth.value"
-                        v-model:colour-mode="lissajous.colourMode.value"
-                        v-model:custom-colour="lissajous.customColour.value"
-                    />
-                </div>
+            <div class="overflow-y-auto p-4">
+                <LayoutScopeSettingsControls
+                    v-model:dimension="lissajous.dimension.value"
+                    v-model:waveform="lissajous.showWaveform.value"
+                    v-model:line-width="lissajous.lineWidth.value"
+                    v-model:colour-mode="lissajous.colourMode.value"
+                    v-model:custom-colour="lissajous.customColour.value"
+                />
             </div>
-        </div>
+        </DsGlassModal>
 
         <!-- Left: display settings (advanced options disclosed in-panel) -->
         <!-- z-40 on phones puts the settings panel above the bottom bar (z-30);
@@ -664,6 +479,15 @@ onUnmounted(async () => {
                 <LayoutWaveform class="ps-rise hidden max-md:flex min-[1400px]:flex" :source="goniometerSource" />
             </div>
         </div>
+
+        <!-- DEV-ONLY tools chip (never rendered - or even fetched - in prod) -->
+        <LazyLayoutDevPlaylistBar
+            v-if="devPlaylist && livePhase === 'off'"
+            class="absolute bottom-5 right-5 z-20 max-md:hidden"
+            v-model:auto-advance="devPlaylist.autoAdvance.value"
+            :track-count="devPlaylist.trackCount.value"
+            @open-folder="devPlaylist.openFolder"
+        />
 
         <!-- Act 1: the session card (the stage door) -->
         <LayoutLiveSessionCard

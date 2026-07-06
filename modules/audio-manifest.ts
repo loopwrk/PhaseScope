@@ -1,4 +1,5 @@
 import { readdirSync, writeFileSync } from 'node:fs';
+import type { Dirent } from 'node:fs';
 import { join } from 'node:path';
 import { defineNuxtModule } from '@nuxt/kit';
 
@@ -27,7 +28,7 @@ interface ManifestTrack {
 
 function generateAudioManifest(rootDir: string): number {
     const audioDir = join(rootDir, 'public', 'audio');
-    let entries: ReturnType<typeof readdirSync<{ withFileTypes: true }>>;
+    let entries: Dirent[];
     try {
         entries = readdirSync(audioDir, { withFileTypes: true });
     } catch {

@@ -129,7 +129,7 @@ export function usePlaybackOrchestration(options: UsePlaybackOrchestrationOption
         geometry.clear();
     };
 
-    /** Unload the track entirely - back to the idle fork (the logo's
+    /** Unload the track entirely - back to the source picker (the logo's
      *  way home from listening). */
     const unloadTrack = () => {
         handleStop();
@@ -228,6 +228,9 @@ export function usePlaybackOrchestration(options: UsePlaybackOrchestrationOption
         wavLoaded,
         getPlaybackTimeSeconds,
         elapsedLabel,
+        /** The raw catalogue ref - dev tooling injects local folder playlists
+         *  here (see useDevPlaylist); everything downstream is derived. */
+        demoTracks,
         sortedDemoTracks,
         demoTracksLoading,
         selectedDemoTrackId,

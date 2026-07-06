@@ -30,12 +30,24 @@ Nothing here is a bug - it's all structure.
 
 ## Tier 1 - long files worth splitting
 
-### 1. `app/pages/phasescope.vue` (752 lines) - the "god page" - ✅ useLiveSession done
+### 1. `app/pages/phasescope.vue` (752 lines) - the "god page" - ✅ done
 
-> **Status:** the `useLiveSession` extraction below is **done** - the session
-> machine, ghost demo, narration, and synth/MIDI ownership now live in
-> `app/composables/useLiveSession.client.ts` (~230 lines) and the page is down
-> to ~595. The `useDemoMenu` / `useScopeShortcuts` splits remain.
+> **Status:** **done** (the page is now `app/pages/index.vue` after the routing
+> rework). All three script splits landed - `useLiveSession` (earlier), then
+> `useDemoMenu` (+ a pure, unit-tested `buildDemoMenuItems`) and
+> `useScopeShortcuts` (the whole keymap as one injected table). The panel
+> choreography went further than planned into `usePanelLayout` (desktop
+> defaults, phone never-stack rules, scope-entry clearing - unit-tested), and
+> the template's three inline overlays became components: `ds/GlassModal`
+> (the shared phone modal shell), `layout/DemoPickerOverlay` and
+> `layout/SourcePicker` (which also absorbed the repeated door-button class
+> string from Tier 3). Dead wiring removed along the way: the page passed
+> `scope-active` / `scope-settings-open` props AppHeader never declared, and
+> listened for a `toggle-scope-settings` emit it never fired. The page is down
+> to ~530 lines of genuine composition-root wiring; behaviour verified by the
+> new specs (`demo-menu`, `panel-layout`) plus a full desktop + mobile
+> walkthrough (source picker, both demo pickers, panel exclusivity, shortcuts,
+> 3D scope, live session).
 
 The page is meant to be wiring, and its own header comment says so ("The page
 is wiring"). It has outgrown that: alongside the engine assembly and the render
@@ -177,11 +189,10 @@ these are **build-time tooling**, not shipped app code, and their output
 
 ## Tier 3 - readability (smaller, localised)
 
-- **`phasescope.vue` repeated class strings** - the idle-fork `DsButton`s repeat
-  a long `class="mr-0 py-2 ring-(--brand-primary) text-(--brand-white)"`, and
-  the two floating-panel wrappers (settings / controls) share
-  positioning/animation utilities. Hoist to a shared constant or a tiny wrapper
-  component.
+- **`phasescope.vue` repeated class strings** - ✅ the source picker's `DsButton`
+  costume is hoisted to a constant inside `layout/SourcePicker.vue`. Remaining: the
+  two floating-panel wrappers (settings / controls) still share
+  positioning/animation utilities in the page template.
 - **`phasescope.vue` `animate()` loop** - dense; the live-vs-track build branch
   and the oscillation-uniform write could each be a named helper for a more
   scannable loop body.
@@ -209,7 +220,9 @@ these are **build-time tooling**, not shipped app code, and their output
 1. ~~Extract `topologies.ts` from `usePhaseGeometry`~~ - **done.**
 2. ~~Extract `useLiveSession` from `phasescope.vue`~~ - **done.**
 3. ~~DRY the analysis helper (#3) and skybox toggles (#4)~~ - **done.**
-4. `useDemoMenu` / `useScopeShortcuts` and the Tier 3 readability passes.
+4. ~~`useDemoMenu` / `useScopeShortcuts` (+ `usePanelLayout` and the template
+   overlay components)~~ - **done.** Of the Tier 3 passes, the source picker's class
+   string went with it; the `animate()` and `buildOneFrame` naming passes remain.
 5. ~~`scripts/lib/wav.mjs` when touching the composers next~~ - **done.**
 
 Each step is independently shippable and unit-testable; do them one PR at a time
