@@ -2,6 +2,7 @@ import { useMagicKeys, useEventListener } from '@vueuse/core';
 import type { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import type { ShallowRef, ComputedRef } from 'vue';
 import { Vector3 } from 'three';
+import { SCOPE_2D_MIN_Z, SCOPE_2D_MAX_Z } from '~/composables/useLissajous3D.client';
 
 // Keys that should have their default browser behavior prevented
 const PREVENT_DEFAULT_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ']);
@@ -119,12 +120,14 @@ export function useKeyboardMovement(
         const distance = speed * deltaTime;
 
         if (dollyOnly?.value) {
-            // 2D scope: dolly along Z only, stopping at the front pane
-            // (cube face z=3, small margin) and a sensible far limit
+            // 2D scope: dolly along Z only, inside the shared pane-to-far range
             const camObj = ctl.object;
             if (camObj) {
                 const dolly = (forward.value ? 1 : 0) - (backward.value ? 1 : 0);
-                camObj.position.z = Math.min(14, Math.max(3.2, camObj.position.z - dolly * distance));
+                camObj.position.z = Math.min(
+                    SCOPE_2D_MAX_Z,
+                    Math.max(SCOPE_2D_MIN_Z, camObj.position.z - dolly * distance)
+                );
             }
             return;
         }

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { OscillationMode } from '~/utils/oscillation';
+import { SCENE_CENTRE_Y } from '~/utils/topologies';
 
 export type RenderMode = 'points' | 'lines';
 
@@ -67,8 +68,8 @@ vec3 psOscOffset() {
 `;
 
 export function useCorridorRenderer(scene: THREE.Scene) {
-    const snapshotCorridorPoints = ref<THREE.Points | null>(null);
-    const snapshotCorridorLines = ref<THREE.Line | null>(null);
+    const corridorPoints = ref<THREE.Points | null>(null);
+    const corridorLines = ref<THREE.Line | null>(null);
 
     // The single shared attribute set (referenced by BOTH geometries)
     let posAttr: THREE.BufferAttribute | null = null;
@@ -121,11 +122,11 @@ export function useCorridorRenderer(scene: THREE.Scene) {
     };
 
     const clearGeometry = () => {
-        disposeThreeObject(snapshotCorridorPoints.value);
-        snapshotCorridorPoints.value = null;
+        disposeThreeObject(corridorPoints.value);
+        corridorPoints.value = null;
 
-        disposeThreeObject(snapshotCorridorLines.value);
-        snapshotCorridorLines.value = null;
+        disposeThreeObject(corridorLines.value);
+        corridorLines.value = null;
 
         posAttr = null;
         colorAttr = null;
@@ -174,11 +175,11 @@ export function useCorridorRenderer(scene: THREE.Scene) {
         );
         patchMaterialWithOscillation(mPoints);
 
-        const pointsPos = config.pointsPosition || { x: 0, y: 1.7, z: 0.95 };
+        const pointsPos = config.pointsPosition || { x: 0, y: SCENE_CENTRE_Y, z: 0.95 };
         const points = markRaw(new THREE.Points(gPoints, mPoints));
         points.position.set(pointsPos.x, pointsPos.y, pointsPos.z);
         points.frustumCulled = false;
-        snapshotCorridorPoints.value = points;
+        corridorPoints.value = points;
         scene.add(points);
 
         // Create LINES version (same attribute instances - zero extra GPU)
@@ -198,11 +199,11 @@ export function useCorridorRenderer(scene: THREE.Scene) {
         );
         patchMaterialWithOscillation(mLine);
 
-        const linesPos = config.linesPosition || { x: 0, y: 1.7, z: 0 };
+        const linesPos = config.linesPosition || { x: 0, y: SCENE_CENTRE_Y, z: 0 };
         const lines = markRaw(new THREE.Line(gLine, mLine));
         lines.position.set(linesPos.x, linesPos.y, linesPos.z);
         lines.frustumCulled = false;
-        snapshotCorridorLines.value = lines;
+        corridorLines.value = lines;
         scene.add(lines);
 
         currentMode = renderMode.value;
@@ -213,11 +214,11 @@ export function useCorridorRenderer(scene: THREE.Scene) {
 
     // Update the draw range for both geometries
     const updateDrawRange = (pointCount: number) => {
-        if (snapshotCorridorPoints.value) {
-            snapshotCorridorPoints.value.geometry.setDrawRange(0, pointCount);
+        if (corridorPoints.value) {
+            corridorPoints.value.geometry.setDrawRange(0, pointCount);
         }
-        if (snapshotCorridorLines.value) {
-            snapshotCorridorLines.value.geometry.setDrawRange(0, pointCount);
+        if (corridorLines.value) {
+            corridorLines.value.geometry.setDrawRange(0, pointCount);
         }
     };
 
@@ -252,11 +253,11 @@ export function useCorridorRenderer(scene: THREE.Scene) {
     let currentMode: RenderMode = 'points';
     let corridorHidden = false;
     const applyVisibility = () => {
-        if (snapshotCorridorPoints.value) {
-            snapshotCorridorPoints.value.visible = !corridorHidden && currentMode === 'points';
+        if (corridorPoints.value) {
+            corridorPoints.value.visible = !corridorHidden && currentMode === 'points';
         }
-        if (snapshotCorridorLines.value) {
-            snapshotCorridorLines.value.visible = !corridorHidden && currentMode === 'lines';
+        if (corridorLines.value) {
+            corridorLines.value.visible = !corridorHidden && currentMode === 'lines';
         }
     };
 
@@ -275,12 +276,12 @@ export function useCorridorRenderer(scene: THREE.Scene) {
     };
 
     const hasGeometry = () => {
-        return snapshotCorridorPoints.value !== null;
+        return corridorPoints.value !== null;
     };
 
     return {
-        snapshotCorridorPoints: readonly(snapshotCorridorPoints),
-        snapshotCorridorLines: readonly(snapshotCorridorLines),
+        corridorPoints: readonly(corridorPoints),
+        corridorLines: readonly(corridorLines),
 
         createGeometry,
         clearGeometry,

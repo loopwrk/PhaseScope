@@ -77,14 +77,17 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
     // Track coverage as percentage (0-100)
     const trackCoveragePercent = usePersistedState('scope:track-coverage', () => 100);
 
+    // A repaint-affecting toggle rewinds the build to frame 0; the next
+    // build ticks redraw up to the playhead, so the change applies to the
+    // whole built corridor, not only frames built from here on.
+    const rebuildToPlayhead = () => {
+        if (renderer.hasGeometry()) corridorState.value.builtFrames = 0;
+    };
+
     // Colour by pitch: the spectral centroid's chroma drives the FULL colour
-    // wheel (one cycle per octave) instead of the bass->treble ramp. Toggling
-    // repaints the built corridor (like channel bias), so the change is total
-    // rather than only applying to frames built from the playhead on.
+    // wheel (one cycle per octave) instead of the bass->treble ramp.
     const colourByPitch = usePersistedState('scope:colour-by-pitch', () => true);
-    watch(colourByPitch, () => {
-        if (renderer.hasGeometry()) corridorState.value.builtFrames = 0; // rebuild to playhead
-    });
+    watch(colourByPitch, rebuildToPlayhead);
 
     // Channel bias: the stereo field pulled apart into left/right populations -
     // works in every topology. Parked: kept in the engine (the transform in
@@ -96,7 +99,7 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
     const channelBias = ref(false);
     watch(channelBias, (on) => {
         if (on) renderMode.value = 'points';
-        if (renderer.hasGeometry()) corridorState.value.builtFrames = 0; // rebuild to playhead
+        rebuildToPlayhead();
     });
     // Defensive half of the two-way exclusion: even if the disabled radio
     // is bypassed (shortcut, stale UI), lines and channel bias never coexist
@@ -139,11 +142,9 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         const { windowSize, hopSize, pointsPerFrame } = corridorMeta.value;
         const totalFrames = Math.floor((ch0.length - windowSize) / hopSize);
 
-        // Calculate max frames based on percentage-based point budget
-        // Use buffer directly here to avoid reactivity timing issues with computeds
-        const totalPointsForBuffer = totalFrames * pointsPerFrame;
-        const maxPointsForCoverage = Math.floor(totalPointsForBuffer * (trackCoveragePercent.value / 100));
-        const maxFrames = Math.floor(maxPointsForCoverage / pointsPerFrame);
+        // Whole frames within the coverage slider's point budget - the same
+        // arithmetic behind the panel readout (see usePointBudget).
+        const maxFrames = framesWithinCoverage(totalFrames, pointsPerFrame, trackCoveragePercent.value);
         const frameCount = Math.max(1, Math.min(totalFrames, maxFrames));
 
         corridorState.value.buffer = buffer;

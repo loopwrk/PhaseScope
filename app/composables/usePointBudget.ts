@@ -20,6 +20,16 @@ export const formatPointCount = (count: number): string => {
     return count.toString();
 };
 
+/** Coverage applies as a POINT budget: the slider's percentage of the full
+ *  track's points, floored. */
+export const pointsWithinCoverage = (totalPoints: number, coveragePercent: number): number =>
+    Math.floor(totalPoints * (coveragePercent / 100));
+
+/** ...and the engine sizes its buffers in whole frames inside that budget
+ *  (shared with initFromBuffer, which cannot lean on the computeds). */
+export const framesWithinCoverage = (totalFrames: number, pointsPerFrame: number, coveragePercent: number): number =>
+    Math.floor(pointsWithinCoverage(totalFrames * pointsPerFrame, coveragePercent) / pointsPerFrame);
+
 interface UsePointBudgetOptions {
     /** The wav player's reactive audio state (frame count derives from the buffer). */
     audio: { buffer: AudioBuffer | null };
@@ -42,7 +52,7 @@ export function usePointBudget(options: UsePointBudgetOptions) {
 
     // Effective max points after the coverage slider
     const effectiveMaxPoints = computed(() =>
-        Math.floor(totalPointsForFullTrack.value * (trackCoveragePercent.value / 100))
+        pointsWithinCoverage(totalPointsForFullTrack.value, trackCoveragePercent.value)
     );
 
     const pointsWarningLevel = computed<'none' | 'warning' | 'danger'>(() => {

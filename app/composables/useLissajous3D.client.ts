@@ -3,6 +3,7 @@ import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { analyzeFrequencyBand, analyzeLocalFrequency, freqContentToHz, pitchChromaHue } from '~/utils/audio/analysis';
+import { SCENE_CENTRE_Y } from '~/utils/topologies';
 import type { Ref } from 'vue';
 import type { GoniometerSource } from '~/components/layout/Goniometer.vue';
 import type { useThree } from '~/composables/useThree.client';
@@ -48,8 +49,12 @@ const TRAIL_WINDOW = 4096; // samples (~93ms at 44.1k)
 const DELAY_SECONDS = 0.006; // Takens delay tau
 const CUBE_SIZE = 6;
 const SIGNAL_SCALE = 2.6; // full-scale samples stay inside the cube walls
-const CENTRE_Y = 1.7; // gallery height, matching the topologies
-const C0_HZ = 16.3516; // pitch-chroma reference: hue wraps each octave from C
+
+/** 2D-view dolly range: from just outside the cube's front pane to a
+ *  sensible far. Shared by every camera that drives the 2D scope (WASD
+ *  dolly, pinch zoom, the auto camera's hold). */
+export const SCOPE_2D_MIN_Z = CUBE_SIZE / 2 + 0.2;
+export const SCOPE_2D_MAX_Z = 14;
 
 const CUBE_RGB = 0x5e7a7d;
 const WAVE_L_RGB = 0x2fd4e6; // --scope-cyan, matching the HUD waveform's L
@@ -90,7 +95,7 @@ export function useLissajous3D(
 
     const create = () => {
         group = markRaw(new THREE.Group());
-        group.position.set(0, CENTRE_Y, 0);
+        group.position.set(0, SCENE_CENTRE_Y, 0);
 
         // Graphite wireframe cube
         const edges = markRaw(new THREE.EdgesGeometry(new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE)));
@@ -204,7 +209,7 @@ export function useLissajous3D(
                 // full ROYGBIV wheel cycles once per octave and each part of
                 // the figure takes the colour of the frequency local to it
                 const hz = freqContentToHz(analyzeLocalFrequency(ch0, ch1, i));
-                colourScratch.setHSL(pitchChromaHue(hz, C0_HZ), 0.9, 0.62);
+                colourScratch.setHSL(pitchChromaHue(hz), 0.9, 0.62);
             }
             colors[k * 3] = colourScratch.r * ramp;
             colors[k * 3 + 1] = colourScratch.g * ramp;

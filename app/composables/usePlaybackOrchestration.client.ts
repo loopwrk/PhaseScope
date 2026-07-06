@@ -2,7 +2,7 @@ import type { Ref } from 'vue';
 import { useIntervalFn } from '@vueuse/core';
 import type { useThree } from '~/composables/useThree.client';
 import type { usePhaseGeometry } from '~/composables/usePhaseGeometry.client';
-import type { TopologyMode } from '~/utils/topologies';
+import { SCENE_CENTRE_Y, type TopologyMode } from '~/utils/topologies';
 import type { useAutoCamera } from '~/composables/useAutoCamera.client';
 
 /* usePlaybackOrchestration - everything between "the user wants to hear
@@ -78,10 +78,9 @@ export function usePlaybackOrchestration(options: UsePlaybackOrchestrationOption
             const camObj = three.controls.value?.object;
             if (camObj) {
                 // Start above the north pole before orbiting
-                const galleryY = 1.7;
                 const baseRadius = 5.0;
-                camObj.position.set(0, galleryY + baseRadius + 6, 0);
-                three.camera.value?.lookAt(0, galleryY, 0);
+                camObj.position.set(0, SCENE_CENTRE_Y + baseRadius + 6, 0);
+                three.camera.value?.lookAt(0, SCENE_CENTRE_Y, 0);
             }
             // Exit pointer lock so camera can orbit smoothly
             if (document.pointerLockElement) {

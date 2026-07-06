@@ -3,7 +3,8 @@ import type { ComputedRef, Ref } from 'vue';
 import type { useThree } from '~/composables/useThree.client';
 import type { usePhaseGeometry } from '~/composables/usePhaseGeometry.client';
 import type { useCorridorRenderer } from '~/composables/useCorridorRenderer.client';
-import { TOPOLOGIES, type TopologyMode } from '~/utils/topologies';
+import { TOPOLOGIES, SCENE_CENTRE_Y, type TopologyMode } from '~/utils/topologies';
+import { SCOPE_2D_MIN_Z, SCOPE_2D_MAX_Z } from '~/composables/useLissajous3D.client';
 
 /* useAutoCamera - the orbit / follow / free camera brain.
 
@@ -84,7 +85,6 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
         const camObj = three.controls.value?.object;
         if (!camObj) return;
 
-        const galleryY = 1.7; // gallery.position.y
         const lerpFactor = 0.1;
         let targetPos: { x: number; y: number; z: number };
         let lookTarget: THREE.Vector3;
@@ -92,8 +92,12 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
         if (lissajousActive?.value && lissajousDimension?.value === '2d') {
             // 2D scope: hold square-on to the front face (x/y centred, gaze
             // locked); Z belongs to the W/S dolly, clamped at the pane
-            targetPos = { x: 0, y: galleryY, z: Math.min(14, Math.max(3.2, camObj.position.z)) };
-            lookTarget = new THREE.Vector3(0, galleryY, 0);
+            targetPos = {
+                x: 0,
+                y: SCENE_CENTRE_Y,
+                z: Math.min(SCOPE_2D_MAX_Z, Math.max(SCOPE_2D_MIN_Z, camObj.position.z)),
+            };
+            lookTarget = new THREE.Vector3(0, SCENE_CENTRE_Y, 0);
         } else if (
             lissajousActive?.value ||
             (TOPOLOGIES[topologyMode.value].orbit && !TOPOLOGIES[topologyMode.value].anchorOnHead)
@@ -112,11 +116,11 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
 
             targetPos = {
                 x: Math.cos(horizontalAngle) * Math.cos(elevationAngle) * r,
-                y: galleryY + Math.sin(elevationAngle) * r,
+                y: SCENE_CENTRE_Y + Math.sin(elevationAngle) * r,
                 z: Math.sin(horizontalAngle) * Math.cos(elevationAngle) * r,
             };
 
-            lookTarget = new THREE.Vector3(0, galleryY, 0);
+            lookTarget = new THREE.Vector3(0, SCENE_CENTRE_Y, 0);
         } else {
             // Head-anchored topologies (corridor, Möbius): the camera rides the
             // most recently built frame's centre as the geometry grows.
@@ -132,7 +136,7 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
                 // Uses Lissajous-like path
                 const orbitRadius = 8.0;
                 const verticalAmplitude = 3.0;
-                const orbitSpeed = 0.15; // Slow rotation
+                const orbitSpeed = 0.15;
 
                 // Different frequencies for each axis create figure-8 like patterns
                 const horizontalAngle = time * orbitSpeed;
@@ -142,7 +146,7 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
                 // Orbit in XZ plane around the head, with Y oscillation
                 targetPos = {
                     x: head.x + Math.cos(horizontalAngle) * orbitRadius * (1 + Math.sin(tiltAngle) * 0.3),
-                    y: galleryY + head.y + 2 + Math.sin(verticalAngle) * verticalAmplitude,
+                    y: SCENE_CENTRE_Y + head.y + 2 + Math.sin(verticalAngle) * verticalAmplitude,
                     z: head.z + Math.sin(horizontalAngle) * orbitRadius,
                 };
             } else {
@@ -155,12 +159,12 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
 
                 targetPos = {
                     x: head.x + offset.x,
-                    y: galleryY + head.y + offset.y,
+                    y: SCENE_CENTRE_Y + head.y + offset.y,
                     z: head.z + offset.z,
                 };
             }
 
-            lookTarget = new THREE.Vector3(head.x, galleryY + head.y, head.z);
+            lookTarget = new THREE.Vector3(head.x, SCENE_CENTRE_Y + head.y, head.z);
         }
 
         // Smooth camera movement
@@ -203,14 +207,13 @@ export function useAutoCamera(options: UseAutoCameraOptions) {
     // touch-orbit layer targets this so manual control picks up exactly where
     // auto left off (head-anchored topologies follow the head live).
     const getOrbitTarget = (): THREE.Vector3 => {
-        const galleryY = 1.7;
         if (!lissajousActive?.value && TOPOLOGIES[topologyMode.value].anchorOnHead) {
             const headFrameIndex = geometry.headFrameIndex();
             const head = headFrameIndex < 0 ? { x: 0, y: 0, z: 0 } : geometry.transformHeadAnchor(headFrameIndex);
-            return new THREE.Vector3(head.x, galleryY + head.y, head.z);
+            return new THREE.Vector3(head.x, SCENE_CENTRE_Y + head.y, head.z);
         }
         // Centre-orbiting topologies and the Lissajous cube all sit at origin
-        return new THREE.Vector3(0, galleryY, 0);
+        return new THREE.Vector3(0, SCENE_CENTRE_Y, 0);
     };
 
     return {

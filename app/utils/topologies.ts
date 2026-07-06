@@ -16,6 +16,11 @@ import { precomputePoincareSpine } from '~/utils/poincare';
 import { precomputeTorusKnotSpine } from '~/utils/torusKnot';
 import { precomputeHopfSpine } from '~/utils/hopf';
 
+/** The scene's shared centre height: every topology's geometry sits here,
+ *  and the cameras, the 3D scope's cube and the sphere spawn all centre on
+ *  it. One number - change it once. */
+export const SCENE_CENTRE_Y = 1.7;
+
 export type TopologyMode =
     | 'corridor'
     | 'sphere'
@@ -470,13 +475,19 @@ export const TOPOLOGIES: Record<TopologyMode, TopologyDef> = {
     corridor: {
         frameMapper: corridorFrameMapper,
         // Corridor extends along Z; sphere and attractor are centred at origin
-        geometry: { pointsPosition: { x: 0, y: 1.7, z: 0.95 }, linesPosition: { x: 0, y: 1.7, z: 0 } },
+        geometry: {
+            pointsPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0.95 },
+            linesPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0 },
+        },
         anchorOnHead: true,
         headAnchor: corridorHeadAnchor,
     },
     sphere: {
         frameMapper: sphereFrameMapper,
-        geometry: { pointsPosition: { x: 0, y: 1.7, z: 0 }, linesPosition: { x: 0, y: 1.7, z: 0 } },
+        geometry: {
+            pointsPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0 },
+            linesPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0 },
+        },
         orbit: {
             radius: 12,
             speed: 0.2,
@@ -490,7 +501,10 @@ export const TOPOLOGIES: Record<TopologyMode, TopologyDef> = {
     },
     attractor: {
         frameMapper: makeSpineTubeMapper(0.15, 0.6),
-        geometry: { pointsPosition: { x: 0, y: 1.7, z: 0 }, linesPosition: { x: 0, y: 1.7, z: 0 } },
+        geometry: {
+            pointsPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0 },
+            linesPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0 },
+        },
         buildSpine: ({ frameCount, ch0, hopSize }) => precomputeAttractorSpine(frameCount, ch0, hopSize),
         // Wider, slower drift than the sphere to show the full butterfly
         orbit: {
@@ -506,7 +520,10 @@ export const TOPOLOGIES: Record<TopologyMode, TopologyDef> = {
     },
     mobius: {
         frameMapper: mobiusFrameMapper,
-        geometry: { pointsPosition: { x: 0, y: 1.7, z: 0 }, linesPosition: { x: 0, y: 1.7, z: 0 } },
+        geometry: {
+            pointsPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0 },
+            linesPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0 },
+        },
         // Like the corridor, the camera rides the head as it laps the band
         // rather than orbiting the band's centre.
         anchorOnHead: true,
@@ -517,7 +534,10 @@ export const TOPOLOGIES: Record<TopologyMode, TopologyDef> = {
         // tube following the Stokes-vector path over a sphere of pure stereo
         // states. Centred at the origin, so the camera orbits the sphere.
         frameMapper: makeSpineTubeMapper(0.1, 0.5),
-        geometry: { pointsPosition: { x: 0, y: 1.7, z: 0 }, linesPosition: { x: 0, y: 1.7, z: 0 } },
+        geometry: {
+            pointsPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0 },
+            linesPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0 },
+        },
         buildSpine: ({ frameCount, ch0, ch1, hopSize, windowSize }) =>
             precomputePoincareSpine(frameCount, ch0, ch1, hopSize, windowSize),
         orbit: {
@@ -534,7 +554,10 @@ export const TOPOLOGIES: Record<TopologyMode, TopologyDef> = {
     harmonics: {
         // A vibrating-sphere bloom: pitch sets the lobe count, loudness the depth.
         frameMapper: sphericalHarmonicsFrameMapper,
-        geometry: { pointsPosition: { x: 0, y: 1.7, z: 0 }, linesPosition: { x: 0, y: 1.7, z: 0 } },
+        geometry: {
+            pointsPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0 },
+            linesPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0 },
+        },
         needsFramePitch: true,
         orbit: {
             radius: 13,
@@ -551,7 +574,10 @@ export const TOPOLOGIES: Record<TopologyMode, TopologyDef> = {
         // A (p,q) torus knot whose woundness is the track's harmonic richness;
         // a tube follows the knot, breathing with amplitude.
         frameMapper: makeSpineTubeMapper(0.22, 0.55),
-        geometry: { pointsPosition: { x: 0, y: 1.7, z: 0 }, linesPosition: { x: 0, y: 1.7, z: 0 } },
+        geometry: {
+            pointsPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0 },
+            linesPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0 },
+        },
         buildSpine: ({ frameCount, ch0, ch1, hopSize, windowSize, sr }) =>
             precomputeTorusKnotSpine(frameCount, ch0, ch1, hopSize, windowSize, sr),
         orbit: {
@@ -570,7 +596,10 @@ export const TOPOLOGIES: Record<TopologyMode, TopologyDef> = {
         // bowed by the stereo portrait, and sequenced into A/C/G/T by colour.
         // Head-anchored like the corridor, so the camera climbs the strand.
         frameMapper: helixFrameMapper,
-        geometry: { pointsPosition: { x: 0, y: 1.7, z: 0 }, linesPosition: { x: 0, y: 1.7, z: 0 } },
+        geometry: {
+            pointsPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0 },
+            linesPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0 },
+        },
         needsFramePitch: true,
         frameHue: helixFrameHue,
         anchorOnHead: true,
@@ -582,7 +611,10 @@ export const TOPOLOGIES: Record<TopologyMode, TopologyDef> = {
         // linked Villarceau circles. Reuses the Stokes vector via the spine;
         // centred at the origin, so the camera orbits the structure.
         frameMapper: hopfFrameMapper,
-        geometry: { pointsPosition: { x: 0, y: 1.7, z: 0 }, linesPosition: { x: 0, y: 1.7, z: 0 } },
+        geometry: {
+            pointsPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0 },
+            linesPosition: { x: 0, y: SCENE_CENTRE_Y, z: 0 },
+        },
         buildSpine: ({ frameCount, ch0, ch1, hopSize, windowSize }) =>
             precomputeHopfSpine(frameCount, ch0, ch1, hopSize, windowSize),
         orbit: {

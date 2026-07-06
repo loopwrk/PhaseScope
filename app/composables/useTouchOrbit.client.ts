@@ -2,6 +2,7 @@ import type { Ref } from 'vue';
 import type { useThree } from '~/composables/useThree.client';
 import type { useAutoCamera, CameraMode } from '~/composables/useAutoCamera.client';
 import type { TopologyMode } from '~/utils/topologies';
+import { SCOPE_2D_MIN_Z, SCOPE_2D_MAX_Z } from '~/composables/useLissajous3D.client';
 
 /* useTouchOrbit - touch-only orbit/zoom for the 3D views (mobile).
 
@@ -34,9 +35,6 @@ const ZOOM_CLAMPS: Record<TopologyMode, [number, number]> = {
 };
 // The Lissajous cube is small and centred; tighter range than the topologies.
 const SCOPE_ZOOM_CLAMP: [number, number] = [3, 20];
-// 2D scope dolly range along Z, matching the keyboard dolly's pane clamp.
-const SCOPE_2D_MIN_Z = 3.2;
-const SCOPE_2D_MAX_Z = 14;
 
 const DOUBLE_TAP_MS = 300;
 const TAP_MOVE_PX = 8; // a one-finger move beyond this is a drag, not a tap

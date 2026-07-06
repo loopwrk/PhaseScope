@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { ref, shallowReactive } from 'vue';
-import { usePointBudget, formatPointCount } from '~/composables/usePointBudget';
+import {
+    usePointBudget,
+    formatPointCount,
+    pointsWithinCoverage,
+    framesWithinCoverage,
+} from '~/composables/usePointBudget';
 import type { CorridorMeta } from '~/utils/topologies';
 
 /* The Display panel's performance readout arithmetic: frames from the
@@ -28,6 +33,22 @@ describe('formatPointCount', () => {
         expect(formatPointCount(999)).toBe('999');
         expect(formatPointCount(200_000)).toBe('200K');
         expect(formatPointCount(1_500_000)).toBe('1.5M');
+    });
+});
+
+describe('coverage budget arithmetic (shared by the readout and initFromBuffer)', () => {
+    it('floors the point budget from the coverage percentage', () => {
+        expect(pointsWithinCoverage(4096, 100)).toBe(4096);
+        expect(pointsWithinCoverage(4096, 50)).toBe(2048);
+        expect(pointsWithinCoverage(1000, 33)).toBe(330);
+    });
+
+    it('sizes whole frames inside the point budget', () => {
+        expect(framesWithinCoverage(8, 512, 100)).toBe(8);
+        expect(framesWithinCoverage(8, 512, 50)).toBe(4);
+        // The floor cascade: 3 frames at 50% -> 768 points -> 1 whole frame
+        expect(framesWithinCoverage(3, 512, 50)).toBe(1);
+        expect(framesWithinCoverage(0, 512, 100)).toBe(0);
     });
 });
 

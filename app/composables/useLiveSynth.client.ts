@@ -1,5 +1,6 @@
 import { midiNoteToHz, pitchToPan, velocityToGain } from '~/utils/midi';
 import { LIVE_VOICES, type LiveVoiceId } from '~/utils/liveVoices';
+import { OUTPUT_GAIN } from '~/utils/audio/levels';
 import type { GoniometerSource } from '~/components/layout/Goniometer.vue';
 
 /* useLiveSynth - the sound engine of live-input mode.
@@ -92,7 +93,7 @@ export function useLiveSynth() {
                 ch1 = new Float32Array(ringLength);
 
                 master = ctx.createGain();
-                master.gain.value = 0.85; // same clipping headroom as the track player
+                master.gain.value = OUTPUT_GAIN;
                 capture = new AudioWorkletNode(ctx, 'ps-capture', {
                     numberOfOutputs: 0,
                     channelCount: 2,

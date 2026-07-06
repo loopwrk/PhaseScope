@@ -1,3 +1,5 @@
+import { OUTPUT_GAIN } from '~/utils/audio/levels';
+
 interface AudioState {
     ctx: AudioContext | null;
     buffer: AudioBuffer | null;
@@ -54,8 +56,7 @@ export function useWavPlayer() {
         src.buffer = audio.buffer;
 
         const gain = audio.ctx.createGain();
-        const gainLevel = 0.85; // Reduce volume to 85% to avoid clipping
-        gain.gain.value = gainLevel;
+        gain.gain.value = OUTPUT_GAIN;
         src.connect(gain).connect(audio.ctx.destination);
 
         audio.source = src;
