@@ -12,7 +12,9 @@
         "build-storybook": "storybook build",
         "test": "vitest run",
         "test:watch": "vitest",
-        "typecheck": "nuxt typecheck"
+        "typecheck": "nuxt typecheck",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix"
     },
     "dependencies": {
         "@fontsource/inclusive-sans": "^5.0.0",

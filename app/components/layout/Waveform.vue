@@ -164,7 +164,7 @@ onBeforeUnmount(() => {
             :style="{ width: `${SIZE + 14}px`, height: `${SIZE}px` }"
             role="img"
             aria-label="Waveform of the current audio: time against amplitude"
-        ></canvas>
+        />
         <!-- Channel legend: fills the same footer slot as the goniometer's
              scope button, so the two frames stand at equal height -->
         <div

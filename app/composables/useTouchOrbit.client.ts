@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import type { Ref } from 'vue';
 import type { useThree } from '~/composables/useThree.client';
 import type { useAutoCamera, CameraMode } from '~/composables/useAutoCamera.client';

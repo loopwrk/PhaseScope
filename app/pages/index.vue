@@ -316,7 +316,7 @@ onUnmounted(async () => {
             ref="canvasContainer"
             class="absolute inset-0 touch-none bg-black motion-safe:transition-transform motion-safe:duration-[6000ms] motion-safe:ease-(--motion-ease-standard)"
             :class="{ 'motion-safe:scale-[1.04]': !!audio.source }"
-        ></div>
+        />
 
         <div
             class="pointer-events-none absolute inset-0 z-0"
@@ -336,8 +336,8 @@ onUnmounted(async () => {
                         color-mix(in oklch, var(--bg) 70%, transparent)
                     );
             "
-        ></div>
-        <div class="ps-striation pointer-events-none absolute inset-0 z-0 opacity-50 mix-blend-overlay"></div>
+        />
+        <div class="ps-striation pointer-events-none absolute inset-0 z-0 opacity-50 mix-blend-overlay" />
 
         <!-- Source picker: two doors into the same hall. Listen loads a
              track; Play opens the live session card. -->
@@ -419,21 +419,21 @@ onUnmounted(async () => {
             ]"
         >
             <LayoutDisplayPanel
-                variant="glass"
                 v-model:live-voice="live.voice.value"
-                @close="showSettings = false"
-                v-model:pointsPerFrame="corridorMeta.pointsPerFrame"
+                v-model:points-per-frame="corridorMeta.pointsPerFrame"
                 v-model:coverage="trackCoveragePercent"
-                v-model:renderMode="renderMode"
+                v-model:render-mode="renderMode"
                 v-model:topology="topologyMode"
                 v-model:oscillation="oscillation.enabled.value"
                 v-model:background="settings.background.value"
+                variant="glass"
                 :live="liveMode"
                 :wav-loaded="wavLoaded"
                 :settings-disabled="false"
                 :topology-disabled="audio.started"
                 :perf-level="pointsWarningLevel"
                 :perf-points="formatPointCount(effectiveMaxPoints)"
+                @close="showSettings = false"
             >
                 <template #advanced>
                     <LayoutAdvancedPanel v-model:open="advancedOptionsOpen" v-model:mode="oscillation.mode.value" />
@@ -470,12 +470,12 @@ onUnmounted(async () => {
         >
             <LayoutScopeSettingsPanel
                 v-if="scope3d && isDesktop"
-                class="ps-rise max-h-[calc(100svh_-_8rem)] overflow-y-auto"
                 v-model:dimension="lissajous.dimension.value"
                 v-model:waveform="lissajous.showWaveform.value"
                 v-model:line-width="lissajous.lineWidth.value"
                 v-model:colour-mode="lissajous.colourMode.value"
                 v-model:custom-colour="lissajous.customColour.value"
+                class="ps-rise max-h-[calc(100svh_-_8rem)] overflow-y-auto"
             />
             <!-- The two scopes stand together: phase (the relationship)
                  and waveform (the forms) of the same signal. In the 3D scope on
@@ -495,8 +495,8 @@ onUnmounted(async () => {
         <!-- DEV-ONLY tools chip (never rendered - or even fetched - in prod) -->
         <LazyLayoutDevPlaylistBar
             v-if="devPlaylist && livePhase === 'off'"
-            class="absolute bottom-5 right-5 z-20 max-md:hidden"
             v-model:auto-advance="devPlaylist.autoAdvance.value"
+            class="absolute bottom-5 right-5 z-20 max-md:hidden"
             :track-count="devPlaylist.trackCount.value"
             @open-folder="devPlaylist.openFolder"
         />

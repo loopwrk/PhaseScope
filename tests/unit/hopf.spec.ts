@@ -33,8 +33,9 @@ const baseState = (over: Partial<CorridorState>): CorridorState => ({
 // A one-frame spine holding a single Bloch point (s1, s2, s3)
 const spineOf = (s1: number, s2: number, s3: number) => new Float32Array([s1, s2, s3]);
 
-const ringSamples = (frame: { mapPoint: (u: number, L: number, R: number, a: number) => { x: number; y: number; z: number } }) =>
-    Array.from({ length: 24 }, (_, k) => frame.mapPoint((k / 24) * 2 * Math.PI, 0, 0, 0));
+const ringSamples = (frame: {
+    mapPoint: (u: number, L: number, R: number, a: number) => { x: number; y: number; z: number };
+}) => Array.from({ length: 24 }, (_, k) => frame.mapPoint((k / 24) * 2 * Math.PI, 0, 0, 0));
 
 describe('hopf mapper', () => {
     it('refuses to map without a precomputed spine', () => {
@@ -87,7 +88,6 @@ describe('hopf mapper', () => {
 
 describe('hopf spine (reused Stokes physics)', () => {
     const N = 200;
-    const SR = 44100;
     const HOP = 1024;
     const WIN = 2048;
     const W = 0.1; // rad/sample

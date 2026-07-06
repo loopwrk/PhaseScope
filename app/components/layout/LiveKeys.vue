@@ -94,10 +94,11 @@ const monitorLabel = computed(() => {
     <div class="ps-glass flex flex-col gap-2.5 border border-(--border-strong) p-3 [clip-path:var(--clip-notch)]">
         <!-- MIDI monitor: device left, note/velocity right (its home) -->
         <div class="flex items-baseline justify-between gap-4 font-mono text-caption uppercase tracking-label">
-            <span
-                :class="deviceNames.length ? 'text-(--accent)' : 'text-(--text-muted)'"
-                v-html="deviceNames.length ? deviceNames.join(' + ') : 'no midi device - use keys below'"
-            ></span>
+            <!-- Plain interpolation: device names come from the OS, so they
+                 must render as text, never as markup -->
+            <span :class="deviceNames.length ? 'text-(--accent)' : 'text-(--text-muted)'">
+                {{ deviceNames.length ? deviceNames.join(' + ') : 'no midi device - use keys below' }}
+            </span>
             <span class="text-(--text-muted)">
                 <span class="text-(--scope-cyan) tabular-nums">{{ monitorLabel }}</span>
                 · voices <span class="tabular-nums">{{ voiceCount }}</span>
@@ -129,7 +130,7 @@ const monitorLabel = computed(() => {
                     <div
                         class="h-full bg-(--accent) transition-[width] duration-300 ease-linear"
                         :style="{ width: `${Math.round((progress ?? 0) * 100)}%` }"
-                    ></div>
+                    />
                 </div>
                 <span class="font-mono text-caption tracking-label text-(--accent) tabular-nums">{{
                     progressLabel

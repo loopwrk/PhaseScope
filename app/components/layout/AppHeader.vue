@@ -6,7 +6,7 @@
 import IconButton from '../ds/IconButton.vue';
 import Logo from '../ds/Logo.vue';
 
-const props = withDefaults(
+withDefaults(
     defineProps<{
         controlsOpen?: boolean;
         settingsOpen?: boolean;

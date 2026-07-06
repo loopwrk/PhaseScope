@@ -1,6 +1,12 @@
 // @ts-check
-import withNuxt from './.nuxt/eslint.config.mjs'
+import withNuxt from './.nuxt/eslint.config.mjs';
 
 export default withNuxt(
-  // Your custom configs here
-)
+    { ignores: ['.venv-gw/**', '.data/**'] },
+    {
+        rules: {
+            'vue/require-default-prop': 'off',
+            'vue/html-self-closing': ['warn', { html: { void: 'always', normal: 'always', component: 'always' } }],
+        },
+    }
+);

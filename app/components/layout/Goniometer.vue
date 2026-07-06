@@ -149,7 +149,7 @@ onBeforeUnmount(() => {
             :style="{ width: `${SIZE}px`, height: `${SIZE}px` }"
             role="img"
             aria-label="Instantaneous Lissajous figure of the current audio"
-        ></canvas>
+        />
         <!-- The affordance says its action in words: a full-width footer
              bar that doubles as the 3D scope's way back out -->
         <div
