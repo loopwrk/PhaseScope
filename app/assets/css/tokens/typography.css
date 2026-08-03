@@ -9,7 +9,7 @@
    (font-medium etc. are fixed numbers, not tokens).
 
    Pairs with the family/scale/tracking utilities Tailwind generates
-   from the @theme bridge in main.css (font-display, text-detail,
+   from the theme bridge in main.css (font-display, text-detail,
    tracking-label-wide, ...).
    ================================================================== */
 

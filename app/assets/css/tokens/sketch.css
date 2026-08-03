@@ -1,0 +1,171 @@
+/* ==================================================================
+   Sketch (.sketch-theme)
+
+   Everything here is scoped under .sketch-theme, applied on the Sketch
+   layout root. It re-points the same semantic token names the ds/*
+   primitives already consume (--bg, --surface, --text, --border,
+   --accent, --font-*, ...), so they inherit its own theme without
+   forking. PhaseScope's :root values are never touched.
+
+   Two things must be re-declared here even though :root already maps
+   them, because custom properties resolve where they are declared and
+   descendants inherit the resolved value:
+     1. the --ui-* Nuxt UI bridge (main.css computes it at :root);
+     2. the --color-primary-* ramp (main.css theme block, also
+        root-computed).
+
+   Structural rule of the design: structural borders are ink at 1px
+   (--border-strong), internal dividers are hairline at 1px (--border).
+   Yellow is a signal, not a surface.
+   ================================================================== */
+
+.sketch-theme {
+    /* --- Surfaces --- */
+    --bg: oklch(0.9046 0.0158 86.43); /* #e4dfd4 - paper: outermost page / behind panels */
+    --surface: oklch(0.9347 0.0128 86.83); /* #ede9e0 - app body, canvas well, gutter, output strip */
+    --surface-elevated: oklch(0.9645 0.0098 87.47); /* #f6f3ec - header, panels, transport bar, cards */
+    --surface-sunken: oklch(0.9848 0.0054 95.1); /* #fbfaf6 - inside the visual canvas, scrub-bar well */
+
+    /* --- Ink --- */
+    --text: oklch(0.2138 0.0042 84.59); /* #1a1917 - text, structural borders, meter segments */
+    --text-muted: oklch(0.5676 0.0194 84.59); /* #7c766a - secondary labels, meta, inactive tabs */
+    --text-faint: oklch(0.7489 0.0195 86.16); /* #b3ada0 - line numbers, canvas watermark labels */
+
+    /* --- Borders --- */
+    --border: oklch(0.8557 0.0189 86.15); /* #d5cfc2 - internal dividers (weaker than ink) */
+    --border-strong: var(--text); /* #1a1917 - structural borders */
+
+    /* --- Accent: signal yellow --- */
+    --accent: oklch(0.834 0.1584 88.96); /* #f2c230 - play, RUN, active mark, data highlight */
+    --on-brand: var(--text); /* ink text on yellow fills */
+
+    /* --- State --- */
+    --success: oklch(0.5632 0.1182 159.45); /* #1f8a5c - "ran cleanly" status dot */
+    --error: oklch(0.5967 0.1833 33.35); /* #d6482b - error status dot / message */
+    --success-soft: color-mix(in oklch, var(--success) 14%, transparent);
+    --warning-soft: color-mix(in oklch, var(--warning) 14%, transparent);
+    --error-soft: color-mix(in oklch, var(--error) 14%, transparent);
+    --info-soft: color-mix(in oklch, var(--info) 14%, transparent);
+
+    /* --- Selection --- */
+    --selection-bg: var(--accent);
+    --selection-fg: var(--text);
+
+    /* --- Overlay --- */
+    --overlay-bg: color-mix(in oklch, oklch(0.9645 0.0098 87.47) 88%, transparent); /* #f6f3ec */
+    --scrim: color-mix(in oklch, oklch(0.2138 0.0042 84.59) 35%, transparent); /* #1a1917 */
+
+    /* --- Sketch-only colour roles (no PhaseScope equivalent) --- */
+    --sketch-hairline-soft: oklch(0.8895 0.0187 86.15); /* #e0dacd - gutter edge, chart gridlines */
+    --sketch-grid-dot: var(--border); /* #d5cfc2 - dotted canvas-well background */
+    --sketch-accent-hover: oklch(0.8818 0.1541 90.33); /* #ffd34d - hover on yellow fills */
+    --sketch-accent-ink: oklch(0.5412 0.1106 87.71); /* #8a6a00 - yellow-family text on paper */
+
+    /* --- Syntax (code panes) --- */
+    --sketch-syntax-comment: oklch(0.6151 0.0191 84.59); /* #8a8478 */
+    --sketch-syntax-keyword: oklch(0.5566 0.1254 36.8); /* #b0553b */
+    --sketch-syntax-number: oklch(0.4855 0.215 267.19); /* #2b4bd6 */
+    --sketch-syntax-type: oklch(0.5247 0.0845 182.13); /* #1f7a6e - type/global, string/template */
+    --sketch-syntax-function: var(--sketch-accent-ink); /* #8a6a00 */
+    --sketch-syntax-plain: var(--text); /* #1a1917 */
+    --sketch-console-text: oklch(0.4616 0.0137 84.59); /* #5c5850 - mobile output line */
+
+    /* --- Shadows: hard offsets, never a blur --- */
+    --sketch-shadow-card: 5px 5px 0 color-mix(in oklch, var(--text) 12%, transparent);
+    --sketch-shadow-card-sm: 4px 4px 0 color-mix(in oklch, var(--text) 12%, transparent);
+
+    /* --- Font families --- */
+    --font-sans: 'Bricolage Grotesque Variable', system-ui, -apple-system, sans-serif;
+    --font-display: var(--font-sans);
+    --font-mono: 'Martian Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+    --font-code: 'Spline Sans Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+    /* --- Type scale (re-pointed semantic sizes + sketch-only roles) --- */
+    --font-size-caption: 0.6875rem; /* 11px - button / tab labels */
+    --font-size-detail: 0.8125rem; /* 13px - wordmark, console output, compact readouts */
+    --font-size-body: 1.0625rem; /* 17px - list row labels, card names */
+    --font-size-heading: 1.125rem; /* 18px - page / sketch title */
+    --font-size-title: 1.25rem; /* 20px - empty-state body copy */
+    --sketch-font-size-micro: 0.625rem; /* 10px - micro labels, meta, chips */
+    --sketch-font-size-nano: 0.5625rem; /* 9px - meter captions, card chips */
+    --sketch-font-size-code: 0.875rem; /* 14px - code panes */
+    --sketch-font-size-time: 1.375rem; /* 22px - transport time readout */
+
+    /* The Tailwind theme-block aliases (text-* / tracking-* utilities)
+       are also :root-computed - re-bind them so the utilities pick up
+       the sketch scale (same trap as --ui-*). */
+    --text-caption: var(--font-size-caption);
+    --text-detail: var(--font-size-detail);
+    --text-body: var(--font-size-body);
+    --text-heading: var(--font-size-heading);
+    --text-title: var(--font-size-title);
+    --tracking-label: var(--label-tracking);
+    --tracking-label-wide: var(--label-tracking-wide);
+
+    /* --- Leading & tracking --- */
+    --line-height-normal: 1.45; /* body copy */
+    --sketch-code-leading: 1.75; /* code panes (1.7 on mobile) */
+    --label-tracking: 0.08em; /* standard uppercase labels (same as PhaseScope) */
+    --label-tracking-wide: 0.1em; /* micro labels - Sketch runs tighter than the HUD's 0.18em */
+    --sketch-tracking-tight: 0.06em; /* wordmark, segmented control, pills */
+    --sketch-tracking-wide: 0.12em; /* card headers, thumbnail kind labels */
+
+    /* --- Focus: a hard ink ring, never a soft glow ---
+       The actual treatment is the outline rule below; the vars keep
+       anything reading --focus-glow coherent inside the theme. */
+    --focus-ring: var(--text);
+    --focus-glow:
+        0 0 0 var(--focus-ring-offset) var(--bg),
+        0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width)) var(--focus-ring);
+
+    /* --- Nuxt UI bridge re-assertion (see file header) --- */
+    --ui-primary: var(--accent);
+    --ui-text: var(--text);
+    --ui-text-muted: var(--text-muted);
+    --ui-text-highlighted: var(--text);
+    --ui-text-inverted: var(--on-brand);
+    --ui-bg: var(--bg);
+    --ui-bg-elevated: var(--surface);
+    --ui-bg-accented: var(--surface-elevated);
+    --ui-border: var(--border);
+    --ui-border-accented: var(--border-strong);
+    --ui-divider: var(--border);
+    --ui-success: var(--success);
+    --ui-error: var(--error);
+
+    /* --- Tailwind primary ramp re-assertion (see file header) --- */
+    --color-primary-50: color-mix(in oklch, var(--accent) 6%, white);
+    --color-primary-100: color-mix(in oklch, var(--accent) 12%, white);
+    --color-primary-200: color-mix(in oklch, var(--accent) 28%, white);
+    --color-primary-300: color-mix(in oklch, var(--accent) 46%, white);
+    --color-primary-400: color-mix(in oklch, var(--accent) 70%, white);
+    --color-primary-500: var(--accent);
+    --color-primary-600: color-mix(in oklch, var(--accent) 88%, black);
+    --color-primary-700: color-mix(in oklch, var(--accent) 74%, black);
+    --color-primary-800: color-mix(in oklch, var(--accent) 60%, black);
+    --color-primary-900: color-mix(in oklch, var(--accent) 46%, black);
+    --color-primary-950: color-mix(in oklch, var(--accent) 30%, black);
+
+    /* --- Base text defaults for the whole Sketch area --- */
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 1.125rem; /* 18px base, per spec */
+    line-height: var(--line-height-normal);
+}
+
+/* Hard ink focus ring on every control inside Sketch. Unlayered on
+   purpose: it must beat both the global @layer base focus rule and the
+   ds primitives' focus-visible:shadow-(--focus-glow) utilities. */
+.sketch-theme :focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+    box-shadow: none;
+}
+
+/* Dotted canvas-well background (workspace well, library grid, empty
+   state). radial-gradient has no clean utility equivalent. */
+.sketch-grid-dots {
+    background-image: radial-gradient(var(--sketch-grid-dot) 1px, transparent 1px);
+    background-size: 22px 22px;
+}

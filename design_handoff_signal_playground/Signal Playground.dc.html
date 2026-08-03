@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Martian+Mono:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#E4DFD4; font-family:'Bricolage Grotesque',system-ui,sans-serif; font-size:18px; color:#1A1917; }
+  a { color:#1A1917; }
+  a:hover { color:#8A6A00; }
+  pre { margin:0; }
+</style>
+</helmet>
+
+<section style="display:flex; flex-direction:column; gap:28px; padding:48px 56px 96px;">
+
+  <div style="display:flex; align-items:baseline; gap:16px; flex-wrap:wrap;">
+    <h1 style="margin:0; font-size:30px; font-weight:600; letter-spacing:-0.02em;">Signal playground — layout directions</h1>
+    <p style="margin:0; font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:#7C766A;">Turn 1 · <a href="#1a">1a</a> bench · <a href="#1b">1b</a> rack · <a href="#1c">1c</a> console · <a href="#1d">1d</a> supporting screens</p>
+  </div>
+
+  <div style="display:flex; flex-wrap:wrap; gap:40px; align-items:flex-start;">
+
+    <!-- ============ 1a BENCH ============ -->
+    <div id="1a" style="display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-family:'Martian Mono',monospace; font-size:12px; font-weight:600; background:#F2C230; color:#1A1917; padding:4px 9px; border:1px solid #1A1917;">1a</span>
+        <span style="font-size:19px; font-weight:600;">Bench</span>
+        <span style="font-size:16px; color:#7C766A;">Code left, visual right, transport spanning the bottom. Everything visible at once.</span>
+      </div>
+
+      <div style="width:1400px; height:880px; background:#EDE9E0; border:1px solid #1A1917; box-shadow:6px 6px 0 rgba(26,25,23,0.12); display:flex; flex-direction:column; overflow:hidden;">
+
+        <!-- header -->
+        <div style="display:flex; align-items:center; gap:20px; padding:14px 18px; border-bottom:1px solid #1A1917; background:#F6F3EC;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:30px; height:30px; background:#F2C230; border:1px solid #1A1917; display:grid; place-items:center;">
+              <div style="width:14px; height:14px; border:2px solid #1A1917; border-radius:50%; border-top-color:transparent;"></div>
+            </div>
+            <span style="font-family:'Martian Mono',monospace; font-size:13px; font-weight:600; letter-spacing:0.06em;">BENCH</span>
+          </div>
+          <div style="width:1px; height:26px; background:#D5CFC2;"></div>
+          <div style="display:flex; align-items:center; gap:10px; flex-shrink:0; white-space:nowrap;">
+            <span style="font-size:18px; font-weight:600;">dft-basis-sweep</span>
+            <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; padding:3px 7px; border:1px solid #1A1917; background:#E4DFD4;">JS</span>
+            <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; color:#7C766A;">SAVED 2M AGO</span>
+          </div>
+          <div style="flex:1"></div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.08em; padding:8px 12px; background:#EDE9E0; border:1px solid #1A1917; cursor:pointer;" style-hover="background:#E4DFD4">SKETCHES ▾</button>
+            <button style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.08em; padding:8px 14px; background:#F2C230; border:1px solid #1A1917; font-weight:600; cursor:pointer;" style-hover="background:#FFD34D">RUN ⏎</button>
+            <div style="width:1px; height:26px; background:#D5CFC2;"></div>
+            <a href="#" style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.08em; color:#7C766A; text-decoration:none;">↩ PHASESCOPE</a>
+          </div>
+        </div>
+
+        <!-- body -->
+        <div style="flex:1; display:flex; min-height:0;">
+
+          <!-- code column -->
+          <div style="width:560px; display:flex; flex-direction:column; border-right:1px solid #1A1917; background:#F6F3EC; min-height:0;">
+            <div style="display:flex; align-items:stretch; border-bottom:1px solid #D5CFC2;">
+              <div style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.08em; padding:11px 16px; border-right:1px solid #D5CFC2; border-bottom:2px solid #1A1917; margin-bottom:-1px; background:#EDE9E0;">CODE</div>
+              <div style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.08em; padding:11px 16px; border-right:1px solid #D5CFC2; color:#7C766A;">MATHS</div>
+              <div style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.08em; padding:11px 16px; border-right:1px solid #D5CFC2; color:#7C766A;">NOTES</div>
+              <div style="flex:1"></div>
+              <div style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.08em; padding:11px 14px; color:#7C766A;">⌥⇧F</div>
+            </div>
+
+            <div style="flex:1; display:flex; min-height:0; overflow:hidden;">
+              <div style="font-family:'Spline Sans Mono',monospace; font-size:14px; line-height:1.75; color:#B3ADA0; text-align:right; padding:16px 10px; background:#EDE9E0; border-right:1px solid #E0DACD; user-select:none;">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19</div>
+              <pre style="flex:1; font-family:'Spline Sans Mono',monospace; font-size:14px; line-height:1.75; padding:16px 18px; color:#1A1917; overflow:hidden; white-space:pre;"><div><span style="color:#8A8478">// one basis function of the DFT, swept</span></div><div><span style="color:#B0553B">const</span> N = <span style="color:#2B4BD6">1024</span>, sr = <span style="color:#2B4BD6">44100</span>;</div><div style="height:1.75em"></div><div><span style="color:#B0553B">export function</span> <span style="color:#8A6A00">render</span>(ctx, t) {</div><div>  <span style="color:#B0553B">const</span> k = <span style="color:#1F7A6E">Math</span>.floor(t * <span style="color:#2B4BD6">8</span>) % <span style="color:#2B4BD6">32</span>;</div><div>  <span style="color:#B0553B">const</span> re = <span style="color:#B0553B">new</span> <span style="color:#1F7A6E">Float32Array</span>(N);</div><div>  <span style="color:#B0553B">const</span> im = <span style="color:#B0553B">new</span> <span style="color:#1F7A6E">Float32Array</span>(N);</div><div style="height:1.75em"></div><div>  <span style="color:#B0553B">for</span> (<span style="color:#B0553B">let</span> n = <span style="color:#2B4BD6">0</span>; n &lt; N; n++) {</div><div>    <span style="color:#B0553B">const</span> w = <span style="color:#2B4BD6">2</span> * <span style="color:#1F7A6E">Math</span>.PI * k * n / N;</div><div>    re[n] = <span style="color:#1F7A6E">Math</span>.cos(w);</div><div>    im[n] = -<span style="color:#1F7A6E">Math</span>.sin(w);</div><div>  }</div><div style="height:1.75em"></div><div>  plot(ctx, re, { label: <span style="color:#1F7A6E">`re k=${k}`</span> });</div><div>  plot(ctx, im, { label: <span style="color:#1F7A6E">`im k=${k}`</span> });</div><div style="height:1.75em"></div><div>  <span style="color:#B0553B">return</span> <span style="color:#8A6A00">tone</span>(k * sr / N, <span style="color:#2B4BD6">0.4</span>);</div><div>}</div></pre>
+            </div>
+
+            <div style="border-top:1px solid #1A1917; background:#EDE9E0; padding:10px 16px; display:flex; align-items:center; gap:14px;">
+              <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; color:#7C766A;">OUTPUT</span>
+              <span style="font-family:'Spline Sans Mono',monospace; font-size:13px;">ran in 12ms · 1024 samples · k=17 → 732.4 Hz</span>
+              <div style="flex:1"></div>
+              <div style="width:8px; height:8px; background:#1F8A5C; border-radius:50%;"></div>
+            </div>
+          </div>
+
+          <!-- visual column -->
+          <div style="flex:1; display:flex; flex-direction:column; min-width:0; background:#EDE9E0;">
+            <div style="display:flex; align-items:center; gap:14px; padding:10px 16px; border-bottom:1px solid #D5CFC2;">
+              <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; color:#7C766A;">CANVAS</span>
+              <div style="display:flex; border:1px solid #1A1917;">
+                <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.06em; padding:6px 10px; background:#1A1917; color:#F6F3EC;">FIT</span>
+                <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.06em; padding:6px 10px; border-left:1px solid #1A1917;">16:9</span>
+                <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.06em; padding:6px 10px; border-left:1px solid #1A1917;">1:1</span>
+                <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.06em; padding:6px 10px; border-left:1px solid #1A1917;">FREE</span>
+              </div>
+              <div style="flex:1"></div>
+              <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.08em; color:#7C766A;">1024 × 576</span>
+              <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.08em; color:#7C766A;">60 FPS</span>
+              <div style="display:flex; gap:6px;">
+                <span style="font-family:'Martian Mono',monospace; font-size:10px; padding:6px 10px; border:1px solid #1A1917; background:#F6F3EC;">⤢</span>
+                <span style="font-family:'Martian Mono',monospace; font-size:10px; padding:6px 10px; border:1px solid #1A1917; background:#F6F3EC;">◉ PNG</span>
+              </div>
+            </div>
+
+            <div style="flex:1; padding:26px; display:grid; place-items:center; min-height:0; background-image:radial-gradient(#D5CFC2 1px, transparent 1px); background-size:22px 22px;">
+              <div style="width:100%; max-width:760px; aspect-ratio:16/9; background:#FBFAF6; border:1px solid #1A1917; position:relative; overflow:hidden;">
+                <svg viewBox="0 0 760 428" style="position:absolute; inset:0; width:100%; height:100%;">
+                  <line x1="0" y1="214" x2="760" y2="214" stroke="#D5CFC2" stroke-width="1"></line>
+                  <path d="M0 214 C 40 90, 80 90, 120 214 S 200 338, 240 214 S 320 90, 360 214 S 440 338, 480 214 S 560 90, 600 214 S 680 338, 720 214 L 760 214" fill="none" stroke="#1A1917" stroke-width="2"></path>
+                  <path d="M0 214 C 40 338, 80 338, 120 214 S 200 90, 240 214 S 320 338, 360 214 S 440 90, 480 214 S 560 338, 600 214 S 680 90, 720 214 L 760 214" fill="none" stroke="#F2C230" stroke-width="2" stroke-dasharray="6 5"></path>
+                </svg>
+                <span style="position:absolute; top:12px; left:14px; font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; color:#7C766A;">RE · K=17</span>
+                <span style="position:absolute; top:12px; left:120px; font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; color:#8A6A00;">IM · K=17</span>
+                <span style="position:absolute; bottom:12px; right:14px; font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; color:#7C766A;">N = 1024</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- transport -->
+        <div style="border-top:1px solid #1A1917; background:#F6F3EC; padding:14px 18px; display:flex; align-items:center; gap:18px;">
+          <div style="display:flex; gap:0; border:1px solid #1A1917;">
+            <span style="width:48px; height:44px; display:grid; place-items:center; background:#F2C230; font-size:15px;">▶</span>
+            <span style="width:48px; height:44px; display:grid; place-items:center; border-left:1px solid #1A1917; background:#EDE9E0; font-size:12px;">■</span>
+            <span style="width:48px; height:44px; display:grid; place-items:center; border-left:1px solid #1A1917; background:#EDE9E0; font-family:'Martian Mono',monospace; font-size:11px;">↻</span>
+          </div>
+          <div style="flex:1; display:flex; flex-direction:column; gap:6px;">
+            <div style="height:38px; background:#FBFAF6; border:1px solid #1A1917; position:relative; overflow:hidden;">
+              <svg viewBox="0 0 1000 38" preserveAspectRatio="none" style="position:absolute; inset:0; width:100%; height:100%;">
+                <g stroke="#C9C2B3" stroke-width="2">
+                  <path d="M0 19 L1000 19" stroke="#E0DACD" stroke-width="1"></path>
+                </g>
+                <g fill="#8A8478">
+                  <rect x="0" y="14" width="1000" height="10" fill="#EDE9E0"></rect>
+                </g>
+                <path d="M0 19 Q 60 2 120 19 T 240 19 T 360 19 T 480 19 T 600 19 T 720 19 T 840 19 T 1000 19" fill="none" stroke="#B3ADA0" stroke-width="2"></path>
+                <rect x="0" y="0" width="290" height="38" fill="#F2C230" fill-opacity="0.28"></rect>
+                <path d="M0 19 Q 60 2 120 19 T 240 19 T 290 19" fill="none" stroke="#1A1917" stroke-width="2"></path>
+                <rect x="288" y="0" width="2" height="38" fill="#1A1917"></rect>
+                <rect x="120" y="0" width="1" height="38" fill="#1A1917" fill-opacity="0.35"></rect>
+                <rect x="640" y="0" width="1" height="38" fill="#1A1917" fill-opacity="0.35"></rect>
+              </svg>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.08em; color:#7C766A;">
+              <span>LOOP 0:02.1 — 0:08.4</span>
+              <span>44.1 KHZ · STEREO</span>
+            </div>
+          </div>
+          <div style="font-family:'Martian Mono',monospace; font-size:22px; letter-spacing:0.02em; font-weight:500;">0:03<span style="color:#7C766A;">.48</span></div>
+          <div style="display:flex; flex-direction:column; gap:4px; width:96px;">
+            <div style="display:flex; gap:3px; height:9px;">
+              <div style="flex:1; background:#1A1917;"></div><div style="flex:1; background:#1A1917;"></div><div style="flex:1; background:#1A1917;"></div><div style="flex:1; background:#1A1917;"></div><div style="flex:1; background:#1A1917;"></div><div style="flex:1; background:#F2C230;"></div><div style="flex:1; background:#D5CFC2;"></div><div style="flex:1; background:#D5CFC2;"></div>
+            </div>
+            <div style="display:flex; gap:3px; height:9px;">
+              <div style="flex:1; background:#1A1917;"></div><div style="flex:1; background:#1A1917;"></div><div style="flex:1; background:#1A1917;"></div><div style="flex:1; background:#1A1917;"></div><div style="flex:1; background:#F2C230;"></div><div style="flex:1; background:#D5CFC2;"></div><div style="flex:1; background:#D5CFC2;"></div><div style="flex:1; background:#D5CFC2;"></div>
+            </div>
+            <span style="font-family:'Martian Mono',monospace; font-size:9px; letter-spacing:0.1em; color:#7C766A;">OUT −6.2 DB</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 1b RACK ============ -->
+    <div id="1b" style="display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-family:'Martian Mono',monospace; font-size:12px; font-weight:600; background:#F2C230; color:#1A1917; padding:4px 9px; border:1px solid #1A1917;">1b</span>
+        <span style="font-size:19px; font-weight:600;">Rack</span>
+        <span style="font-size:16px; color:#7C766A;">Stacked units in one column: visual on top, transport strip, code below. Reads like a notebook page.</span>
+      </div>
+
+      <div style="width:1400px; height:880px; background:#E4DFD4; border:1px solid #1A1917; box-shadow:6px 6px 0 rgba(26,25,23,0.12); display:flex; flex-direction:column; overflow:hidden;">
+
+        <div style="display:flex; align-items:center; gap:0; border-bottom:1px solid #1A1917; background:#F6F3EC;">
+          <div style="display:flex; align-items:center; gap:10px; padding:14px 18px; border-right:1px solid #1A1917;">
+            <div style="width:26px; height:26px; background:#1A1917; display:grid; place-items:center;">
+              <div style="width:12px; height:12px; border:2px solid #F2C230; border-radius:50%; border-top-color:transparent;"></div>
+            </div>
+            <span style="font-family:'Martian Mono',monospace; font-size:12px; font-weight:600; letter-spacing:0.06em;">BENCH</span>
+          </div>
+          <div style="display:flex; align-items:stretch; flex:1; overflow:hidden;">
+            <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.06em; padding:16px 16px; background:#EDE9E0; border-right:1px solid #1A1917; font-weight:600;">DFT-BASIS-SWEEP</span>
+            <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.06em; padding:16px 16px; border-right:1px solid #D5CFC2; color:#7C766A;">WINDOW-SHAPES</span>
+            <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.06em; padding:16px 16px; border-right:1px solid #D5CFC2; color:#7C766A;">STFT-HEATMAP</span>
+            <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.06em; padding:16px 14px; border-right:1px solid #D5CFC2; color:#7C766A;">+</span>
+          </div>
+          <a href="#" style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.08em; color:#7C766A; text-decoration:none; padding:16px 18px; border-left:1px solid #D5CFC2;">↩ PHASESCOPE</a>
+        </div>
+
+        <div style="flex:1; min-height:0; display:flex; justify-content:center; padding:24px 0 0;">
+          <div style="width:1080px; display:flex; flex-direction:column; gap:16px; min-height:0;">
+
+            <div style="background:#FBFAF6; border:1px solid #1A1917; display:flex; flex-direction:column; min-height:0; flex:1;">
+              <div style="display:flex; align-items:center; gap:12px; padding:9px 14px; border-bottom:1px solid #D5CFC2;">
+                <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; color:#7C766A;">01 · CANVAS</span>
+                <div style="flex:1"></div>
+                <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.08em; color:#7C766A;">FIT · 16:9 · 1:1 · FREE</span>
+                <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.08em; color:#7C766A;">1024 × 576</span>
+              </div>
+              <div style="flex:1; position:relative; min-height:0; background:#FBFAF6;">
+                <svg viewBox="0 0 1080 400" preserveAspectRatio="none" style="position:absolute; inset:0; width:100%; height:100%;">
+                  <g stroke="#EBE6DA" stroke-width="1">
+                    <path d="M0 100 H1080 M0 200 H1080 M0 300 H1080 M180 0 V400 M360 0 V400 M540 0 V400 M720 0 V400 M900 0 V400"></path>
+                  </g>
+                  <g>
+                    <rect x="60" y="290" width="26" height="90" fill="#1A1917"></rect>
+                    <rect x="100" y="200" width="26" height="180" fill="#1A1917"></rect>
+                    <rect x="140" y="120" width="26" height="260" fill="#F2C230"></rect>
+                    <rect x="180" y="230" width="26" height="150" fill="#1A1917"></rect>
+                    <rect x="220" y="300" width="26" height="80" fill="#1A1917"></rect>
+                    <rect x="260" y="250" width="26" height="130" fill="#1A1917"></rect>
+                    <rect x="300" y="330" width="26" height="50" fill="#1A1917"></rect>
+                    <rect x="340" y="180" width="26" height="200" fill="#F2C230"></rect>
+                    <rect x="380" y="310" width="26" height="70" fill="#1A1917"></rect>
+                    <rect x="420" y="340" width="26" height="40" fill="#1A1917"></rect>
+                    <rect x="460" y="270" width="26" height="110" fill="#1A1917"></rect>
+                    <rect x="500" y="350" width="26" height="30" fill="#1A1917"></rect>
+                    <rect x="540" y="230" width="26" height="150" fill="#F2C230"></rect>
+                    <rect x="580" y="330" width="26" height="50" fill="#1A1917"></rect>
+                    <rect x="620" y="355" width="26" height="25" fill="#1A1917"></rect>
+                    <rect x="660" y="320" width="26" height="60" fill="#1A1917"></rect>
+                    <rect x="700" y="360" width="26" height="20" fill="#1A1917"></rect>
+                    <rect x="740" y="300" width="26" height="80" fill="#1A1917"></rect>
+                    <rect x="780" y="358" width="26" height="22" fill="#1A1917"></rect>
+                    <rect x="820" y="345" width="26" height="35" fill="#1A1917"></rect>
+                    <rect x="860" y="362" width="26" height="18" fill="#1A1917"></rect>
+                    <rect x="900" y="350" width="26" height="30" fill="#1A1917"></rect>
+                    <rect x="940" y="366" width="26" height="14" fill="#1A1917"></rect>
+                    <rect x="980" y="356" width="26" height="24" fill="#1A1917"></rect>
+                  </g>
+                </svg>
+                <span style="position:absolute; top:14px; left:16px; font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; color:#7C766A;">MAGNITUDE SPECTRUM · DB</span>
+                <span style="position:absolute; bottom:12px; left:16px; font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; color:#7C766A;">0 HZ</span>
+                <span style="position:absolute; bottom:12px; right:16px; font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; color:#7C766A;">22.05 KHZ</span>
+              </div>
+            </div>
+
+            <div style="background:#F6F3EC; border:1px solid #1A1917; padding:12px 14px; display:flex; align-items:center; gap:16px;">
+              <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; color:#7C766A;">02 · TRANSPORT</span>
+              <div style="display:flex; border:1px solid #1A1917;">
+                <span style="width:42px; height:36px; display:grid; place-items:center; background:#F2C230; font-size:13px;">▶</span>
+                <span style="width:42px; height:36px; display:grid; place-items:center; border-left:1px solid #1A1917; background:#EDE9E0; font-size:11px;">■</span>
+                <span style="width:42px; height:36px; display:grid; place-items:center; border-left:1px solid #1A1917; background:#1A1917; color:#F2C230; font-size:12px;">↻</span>
+              </div>
+              <div style="flex:1; height:26px; background:#FBFAF6; border:1px solid #1A1917; position:relative; overflow:hidden;">
+                <svg viewBox="0 0 900 26" preserveAspectRatio="none" style="position:absolute; inset:0; width:100%; height:100%;">
+                  <rect x="0" y="0" width="240" height="26" fill="#F2C230" fill-opacity="0.3"></rect>
+                  <path d="M0 13 Q 50 2 100 13 T 200 13 T 300 13 T 400 13 T 500 13 T 600 13 T 700 13 T 900 13" fill="none" stroke="#B3ADA0" stroke-width="2"></path>
+                  <path d="M0 13 Q 50 2 100 13 T 200 13 T 240 13" fill="none" stroke="#1A1917" stroke-width="2"></path>
+                  <rect x="238" y="0" width="2" height="26" fill="#1A1917"></rect>
+                </svg>
+              </div>
+              <div style="font-family:'Martian Mono',monospace; font-size:18px; font-weight:500;">0:03<span style="color:#7C766A;">.48</span></div>
+              <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.08em; color:#7C766A;">/ 0:12.00</span>
+            </div>
+
+            <div style="background:#F6F3EC; border:1px solid #1A1917; border-bottom:none; display:flex; flex-direction:column; height:330px; min-height:0;">
+              <div style="display:flex; align-items:stretch; border-bottom:1px solid #D5CFC2;">
+                <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; color:#7C766A; padding:11px 14px; border-right:1px solid #D5CFC2;">03 · SOURCE</span>
+                <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.08em; padding:11px 16px; background:#EDE9E0; border-right:1px solid #D5CFC2; font-weight:600;">CODE · JS</span>
+                <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.08em; padding:11px 16px; border-right:1px solid #D5CFC2; color:#7C766A;">MATHS</span>
+                <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.08em; padding:11px 16px; border-right:1px solid #D5CFC2; color:#7C766A;">NOTES</span>
+                <div style="flex:1"></div>
+                <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.08em; padding:11px 16px; background:#F2C230; border-left:1px solid #1A1917; font-weight:600;">RUN ⏎</span>
+              </div>
+              <div style="flex:1; display:flex; min-height:0; overflow:hidden;">
+                <div style="font-family:'Spline Sans Mono',monospace; font-size:14px; line-height:1.75; color:#B3ADA0; text-align:right; padding:14px 10px; background:#EDE9E0; border-right:1px solid #E0DACD;">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10</div>
+                <pre style="flex:1; font-family:'Spline Sans Mono',monospace; font-size:14px; line-height:1.75; padding:14px 18px; overflow:hidden; white-space:pre;"><div><span style="color:#8A8478">// magnitude spectrum of a windowed frame</span></div><div><span style="color:#B0553B">import</span> { hann, fft, mag } <span style="color:#B0553B">from</span> <span style="color:#1F7A6E">'./dsp.js'</span>;</div><div style="height:1.75em"></div><div><span style="color:#B0553B">export function</span> <span style="color:#8A6A00">render</span>(ctx, buf, { N = <span style="color:#2B4BD6">2048</span> }) {</div><div>  <span style="color:#B0553B">const</span> frame = buf.slice(<span style="color:#2B4BD6">0</span>, N).map(hann(N));</div><div>  <span style="color:#B0553B">const</span> X = fft(frame);</div><div>  <span style="color:#B0553B">const</span> dB = mag(X).map((m) =&gt; <span style="color:#2B4BD6">20</span> * <span style="color:#1F7A6E">Math</span>.log10(m));</div><div style="height:1.75em"></div><div>  bars(ctx, dB, { peakColor: <span style="color:#1F7A6E">'#F2C230'</span> });</div><div>}</div></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 1c CONSOLE ============ -->
+    <div id="1c" style="display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-family:'Martian Mono',monospace; font-size:12px; font-weight:600; background:#F2C230; color:#1A1917; padding:4px 9px; border:1px solid #1A1917;">1c</span>
+        <span style="font-size:19px; font-weight:600;">Console</span>
+        <span style="font-size:16px; color:#7C766A;">Visual fills the frame; code and transport are floating panels you can collapse. Closest to PhaseScope's HUD habit.</span>
+      </div>
+
+      <div style="width:1400px; height:880px; background:#EDE9E0; border:1px solid #1A1917; box-shadow:6px 6px 0 rgba(26,25,23,0.12); position:relative; overflow:hidden;">
+
+        <div style="position:absolute; inset:0; background:#FBFAF6; background-image:linear-gradient(#EFEADE 1px, transparent 1px), linear-gradient(90deg, #EFEADE 1px, transparent 1px); background-size:44px 44px;"></div>
+        <svg viewBox="0 0 1400 880" style="position:absolute; inset:0; width:100%; height:100%;">
+          <g transform="translate(700,440)">
+            <circle r="290" fill="none" stroke="#E0DACD" stroke-width="1"></circle>
+            <circle r="200" fill="none" stroke="#E0DACD" stroke-width="1"></circle>
+            <circle r="110" fill="none" stroke="#E0DACD" stroke-width="1"></circle>
+            <path d="M-290 0 H290 M0 -290 V290" stroke="#E0DACD" stroke-width="1"></path>
+            <path d="M0 -260 C 150 -200, 250 -80, 200 60 C 150 200, 20 270, -110 240 C -240 210, -290 60, -230 -70 C -170 -200, -60 -280, 0 -260 Z" fill="none" stroke="#1A1917" stroke-width="2"></path>
+            <path d="M0 -180 C 100 -140, 170 -50, 130 40 C 90 130, 10 180, -70 160 C -160 140, -190 40, -150 -50 C -110 -140, -40 -200, 0 -180 Z" fill="none" stroke="#F2C230" stroke-width="2"></path>
+            <circle cx="130" cy="40" r="5" fill="#1A1917"></circle>
+          </g>
+        </svg>
+
+        <!-- top bar -->
+        <div style="position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:16px; padding:14px 18px;">
+          <div style="display:flex; align-items:center; gap:10px; background:#F6F3EC; border:1px solid #1A1917; padding:7px 12px;">
+            <div style="width:20px; height:20px; background:#F2C230; border:1px solid #1A1917;"></div>
+            <span style="font-family:'Martian Mono',monospace; font-size:12px; font-weight:600; letter-spacing:0.06em;">BENCH</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; background:#F6F3EC; border:1px solid #1A1917; padding:8px 12px;">
+            <span style="font-size:17px; font-weight:600;">lissajous-live</span>
+            <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; padding:2px 6px; border:1px solid #1A1917; background:#E4DFD4;">JS</span>
+            <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; color:#7C766A;">▾</span>
+          </div>
+          <div style="flex:1"></div>
+          <div style="display:flex; gap:6px;">
+            <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.06em; padding:9px 12px; background:#F6F3EC; border:1px solid #1A1917;">CODE ⌘1</span>
+            <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.06em; padding:9px 12px; background:#F6F3EC; border:1px solid #1A1917;">TRANSPORT ⌘2</span>
+            <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.06em; padding:9px 12px; background:#F6F3EC; border:1px solid #1A1917;">⤢</span>
+            <a href="#" style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.06em; padding:9px 12px; background:#F6F3EC; border:1px solid #1A1917; text-decoration:none;">↩ PHASESCOPE</a>
+          </div>
+        </div>
+
+        <!-- floating code panel -->
+        <div style="position:absolute; top:84px; left:18px; width:470px; background:#F6F3EC; border:1px solid #1A1917; box-shadow:4px 4px 0 rgba(26,25,23,0.14); display:flex; flex-direction:column;">
+          <div style="display:flex; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px solid #1A1917;">
+            <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em;">SOURCE</span>
+            <div style="display:flex; gap:0; border:1px solid #D5CFC2;">
+              <span style="font-family:'Martian Mono',monospace; font-size:9px; letter-spacing:0.06em; padding:4px 8px; background:#1A1917; color:#F6F3EC;">CODE</span>
+              <span style="font-family:'Martian Mono',monospace; font-size:9px; letter-spacing:0.06em; padding:4px 8px; color:#7C766A;">MATHS</span>
+              <span style="font-family:'Martian Mono',monospace; font-size:9px; letter-spacing:0.06em; padding:4px 8px; color:#7C766A;">NOTES</span>
+            </div>
+            <div style="flex:1"></div>
+            <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.06em; padding:4px 8px; background:#F2C230; border:1px solid #1A1917; font-weight:600;">RUN</span>
+            <span style="font-family:'Martian Mono',monospace; font-size:11px; color:#7C766A;">—</span>
+          </div>
+          <div style="display:flex; min-height:0;">
+            <div style="font-family:'Spline Sans Mono',monospace; font-size:13px; line-height:1.7; color:#B3ADA0; text-align:right; padding:12px 8px; background:#EDE9E0; border-right:1px solid #E0DACD;">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13</div>
+            <pre style="flex:1; font-family:'Spline Sans Mono',monospace; font-size:13px; line-height:1.7; padding:12px 14px; overflow:hidden; white-space:pre;"><div><span style="color:#8A8478">// stereo phase portrait</span></div><div><span style="color:#B0553B">export function</span> <span style="color:#8A6A00">frame</span>(L, R, ctx) {</div><div>  ctx.begin({ fade: <span style="color:#2B4BD6">0.08</span> });</div><div style="height:1.7em"></div><div>  <span style="color:#B0553B">for</span> (<span style="color:#B0553B">let</span> i = <span style="color:#2B4BD6">0</span>; i &lt; L.length; i++) {</div><div>    <span style="color:#B0553B">const</span> x = (L[i] + R[i]) / SQRT2;</div><div>    <span style="color:#B0553B">const</span> y = (L[i] - R[i]) / SQRT2;</div><div>    ctx.point(x, y, hue(i));</div><div>  }</div><div style="height:1.7em"></div><div>  ctx.grid({ rings: <span style="color:#2B4BD6">3</span> });</div><div>  <span style="color:#B0553B">return</span> ctx.end();</div><div>}</div></pre>
+          </div>
+          <div style="border-top:1px solid #D5CFC2; padding:8px 12px; display:flex; align-items:center; gap:10px; background:#EDE9E0;">
+            <div style="width:7px; height:7px; background:#1F8A5C; border-radius:50%;"></div>
+            <span style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#5C5850;">live · 8ms/frame</span>
+          </div>
+        </div>
+
+        <!-- floating readout -->
+        <div style="position:absolute; top:84px; right:18px; width:200px; background:#F6F3EC; border:1px solid #1A1917; box-shadow:4px 4px 0 rgba(26,25,23,0.14);">
+          <div style="padding:9px 12px; border-bottom:1px solid #1A1917; font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em;">READOUT</div>
+          <div style="padding:12px; display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; justify-content:space-between; font-family:'Martian Mono',monospace; font-size:11px;"><span style="color:#7C766A;">CORR</span><span>+0.42</span></div>
+            <div style="display:flex; justify-content:space-between; font-family:'Martian Mono',monospace; font-size:11px;"><span style="color:#7C766A;">CENTROID</span><span>1.8 KHZ</span></div>
+            <div style="display:flex; justify-content:space-between; font-family:'Martian Mono',monospace; font-size:11px;"><span style="color:#7C766A;">RMS</span><span>−12.4 DB</span></div>
+            <div style="display:flex; justify-content:space-between; font-family:'Martian Mono',monospace; font-size:11px;"><span style="color:#7C766A;">N</span><span>2048</span></div>
+          </div>
+        </div>
+
+        <!-- floating transport -->
+        <div style="position:absolute; bottom:18px; left:50%; transform:translateX(-50%); width:820px; background:#F6F3EC; border:1px solid #1A1917; box-shadow:4px 4px 0 rgba(26,25,23,0.14); padding:12px 14px; display:flex; align-items:center; gap:14px;">
+          <div style="display:flex; border:1px solid #1A1917;">
+            <span style="width:44px; height:38px; display:grid; place-items:center; background:#F2C230; font-size:13px;">▶</span>
+            <span style="width:44px; height:38px; display:grid; place-items:center; border-left:1px solid #1A1917; background:#EDE9E0; font-size:11px;">■</span>
+            <span style="width:44px; height:38px; display:grid; place-items:center; border-left:1px solid #1A1917; background:#1A1917; color:#F2C230; font-size:12px;">↻</span>
+          </div>
+          <div style="flex:1; height:30px; background:#FBFAF6; border:1px solid #1A1917; position:relative; overflow:hidden;">
+            <svg viewBox="0 0 600 30" preserveAspectRatio="none" style="position:absolute; inset:0; width:100%; height:100%;">
+              <rect x="0" y="0" width="170" height="30" fill="#F2C230" fill-opacity="0.3"></rect>
+              <path d="M0 15 Q 35 3 70 15 T 140 15 T 210 15 T 280 15 T 350 15 T 420 15 T 490 15 T 600 15" fill="none" stroke="#B3ADA0" stroke-width="2"></path>
+              <path d="M0 15 Q 35 3 70 15 T 140 15 T 170 15" fill="none" stroke="#1A1917" stroke-width="2"></path>
+              <rect x="168" y="0" width="2" height="30" fill="#1A1917"></rect>
+            </svg>
+          </div>
+          <div style="font-family:'Martian Mono',monospace; font-size:19px; font-weight:500;">0:03<span style="color:#7C766A;">.48</span></div>
+          <div style="display:flex; flex-direction:column; gap:3px; width:70px;">
+            <div style="display:flex; gap:2px; height:8px;"><div style="flex:1; background:#1A1917;"></div><div style="flex:1; background:#1A1917;"></div><div style="flex:1; background:#1A1917;"></div><div style="flex:1; background:#F2C230;"></div><div style="flex:1; background:#D5CFC2;"></div><div style="flex:1; background:#D5CFC2;"></div></div>
+            <div style="display:flex; gap:2px; height:8px;"><div style="flex:1; background:#1A1917;"></div><div style="flex:1; background:#1A1917;"></div><div style="flex:1; background:#1A1917;"></div><div style="flex:1; background:#1A1917;"></div><div style="flex:1; background:#F2C230;"></div><div style="flex:1; background:#D5CFC2;"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 1d SUPPORTING SCREENS ============ -->
+    <div id="1d" style="display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-family:'Martian Mono',monospace; font-size:12px; font-weight:600; background:#F2C230; color:#1A1917; padding:4px 9px; border:1px solid #1A1917;">1d</span>
+        <span style="font-size:19px; font-weight:600;">Supporting screens</span>
+        <span style="font-size:16px; color:#7C766A;">Empty state, sketch library, and the mobile fold — drawn in <a href="#1a">1a</a>'s treatment.</span>
+      </div>
+
+      <div style="display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap;">
+
+        <!-- empty state -->
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; color:#7C766A;">EMPTY STATE</span>
+          <div style="width:900px; height:600px; background:#EDE9E0; border:1px solid #1A1917; box-shadow:6px 6px 0 rgba(26,25,23,0.12); display:flex; flex-direction:column; overflow:hidden;">
+            <div style="display:flex; align-items:center; gap:14px; padding:13px 16px; border-bottom:1px solid #1A1917; background:#F6F3EC;">
+              <div style="width:26px; height:26px; background:#F2C230; border:1px solid #1A1917;"></div>
+              <span style="font-family:'Martian Mono',monospace; font-size:12px; font-weight:600; letter-spacing:0.06em;">BENCH</span>
+              <div style="flex:1"></div>
+              <a href="#" style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.08em; color:#7C766A; text-decoration:none;">↩ PHASESCOPE</a>
+            </div>
+            <div style="flex:1; display:grid; place-items:center; background-image:radial-gradient(#D5CFC2 1px, transparent 1px); background-size:22px 22px;">
+              <div style="width:520px; background:#F6F3EC; border:1px solid #1A1917; box-shadow:5px 5px 0 rgba(26,25,23,0.12);">
+                <div style="padding:14px 18px; border-bottom:1px solid #1A1917; font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.12em;">NEW SKETCH</div>
+                <div style="padding:22px 18px 24px; display:flex; flex-direction:column; gap:18px;">
+                  <p style="margin:0; font-size:20px; line-height:1.45; text-wrap:pretty;">Nothing on the bench yet. Start from a blank sketch, or open one of the starters.</p>
+                  <div style="display:flex; flex-direction:column; gap:1px; background:#D5CFC2; border:1px solid #1A1917;">
+                    <div style="background:#EDE9E0; padding:13px 15px; display:flex; align-items:center; gap:12px;">
+                      <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.06em; width:34px;">JS</span>
+                      <span style="font-size:17px; flex:1;">Blank canvas + audio out</span>
+                      <span style="font-family:'Martian Mono',monospace; font-size:11px; color:#7C766A;">→</span>
+                    </div>
+                    <div style="background:#EDE9E0; padding:13px 15px; display:flex; align-items:center; gap:12px;">
+                      <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.06em; width:34px;">JS</span>
+                      <span style="font-size:17px; flex:1;">Windowed FFT scaffold</span>
+                      <span style="font-family:'Martian Mono',monospace; font-size:11px; color:#7C766A;">→</span>
+                    </div>
+                    <div style="background:#EDE9E0; padding:13px 15px; display:flex; align-items:center; gap:12px;">
+                      <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.06em; width:34px;">TEX</span>
+                      <span style="font-size:17px; flex:1;">Maths note, no audio</span>
+                      <span style="font-family:'Martian Mono',monospace; font-size:11px; color:#7C766A;">→</span>
+                    </div>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:12px;">
+                    <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.08em; padding:11px 16px; background:#F2C230; border:1px solid #1A1917; font-weight:600;">NEW SKETCH ⌘N</span>
+                    <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.08em; color:#7C766A;">OR DROP AN AUDIO FILE ANYWHERE</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- library -->
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; color:#7C766A;">SKETCH LIBRARY</span>
+          <div style="width:900px; height:600px; background:#EDE9E0; border:1px solid #1A1917; box-shadow:6px 6px 0 rgba(26,25,23,0.12); display:flex; flex-direction:column; overflow:hidden;">
+            <div style="display:flex; align-items:center; gap:14px; padding:13px 16px; border-bottom:1px solid #1A1917; background:#F6F3EC;">
+              <div style="width:26px; height:26px; background:#F2C230; border:1px solid #1A1917;"></div>
+              <span style="font-family:'Martian Mono',monospace; font-size:12px; font-weight:600; letter-spacing:0.06em;">BENCH</span>
+              <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.08em; color:#7C766A;">/ SKETCHES</span>
+              <div style="flex:1"></div>
+              <span style="font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.08em; padding:8px 12px; background:#F2C230; border:1px solid #1A1917; font-weight:600;">NEW ⌘N</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid #D5CFC2;">
+              <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; color:#7C766A;">FILTER</span>
+              <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.06em; padding:6px 10px; background:#1A1917; color:#F6F3EC;">ALL 14</span>
+              <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.06em; padding:6px 10px; border:1px solid #D5CFC2;">JS 9</span>
+              <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.06em; padding:6px 10px; border:1px solid #D5CFC2;">TEX 3</span>
+              <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.06em; padding:6px 10px; border:1px solid #D5CFC2;">C# 2</span>
+              <div style="flex:1"></div>
+              <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.06em; color:#7C766A;">SORT · RECENT ▾</span>
+            </div>
+            <div style="flex:1; padding:18px 16px; display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; align-content:start; background-image:radial-gradient(#D5CFC2 1px, transparent 1px); background-size:22px 22px;">
+              <sc-for list="{{ sketches }}" as="s" hint-placeholder-count="6">
+                <div style="background:#F6F3EC; border:1px solid #1A1917;">
+                  <div style="height:96px; background:#FBFAF6; border-bottom:1px solid #1A1917; position:relative; overflow:hidden; display:grid; place-items:center;">
+                    <span style="font-family:'Martian Mono',monospace; font-size:9px; letter-spacing:0.12em; color:#B3ADA0;">{{ s.kind }}</span>
+                  </div>
+                  <div style="padding:10px 12px; display:flex; flex-direction:column; gap:6px;">
+                    <span style="font-size:17px; font-weight:600;">{{ s.name }}</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <span style="font-family:'Martian Mono',monospace; font-size:9px; letter-spacing:0.08em; padding:2px 6px; border:1px solid #D5CFC2;">{{ s.lang }}</span>
+                      <span style="font-family:'Martian Mono',monospace; font-size:9px; letter-spacing:0.08em; color:#7C766A;">{{ s.when }}</span>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <!-- mobile -->
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.1em; color:#7C766A;">MOBILE · 390 × 844</span>
+          <div style="width:390px; height:844px; background:#EDE9E0; border:1px solid #1A1917; box-shadow:6px 6px 0 rgba(26,25,23,0.12); display:flex; flex-direction:column; overflow:hidden;">
+            <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid #1A1917; background:#F6F3EC;">
+              <div style="width:22px; height:22px; background:#F2C230; border:1px solid #1A1917;"></div>
+              <span style="font-size:17px; font-weight:600;">dft-basis-sweep</span>
+              <div style="flex:1"></div>
+              <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.06em; padding:5px 8px; border:1px solid #1A1917;">≡</span>
+            </div>
+            <div style="height:270px; border-bottom:1px solid #1A1917; background:#FBFAF6; position:relative;">
+              <svg viewBox="0 0 390 270" preserveAspectRatio="none" style="position:absolute; inset:0; width:100%; height:100%;">
+                <line x1="0" y1="135" x2="390" y2="135" stroke="#E0DACD"></line>
+                <path d="M0 135 C 24 60, 48 60, 72 135 S 120 210, 144 135 S 192 60, 216 135 S 264 210, 288 135 S 336 60, 360 135 L 390 135" fill="none" stroke="#1A1917" stroke-width="2"></path>
+                <path d="M0 135 C 24 210, 48 210, 72 135 S 120 60, 144 135 S 192 210, 216 135 S 264 60, 288 135 S 336 210, 360 135 L 390 135" fill="none" stroke="#F2C230" stroke-width="2" stroke-dasharray="5 4"></path>
+              </svg>
+              <span style="position:absolute; top:10px; left:12px; font-family:'Martian Mono',monospace; font-size:9px; letter-spacing:0.1em; color:#7C766A;">CANVAS · FIT</span>
+            </div>
+            <div style="padding:12px 14px; border-bottom:1px solid #1A1917; background:#F6F3EC; display:flex; align-items:center; gap:12px;">
+              <div style="display:flex; border:1px solid #1A1917;">
+                <span style="width:44px; height:44px; display:grid; place-items:center; background:#F2C230; font-size:14px;">▶</span>
+                <span style="width:44px; height:44px; display:grid; place-items:center; border-left:1px solid #1A1917; background:#1A1917; color:#F2C230; font-size:13px;">↻</span>
+              </div>
+              <div style="flex:1; height:24px; background:#FBFAF6; border:1px solid #1A1917; position:relative; overflow:hidden;">
+                <svg viewBox="0 0 200 24" preserveAspectRatio="none" style="position:absolute; inset:0; width:100%; height:100%;">
+                  <rect x="0" y="0" width="58" height="24" fill="#F2C230" fill-opacity="0.3"></rect>
+                  <path d="M0 12 Q 15 3 30 12 T 60 12 T 90 12 T 120 12 T 150 12 T 200 12" fill="none" stroke="#B3ADA0" stroke-width="2"></path>
+                  <rect x="57" y="0" width="2" height="24" fill="#1A1917"></rect>
+                </svg>
+              </div>
+              <span style="font-family:'Martian Mono',monospace; font-size:13px;">0:03</span>
+            </div>
+            <div style="display:flex; border-bottom:1px solid #D5CFC2; background:#EDE9E0;">
+              <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.08em; padding:12px 14px; border-right:1px solid #D5CFC2; border-bottom:2px solid #1A1917; margin-bottom:-1px;">CODE</span>
+              <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.08em; padding:12px 14px; border-right:1px solid #D5CFC2; color:#7C766A;">MATHS</span>
+              <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.08em; padding:12px 14px; color:#7C766A;">NOTES</span>
+              <div style="flex:1"></div>
+              <span style="font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:0.08em; padding:12px 14px; background:#F2C230; border-left:1px solid #1A1917; font-weight:600;">RUN</span>
+            </div>
+            <div style="flex:1; display:flex; min-height:0; background:#F6F3EC; overflow:hidden;">
+              <div style="font-family:'Spline Sans Mono',monospace; font-size:13px; line-height:1.7; color:#B3ADA0; text-align:right; padding:12px 8px; background:#EDE9E0; border-right:1px solid #E0DACD;">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8</div>
+              <pre style="flex:1; font-family:'Spline Sans Mono',monospace; font-size:13px; line-height:1.7; padding:12px 12px; white-space:pre; overflow:hidden;"><div><span style="color:#8A8478">// basis fn</span></div><div><span style="color:#B0553B">const</span> N = <span style="color:#2B4BD6">1024</span>;</div><div style="height:1.7em"></div><div><span style="color:#B0553B">export function</span> <span style="color:#8A6A00">render</span>(ctx, t) {</div><div>  <span style="color:#B0553B">const</span> k = t * <span style="color:#2B4BD6">8</span> % <span style="color:#2B4BD6">32</span>;</div><div>  plot(ctx, cos(k, N));</div><div>  plot(ctx, sin(k, N));</div><div>}</div></pre>
+            </div>
+            <div style="border-top:1px solid #1A1917; background:#EDE9E0; padding:10px 14px; display:flex; align-items:center; gap:10px;">
+              <div style="width:7px; height:7px; background:#1F8A5C; border-radius:50%;"></div>
+              <span style="font-family:'Spline Sans Mono',monospace; font-size:12px; color:#5C5850;">ran in 12ms · 732.4 Hz</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      sketches: [
+        { name: 'dft-basis-sweep', lang: 'JS', kind: 'WAVEFORM', when: '2M AGO' },
+        { name: 'window-shapes', lang: 'JS', kind: 'ENVELOPE', when: 'YESTERDAY' },
+        { name: 'stft-heatmap', lang: 'JS', kind: 'SPECTROGRAM', when: '3D AGO' },
+        { name: 'fourier-theorems', lang: 'TEX', kind: 'MATHS', when: '4D AGO' },
+        { name: 'harmonic-model', lang: 'C#', kind: 'PARTIALS', when: '1W AGO' },
+        { name: 'lissajous-live', lang: 'JS', kind: 'PHASE', when: '1W AGO' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 import withNuxt from './.nuxt/eslint.config.mjs';
 
 export default withNuxt(
-    { ignores: ['.venv-gw/**', '.data/**'] },
+    { ignores: ['.venv-gw/**', '.data/**', 'design_handoff_signal_playground/**'] },
     {
         rules: {
             'vue/require-default-prop': 'off',

@@ -31,6 +31,10 @@ export default defineNuxtConfig({
         // Old route of the visualiser - kept as a redirect so existing
         // links and bookmarks to /phasescope still resolve.
         '/phasescope': { redirect: '/' },
+        // Sketch renders entirely from localStorage state - SSR would
+        // only produce hydration mismatches.
+        '/sketch': { ssr: false },
+        '/sketch/**': { ssr: false },
     },
     devtools: { enabled: true },
 

@@ -2,7 +2,7 @@
    PhaseScope Design Tokens - CSS Custom Properties
 
    Single source of truth for raw design values. Everything else
-   (Tailwind @theme utilities, Nuxt UI --ui-* vars) is derived from
+   (Tailwind theme utilities, Nuxt UI --ui-* vars) is derived from
    these in main.css - never hard-code a colour outside the token files.
 
    Colours are expressed in oklch; the hex equivalent is kept in a
@@ -45,11 +45,11 @@
 
     /* --- Font families ---------------------------------------------
        Literal stacks (--ff-*) are the single source; the --font-*
-       aliases are what components/utilities reference, and main.css
-       @theme mirrors them so Tailwind generates font-* utilities.
-       Defined here (not only in @theme) so the token layer carries the
-       families wherever it is loaded - e.g. Storybook, which does not
-       import main.css. */
+       aliases are what components/utilities reference, and main.css's
+       theme block mirrors them so Tailwind generates font-* utilities.
+       Defined here (not only in the theme block) so the token layer
+       carries the families wherever it is loaded - e.g. Storybook,
+       which does not import main.css. */
     --ff-sans: 'Inclusive Sans', system-ui, -apple-system, sans-serif;
     --ff-display: 'Space Grotesk', 'Inclusive Sans', system-ui, sans-serif;
     --ff-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;

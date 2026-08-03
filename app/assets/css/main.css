@@ -6,6 +6,7 @@
 @import './tokens/effects.css';
 @import './tokens/typography.css';
 @import './tokens/utilities.css';
+@import './tokens/sketch.css'; /* scoped .sketch-theme block - no :root values */
 
 /* ==================================================================
    Token -> Tailwind bridge

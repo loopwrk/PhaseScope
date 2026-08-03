@@ -15,3 +15,14 @@
 @import '@fontsource/jetbrains-mono/500.css';
 @import '@fontsource/jetbrains-mono/600.css';
 @import '@fontsource/jetbrains-mono/700.css';
+
+/* --- Sketch (paper theme) families - variable builds ---
+ 
+/* Bricolage Grotesque - Sketch UI, headings, body */
+@import '@fontsource-variable/bricolage-grotesque/opsz.css';
+
+/* Martian Mono - Sketch labels, readouts, buttons */
+@import '@fontsource-variable/martian-mono/index.css';
+
+/* Spline Sans Mono - Sketch code panes */
+@import '@fontsource-variable/spline-sans-mono/index.css';
