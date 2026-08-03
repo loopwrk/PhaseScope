@@ -71,6 +71,27 @@ const renderItems = computed(() => [
     { label: 'Points', value: 'points' },
     { label: 'Lines', value: 'lines' },
 ]);
+
+const colourMode = defineModel<string | number>('colourMode', { default: 'chroma' });
+// Description rides on the selected mode only, like the topology list
+const colourItems = computed(() => [
+    {
+        label: 'Pitch Chroma',
+        value: 'chroma',
+        description:
+            colourMode.value === 'chroma'
+                ? 'The full colour spectrum every octave - a note keeps its colour in any register.'
+                : undefined,
+    },
+    {
+        label: 'Wide Spectrum',
+        value: 'spectrum',
+        description:
+            colourMode.value === 'spectrum'
+                ? 'The colour spectrum spans the entire range of human hearing.'
+                : undefined,
+    },
+]);
 const topologyLabels: Record<string, string> = {
     corridor: 'Corridor',
     harmonics: 'Harmonics',
@@ -233,6 +254,12 @@ const topologyLabel = computed(() => topologyLabels[String(topology.value)] ?? S
                         :disabled="topologyDisabled"
                         size="xl"
                     />
+                </div>
+
+                <!-- Colour mode -->
+                <div class="flex flex-col gap-2.5">
+                    <span class="font-display text-label font-semibold text-(--brand-secondary)">Colour</span>
+                    <RadioGroup v-model="colourMode" :items="colourItems" size="xl" color="primary" />
                 </div>
 
                 <!-- Toggles -->
