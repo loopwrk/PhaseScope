@@ -5,9 +5,15 @@ import {
     freqContentToHz,
     ampToOscillationRange,
     getAnalysisWindowSize,
+    pitchChromaHue,
+    hzToMel,
+    spectrumHue,
     ANALYSIS_WINDOW_TEMPORAL,
     ANALYSIS_WINDOW_BALANCED,
     ANALYSIS_WINDOW_SPECTRAL,
+    SPECTRUM_MIN_HZ,
+    SPECTRUM_MAX_HZ,
+    SPECTRUM_HUE_SPAN,
 } from '~/utils/audio/analysis';
 
 /* Signal fixtures: the analyzers are derivative-energy heuristics, so the
@@ -120,5 +126,76 @@ describe('ampToOscillationRange', () => {
     it('clamps out-of-range input', () => {
         expect(ampToOscillationRange(-5)).toBeCloseTo(0.005);
         expect(ampToOscillationRange(7)).toBeCloseTo(0.05);
+    });
+});
+
+describe('pitchChromaHue', () => {
+    it('gives a note the same hue in every octave', () => {
+        const a1 = pitchChromaHue(55);
+        expect(pitchChromaHue(110)).toBeCloseTo(a1, 6);
+        expect(pitchChromaHue(220)).toBeCloseTo(a1, 6);
+        expect(pitchChromaHue(3520)).toBeCloseTo(a1, 6);
+    });
+
+    it('anchors hue 0 at C and treats silence as 0', () => {
+        expect(pitchChromaHue(16.3516)).toBeCloseTo(0, 5);
+        expect(pitchChromaHue(0)).toBe(0);
+        expect(pitchChromaHue(-3)).toBe(0);
+    });
+});
+
+describe('hzToMel', () => {
+    it('matches the textbook anchor points', () => {
+        expect(hzToMel(0)).toBe(0);
+        expect(hzToMel(700)).toBeCloseTo(2595 * Math.log10(2), 6);
+        expect(hzToMel(1000)).toBeCloseTo(1000, 0); // the formula's design point, ~1000.14
+    });
+
+    it('is strictly increasing', () => {
+        let prev = -1;
+        for (const hz of [20, 55, 220, 1000, 4000, 8000, 16000]) {
+            const m = hzToMel(hz);
+            expect(m).toBeGreaterThan(prev);
+            prev = m;
+        }
+    });
+});
+
+describe('spectrumHue', () => {
+    it('spans violet (SPECTRUM_HUE_SPAN) at the bass end to red (0) at the top, without wrapping', () => {
+        expect(spectrumHue(SPECTRUM_MIN_HZ)).toBeCloseTo(SPECTRUM_HUE_SPAN, 6);
+        expect(spectrumHue(SPECTRUM_MAX_HZ)).toBeCloseTo(0, 6);
+        expect(SPECTRUM_HUE_SPAN).toBeLessThan(1); // red and violet stay distinct
+    });
+
+    it('clamps content outside the endpoints instead of wrapping or overshooting', () => {
+        expect(spectrumHue(20)).toBeCloseTo(SPECTRUM_HUE_SPAN, 6);
+        expect(spectrumHue(20480)).toBeCloseTo(0, 6);
+    });
+
+    it('treats silence as the deep violet end', () => {
+        expect(spectrumHue(0)).toBe(SPECTRUM_HUE_SPAN);
+        expect(spectrumHue(-10)).toBe(SPECTRUM_HUE_SPAN);
+    });
+
+    it('is monotonic: hue falls as frequency rises', () => {
+        let prev = 2;
+        for (const hz of [30, 60, 120, 250, 500, 1000, 2000, 4000, 8000, 16000]) {
+            const h = spectrumHue(hz);
+            expect(h).toBeLessThan(prev);
+            prev = h;
+        }
+    });
+
+    it('reallocates gamut from the near-empty bottom octaves to the mid-band (the mel warp)', () => {
+        // vs a log-frequency ramp over the same endpoints: log gives every
+        // octave the same 1/9.06 of the span, so the bottom two octaves
+        // (30-120 Hz) burn 22% of the gradient on centroids that almost
+        // never occur. Mel hands that to the bands music actually visits.
+        // Hue falls with frequency, so a band's share is hue(lo) - hue(hi).
+        const share = (lo: number, hi: number) => (spectrumHue(lo) - spectrumHue(hi)) / SPECTRUM_HUE_SPAN;
+        const logShare = (lo: number, hi: number) => Math.log2(hi / lo) / Math.log2(SPECTRUM_MAX_HZ / SPECTRUM_MIN_HZ);
+        expect(share(30, 120)).toBeLessThan(logShare(30, 120) * 0.25); // bottom: 3.7% vs 22%
+        expect(share(1000, 4000)).toBeGreaterThan(logShare(1000, 4000) * 1.4); // mid: 32.5% vs 22%
     });
 });

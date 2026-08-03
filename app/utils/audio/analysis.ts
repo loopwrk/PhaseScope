@@ -142,6 +142,47 @@ export const pitchChromaHue = (hz: number, refHz: number = C0_HZ): number => {
     return ((Math.log2(hz / refHz) % 1) + 1) % 1;
 };
 
+/* ---------- Wide-spectrum hue (one gradient, whole audible range) ----------
+
+   The chroma hue above wraps the wheel every octave; this one lays a single
+   violet -> red gradient across the audible range - deep blues and violets
+   in the bass, hot reds and oranges at the top - so REGISTER, not pitch
+   class, owns the colour. Two deliberate choices:
+
+   - The frequency axis is the MEL SCALE, not log-frequency. A log ramp gives
+     every octave equal hue, and centroids do not visit octaves equally:
+     they crowd ~200 Hz-6 kHz, so under a log ramp the two near-empty bottom
+     octaves alone burn 22% of the gradient and most tracks sit stuck in the
+     middle. Mel spaces hue the way hearing spaces pitch: the bottom octaves
+     shrink to ~4%, the musical mid-band grows to ~64% (from 54%), and the
+     extremes stay reachable instead of amputated.
+   - The gradient runs from hue 0.8 (violet, the bass end) down to 0 (red,
+     the top) rather than wrapping the full wheel: red and violet are
+     neighbours on the colour wheel, so a full wrap would paint the deepest
+     sub and the highest air shimmer nearly alike. Chroma mode wraps because
+     octave equivalence is its point; here it would lie.
+
+   Endpoints are 30 Hz-16 kHz rather than the audiometric 20-20480: content
+   outside them is rare enough to clamp to the gradient's ends instead of
+   owning gamut. */
+
+export type ColourMode = 'chroma' | 'spectrum';
+
+export const SPECTRUM_MIN_HZ = 30;
+export const SPECTRUM_MAX_HZ = 16000;
+export const SPECTRUM_HUE_SPAN = 0.8; // violet (0.8, bass) -> red (0, treble), no wrap
+
+export const hzToMel = (hz: number): number => 2595 * Math.log10(1 + hz / 700);
+
+const SPECTRUM_MEL_MIN = hzToMel(SPECTRUM_MIN_HZ);
+const SPECTRUM_MEL_SPAN = hzToMel(SPECTRUM_MAX_HZ) - SPECTRUM_MEL_MIN;
+
+export const spectrumHue = (hz: number): number => {
+    if (!(hz > 0)) return SPECTRUM_HUE_SPAN; // silence sits at the deep violet end: no energy, no heat
+    const t = clamp((hzToMel(hz) - SPECTRUM_MEL_MIN) / SPECTRUM_MEL_SPAN, 0, 1);
+    return (1 - t) * SPECTRUM_HUE_SPAN;
+};
+
 /* ---------- Spectral centroid (a real frequency transform) ----------
 
    The "centre of mass" of the magnitude spectrum is the textbook one-number
@@ -160,13 +201,9 @@ export interface SpectralAnalyzer {
     readonly size: number;
     /** Spectral centroid of the windowed L+R mix, in Hz. 0 for silence. */
     centroidHz: (ch0: Float32Array, ch1: Float32Array, startIdx: number, sampleRate: number) => number;
-    /** Centroid mapped to 0..1 on a log scale over [minHz, maxHz]; the hue
-     *  contract the geometry engine consumes. Silence returns 0.5 (mid). */
+    /** Centroid mapped to 0..1 on a log scale over [minHz, maxHz]. Silence
+     *  returns 0.5 (mid). */
     centroid01: (ch0: Float32Array, ch1: Float32Array, startIdx: number, sampleRate: number) => number;
-    /** Map a frequency in Hz onto the same 0..1 log scale (over [minHz, maxHz]);
-     *  Hz <= 0 returns 0.5. Lets a caller that already has the centroid in Hz
-     *  reuse the mapping without running a second transform. */
-    hzTo01: (hz: number) => number;
 }
 
 export const createSpectralAnalyzer = (size = 2048, minHz = 100, maxHz = 8000): SpectralAnalyzer => {
@@ -216,5 +253,5 @@ export const createSpectralAnalyzer = (size = 2048, minHz = 100, maxHz = 8000): 
     const centroid01 = (ch0: Float32Array, ch1: Float32Array, startIdx: number, sampleRate: number): number =>
         hzTo01(centroidHz(ch0, ch1, startIdx, sampleRate));
 
-    return { size, centroidHz, centroid01, hzTo01 };
+    return { size, centroidHz, centroid01 };
 };

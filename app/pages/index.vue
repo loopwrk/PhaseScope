@@ -74,6 +74,7 @@ const {
     corridorMeta,
     trackCoveragePercent,
     channelBias,
+    colourMode,
     effectiveMaxPoints,
     pointsWarningLevel,
     formatPointCount,
@@ -392,6 +393,7 @@ onUnmounted(async () => {
                 v-model:coverage="trackCoveragePercent"
                 v-model:render-mode="renderMode"
                 v-model:topology="topologyMode"
+                v-model:colour-mode="colourMode"
                 v-model:oscillation="oscillation.enabled.value"
                 v-model:background="settings.background.value"
                 variant="glass"

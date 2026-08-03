@@ -7,7 +7,9 @@ import {
     ampToOscillationRange,
     createSpectralAnalyzer,
     pitchChromaHue,
+    spectrumHue,
 } from '~/utils/audio/analysis';
+import type { ColourMode } from '~/utils/audio/analysis';
 import { channelBiasTransform, CHANNEL_BIAS_Z_KEEP } from '~/utils/channelBias';
 import { FALLBACK_SR } from '~/utils/audio/constants';
 import { TOPOLOGIES } from '~/utils/topologies';
@@ -94,10 +96,20 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         if (renderer.hasGeometry()) corridorState.value.builtFrames = 0;
     };
 
-    // Colour by pitch: the spectral centroid's chroma drives the FULL colour
-    // wheel (one cycle per octave) instead of the bass->treble ramp.
-    const colourByPitch = usePersistedState('scope:colour-by-pitch', () => true);
-    watch(colourByPitch, rebuildToPlayhead);
+    // Colour mode: 'chroma' wraps the full wheel once per octave (a pitch
+    // keeps its colour in every register); 'spectrum' lays one red -> violet
+    // gradient across the audible range, mel-spaced (see spectrumHue), so
+    // register owns the colour.
+    const legacyColourMode = (): ColourMode => {
+        if (!import.meta.client) return 'chroma';
+        try {
+            return localStorage.getItem('phasescope:scope:colour-by-pitch') === 'false' ? 'spectrum' : 'chroma';
+        } catch {
+            return 'chroma';
+        }
+    };
+    const colourMode = usePersistedState<ColourMode>('scope:colour-mode', legacyColourMode);
+    watch(colourMode, rebuildToPlayhead);
 
     // Channel bias: the stereo field pulled apart into left/right populations -
     // works in every topology. Parked: kept in the engine (the transform in
@@ -322,11 +334,13 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
     /* The frame's hue, by precedence:
        1. The topology's own colour identity (the optional frameHue hook - the
           double helix's base sequence); null falls through.
-       2. Pitch (default): the centroid's chroma walks the FULL wheel once per
-          octave, so a pitch keeps its colour in every octave - vivid, and far
-          more reactive on tonal material.
-       3. Spectrum: bass = BLUE/MAGENTA -> treble = RED across 75% of the wheel. */
-    const SPECTRUM_HUE_RANGE = 0.75;
+       2. The colour mode:
+          chroma (default) - the centroid's chroma walks the FULL wheel once
+          per octave, so a pitch keeps its colour in every register - vivid,
+          and far more reactive on tonal material.
+          spectrum - one violet -> red gradient across 30 Hz-16 kHz on the
+          mel scale, so register owns the colour: subs are deep violet-blue,
+          air is red-hot, and hue moves fastest where hearing is finest. */
     const resolveFrameHue = (
         topology: (typeof TOPOLOGIES)[TopologyMode],
         frameIndex: number,
@@ -336,9 +350,7 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
     ): number => {
         const customHue = topology.frameHue?.(frameIndex, rawState, meta);
         if (customHue != null) return customHue;
-        if (colourByPitch.value) return pitchChromaHue(centroidHz);
-        const freqContent = spectral.hzTo01(centroidHz); // 0 = low freq, 1 = high freq
-        return SPECTRUM_HUE_RANGE - freqContent * SPECTRUM_HUE_RANGE;
+        return colourMode.value === 'spectrum' ? spectrumHue(centroidHz) : pitchChromaHue(centroidHz);
     };
 
     const buildOneFrame = (frameIndex: number, sampleStart?: number) => {
@@ -505,7 +517,7 @@ export function usePhaseGeometry(options: UsePhaseGeometryOptions) {
         corridorState,
         corridorMeta,
         trackCoveragePercent,
-        colourByPitch,
+        colourMode,
         channelBias,
         ...pointBudget,
         clear,
