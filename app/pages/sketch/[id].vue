@@ -3,6 +3,7 @@
    and write to the store on a 500ms debounce so the SAVED label ticks
    the way the spec describes; aspect and rename write straight through.
    RUN is chrome only until the runner lands. */
+import { useMediaQuery } from '@vueuse/core';
 import { byRecency, relativeTimeLabel, type SketchAspect } from '~/utils/sketch/model';
 import { runSketch, type RenderFrame } from '~/utils/sketch/runner';
 
@@ -60,6 +61,11 @@ function commitRename() {
     renaming.value = false;
     if (sketch.value && nameDraft.value.trim()) store.rename(sketch.value.id, nameDraft.value);
 }
+
+/* Below 900px the three regions stack (spec screen 4) and header
+   actions move into the ≡ sheet. */
+const isMobile = useMediaQuery('(max-width: 899px)');
+const sheetOpen = ref(false);
 
 /* SKETCHES dropdown: most recent five, then the library. */
 const switcherOpen = ref(false);
@@ -128,7 +134,75 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
 <template>
     <SketchShell>
-        <template #identity>
+        <template v-if="isMobile" #header>
+            <header
+                class="relative flex items-center gap-2.5 border-b border-(--border-strong) bg-(--surface-elevated) px-3.5 py-3"
+            >
+                <SketchMark size="sm" />
+                <span class="truncate text-body font-semibold">{{ sketch?.name }}</span>
+                <div class="flex-1" />
+                <button
+                    type="button"
+                    class="min-h-9 min-w-11 cursor-pointer border border-(--border-strong) px-2 text-body"
+                    aria-label="Menu"
+                    :aria-expanded="sheetOpen"
+                    @click="sheetOpen = !sheetOpen"
+                >
+                    ≡
+                </button>
+                <menu
+                    v-if="sheetOpen"
+                    class="absolute inset-x-0 top-full z-30 m-0 flex list-none flex-col border-b border-(--border-strong) bg-(--surface-elevated) p-0 shadow-(--sketch-shadow-card-sm)"
+                >
+                    <li v-for="s in recent" :key="s.id">
+                        <button
+                            type="button"
+                            class="min-h-11 w-full cursor-pointer truncate px-3.5 text-left text-body hover:bg-(--surface)"
+                            :class="s.id === sketch?.id && 'font-semibold'"
+                            @click="sheetOpen = false; openSketch(s.id)"
+                        >
+                            {{ s.name }}
+                        </button>
+                    </li>
+                    <li class="flex min-h-11 items-center gap-3 border-t border-(--border) px-3.5">
+                        <span
+                            class="font-mono text-(length:--sketch-font-size-micro) tracking-label-wide text-(--text-muted) uppercase"
+                        >
+                            Aspect
+                        </span>
+                        <DsSegmentedControl
+                            v-model="aspect"
+                            :options="[
+                                { value: 'fit', label: 'Fit' },
+                                { value: '16:9', label: '16:9' },
+                                { value: '1:1', label: '1:1' },
+                                { value: 'free', label: 'Free' },
+                            ]"
+                            size="sm"
+                        />
+                    </li>
+                    <li class="border-t border-(--border)">
+                        <button
+                            type="button"
+                            class="min-h-11 w-full cursor-pointer bg-(--accent) px-3.5 text-left font-mono text-caption font-semibold tracking-label uppercase hover:bg-(--sketch-accent-hover)"
+                            @click="sheetOpen = false; run()"
+                        >
+                            Run ⏎
+                        </button>
+                    </li>
+                    <li class="border-t border-(--border)">
+                        <NuxtLink
+                            to="/"
+                            class="flex min-h-11 items-center px-3.5 font-mono text-(length:--sketch-font-size-micro) tracking-label text-(--text-muted) uppercase no-underline hover:no-underline"
+                        >
+                            ↩ Phasescope
+                        </NuxtLink>
+                    </li>
+                </menu>
+            </header>
+        </template>
+
+        <template v-if="!isMobile" #identity>
             <div class="h-[26px] w-px shrink-0 bg-(--border)" />
             <div v-if="sketch" class="flex shrink-0 items-center gap-2.5 whitespace-nowrap">
                 <button
@@ -157,7 +231,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </div>
         </template>
 
-        <template #actions>
+        <template v-if="!isMobile" #actions>
             <div class="relative">
                 <DsButton variant="sketch-surface" size="sm" @click="switcherOpen = !switcherOpen">Sketches ▾</DsButton>
                 <menu
@@ -189,39 +263,78 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <div class="h-[26px] w-px bg-(--border)" />
         </template>
 
-        <div v-if="sketch" class="flex min-h-0 flex-1">
-            <SketchCodePane
-                v-model:code="code"
-                v-model:maths="maths"
-                v-model:notes="notes"
-                :language="sketch.language"
-                :result="lastRun"
-            />
+        <template v-if="sketch && isMobile">
             <SketchCanvasPane
                 v-model:aspect="aspect"
+                compact
                 :preferred-ratio="sketch.preferredRatio"
                 :render-frame="renderFrame"
                 :running="rendering"
                 @capture="onCapture"
                 @render-error="onRenderError"
             />
-        </div>
-        <SketchTransport
-            v-if="sketch"
-            :play-state="player.playState.value"
-            :playhead="player.playhead.value"
-            :duration="player.duration.value"
-            :peaks="player.peaks.value"
-            :meter="player.meter.value"
-            :sample-rate="player.sampleRate.value"
-            :channel-count="player.channelCount.value"
-            :loop="player.loop"
-            @play="player.play()"
-            @pause="player.pause()"
-            @stop="player.stop()"
-            @seek="player.seek($event)"
-            @toggle-loop="player.loop.enabled = !player.loop.enabled"
-            @set-loop="Object.assign(player.loop, $event)"
-        />
+            <SketchTransport
+                compact
+                :play-state="player.playState.value"
+                :playhead="player.playhead.value"
+                :duration="player.duration.value"
+                :peaks="player.peaks.value"
+                :meter="player.meter.value"
+                :sample-rate="player.sampleRate.value"
+                :channel-count="player.channelCount.value"
+                :loop="player.loop"
+                @play="player.play()"
+                @pause="player.pause()"
+                @stop="player.stop()"
+                @seek="player.seek($event)"
+                @toggle-loop="player.loop.enabled = !player.loop.enabled"
+                @set-loop="Object.assign(player.loop, $event)"
+            />
+            <SketchCodePane
+                v-model:code="code"
+                v-model:maths="maths"
+                v-model:notes="notes"
+                mobile
+                :language="sketch.language"
+                :result="lastRun"
+                @run="run"
+            />
+        </template>
+
+        <template v-else-if="sketch">
+            <div class="flex min-h-0 flex-1">
+                <SketchCodePane
+                    v-model:code="code"
+                    v-model:maths="maths"
+                    v-model:notes="notes"
+                    :language="sketch.language"
+                    :result="lastRun"
+                />
+                <SketchCanvasPane
+                    v-model:aspect="aspect"
+                    :preferred-ratio="sketch.preferredRatio"
+                    :render-frame="renderFrame"
+                    :running="rendering"
+                    @capture="onCapture"
+                    @render-error="onRenderError"
+                />
+            </div>
+            <SketchTransport
+                :play-state="player.playState.value"
+                :playhead="player.playhead.value"
+                :duration="player.duration.value"
+                :peaks="player.peaks.value"
+                :meter="player.meter.value"
+                :sample-rate="player.sampleRate.value"
+                :channel-count="player.channelCount.value"
+                :loop="player.loop"
+                @play="player.play()"
+                @pause="player.pause()"
+                @stop="player.stop()"
+                @seek="player.seek($event)"
+                @toggle-loop="player.loop.enabled = !player.loop.enabled"
+                @set-loop="Object.assign(player.loop, $event)"
+            />
+        </template>
     </SketchShell>
 </template>

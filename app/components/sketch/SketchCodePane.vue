@@ -3,12 +3,17 @@ import { computed, ref } from 'vue';
 import TabStrip from '../ds/TabStrip.vue';
 import StatusDot from '../ds/StatusDot.vue';
 import SketchEditor from './SketchEditor.vue';
+import SketchMathsPreview from './SketchMathsPreview.vue';
 import type { SketchLanguage } from '~/utils/sketch/model';
 
 const props = defineProps<{
     language: SketchLanguage;
     result?: { ok: boolean; message: string } | null;
+    /* mobile: full-width stack - RUN cell pinned in the tab strip, code
+       one step smaller (13/1.7 via the token overrides below). */
+    mobile?: boolean;
 }>();
+const emit = defineEmits<{ run: [] }>();
 const code = defineModel<string>('code', { default: '' });
 const maths = defineModel<string>('maths', { default: '' });
 const notes = defineModel<string>('notes', { default: '' });
@@ -32,11 +37,25 @@ const editorLanguage = computed(() =>
 
 <template>
     <section
-        class="flex w-[560px] shrink-0 flex-col border-r border-(--border-strong) bg-(--surface-elevated) max-[1200px]:w-[480px]"
+        class="flex flex-col bg-(--surface-elevated)"
+        :class="
+            mobile
+                ? 'min-h-0 flex-1 [--sketch-code-leading:1.7] [--sketch-font-size-code:0.8125rem]'
+                : 'w-[560px] shrink-0 border-r border-(--border-strong) max-[1200px]:w-[480px]'
+        "
     >
-        <TabStrip v-model="activeTab" :tabs="TABS">
+        <TabStrip v-model="activeTab" :tabs="TABS" :size="mobile ? 'sm' : 'md'">
             <template #trailing>
+                <button
+                    v-if="mobile"
+                    type="button"
+                    class="cursor-pointer border-l border-(--border-strong) bg-(--accent) px-4 font-mono text-(length:--sketch-font-size-micro) font-semibold tracking-label uppercase transition-colors duration-(--motion-duration-fast) hover:bg-(--sketch-accent-hover)"
+                    @click="emit('run')"
+                >
+                    Run
+                </button>
                 <span
+                    v-else
                     class="self-center px-3.5 font-mono text-(length:--sketch-font-size-micro) text-(--text-muted)"
                     title="Format document"
                 >
@@ -46,6 +65,7 @@ const editorLanguage = computed(() =>
         </TabStrip>
 
         <SketchEditor v-model="active" :language="editorLanguage" />
+        <SketchMathsPreview v-if="activeTab === 'maths'" :source="maths" />
 
         <footer class="flex items-center gap-3.5 border-t border-(--border-strong) bg-(--surface) px-4 py-2.5">
             <span
@@ -54,8 +74,11 @@ const editorLanguage = computed(() =>
                 Output
             </span>
             <span
-                class="max-h-24 flex-1 overflow-y-auto font-(family-name:--font-code) text-detail"
-                :class="result ? (result.ok ? 'text-(--text)' : 'text-(--error)') : 'text-(--text-muted)'"
+                class="max-h-24 flex-1 overflow-y-auto font-(family-name:--font-code)"
+                :class="[
+                    mobile ? 'text-xs' : 'text-detail',
+                    result ? (result.ok ? (mobile ? 'text-(--sketch-console-text)' : 'text-(--text)') : 'text-(--error)') : 'text-(--text-muted)',
+                ]"
             >
                 {{ result?.message ?? 'not run yet' }}
             </span>

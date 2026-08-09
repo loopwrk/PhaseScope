@@ -11,7 +11,9 @@ import type { SketchAspect } from '~/utils/sketch/model';
 import type { RenderFrame } from '~/utils/sketch/runner';
 
 const aspect = defineModel<SketchAspect>('aspect', { default: 'fit' });
-const props = defineProps<{ preferredRatio?: number; renderFrame?: RenderFrame; running?: boolean }>();
+/* compact: the mobile band - fixed height, no toolbar, corner label
+   carries the aspect (the control itself lives in the sheet). */
+const props = defineProps<{ preferredRatio?: number; renderFrame?: RenderFrame; running?: boolean; compact?: boolean }>();
 const emit = defineEmits<{ capture: [dataUrl: string]; 'render-error': [message: string] }>();
 
 const ASPECTS = [
@@ -21,7 +23,7 @@ const ASPECTS = [
     { value: 'free', label: 'Free' },
 ];
 
-const surface = ref<HTMLDivElement>();
+const surface = ref<HTMLElement>();
 const canvas = ref<HTMLCanvasElement>();
 const surfaceSize = ref('— × —');
 let observer: ResizeObserver | undefined;
@@ -68,7 +70,9 @@ watch(
             startedAt = performance.now();
             raf = requestAnimationFrame(loop);
         }
-    }
+    },
+    /* immediate so a layout-change remount picks a running loop back up */
+    { immediate: true }
 );
 
 function capture() {
@@ -88,7 +92,18 @@ const surfaceStyle = computed(() => {
 </script>
 
 <template>
-    <section class="flex min-w-0 flex-1 flex-col bg-(--surface)">
+    <section
+        v-if="compact"
+        ref="surface"
+        class="relative h-[270px] shrink-0 border-b border-(--border-strong) bg-(--surface-sunken)"
+    >
+        <canvas ref="canvas" class="absolute inset-0 h-full w-full" />
+        <span class="corner-label absolute top-2 left-2.5 text-(--text-muted) uppercase">
+            Canvas · {{ aspect }}
+        </span>
+    </section>
+
+    <section v-else class="flex min-w-0 flex-1 flex-col bg-(--surface)">
         <div class="flex items-center gap-3.5 border-b border-(--border) px-4 py-2.5">
             <span
                 class="font-mono text-(length:--sketch-font-size-micro) tracking-label-wide text-(--text-muted) uppercase"

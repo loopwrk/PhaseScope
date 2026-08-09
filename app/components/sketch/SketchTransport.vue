@@ -17,6 +17,9 @@ const props = defineProps<{
     sampleRate: number;
     channelCount: number;
     loop: LoopRegion;
+    /* compact: the mobile band - play + loop cells, 24px well, short
+       readout; no stop, meter or caption row. */
+    compact?: boolean;
 }>();
 const emit = defineEmits<{
     play: [];
@@ -68,7 +71,14 @@ function segmentClass(index: number, lit: number): string {
 </script>
 
 <template>
-    <footer class="flex items-center gap-[18px] border-t border-(--border-strong) bg-(--surface-elevated) px-[18px] py-3.5">
+    <footer
+        class="flex items-center bg-(--surface-elevated)"
+        :class="
+            compact
+                ? 'gap-3 border-b border-(--border-strong) px-3.5 py-3'
+                : 'gap-[18px] border-t border-(--border-strong) px-[18px] py-3.5'
+        "
+    >
         <div class="flex border border-(--border-strong)" :class="!hasBuffer && 'opacity-40'">
             <button
                 type="button"
@@ -80,6 +90,7 @@ function segmentClass(index: number, lit: number): string {
                 {{ playState === 'playing' ? '❙❙' : '▶' }}
             </button>
             <button
+                v-if="!compact"
                 type="button"
                 class="grid h-11 w-12 cursor-pointer place-items-center border-l border-(--border-strong) bg-(--surface) transition-colors duration-(--motion-duration-fast) hover:bg-(--bg)"
                 aria-label="Stop"
@@ -104,8 +115,8 @@ function segmentClass(index: number, lit: number): string {
         <div class="flex min-w-0 flex-1 flex-col gap-1.5">
             <div
                 ref="well"
-                class="relative h-[38px] touch-none border border-(--border-strong) bg-(--surface-sunken)"
-                :class="hasBuffer && 'cursor-ew-resize'"
+                class="relative touch-none border border-(--border-strong) bg-(--surface-sunken)"
+                :class="[compact ? 'h-6' : 'h-[38px]', hasBuffer && 'cursor-ew-resize']"
                 @pointerdown="onScrub"
                 @pointermove="onScrubMove"
             >
@@ -163,17 +174,23 @@ function segmentClass(index: number, lit: number): string {
                     />
                 </template>
             </div>
-            <div class="flex justify-between font-mono text-(length:--sketch-font-size-micro) tracking-label text-(--text-muted)">
+            <div
+                v-if="!compact"
+                class="flex justify-between font-mono text-(length:--sketch-font-size-micro) tracking-label text-(--text-muted)"
+            >
                 <span>LOOP {{ formatLoopLabel(loop.start) }} — {{ formatLoopLabel(loop.end) }}</span>
                 <span>{{ (sampleRate / 1000).toFixed(1) }} KHZ · {{ channelCount === 1 ? 'MONO' : 'STEREO' }}</span>
             </div>
         </div>
 
-        <span class="font-mono text-(length:--sketch-font-size-time) font-medium tracking-[0.02em]">
-            {{ time.main }}<span class="text-(--text-muted)">{{ time.hundredths }}</span>
+        <span
+            class="font-mono font-medium tracking-[0.02em]"
+            :class="compact ? 'text-detail' : 'text-(length:--sketch-font-size-time)'"
+        >
+            {{ time.main }}<span v-if="!compact" class="text-(--text-muted)">{{ time.hundredths }}</span>
         </span>
 
-        <div class="flex w-24 shrink-0 flex-col gap-1">
+        <div v-if="!compact" class="flex w-24 shrink-0 flex-col gap-1">
             <div v-for="side in (['left', 'right'] as const)" :key="side" class="flex h-[9px] gap-[3px]">
                 <span v-for="i in 8" :key="i" class="flex-1" :class="segmentClass(i - 1, meter[side])" />
             </div>
