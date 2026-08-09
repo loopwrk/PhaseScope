@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import TransportBar from '../app/components/layout/TransportBar.vue';
+import TransportBar from '../../app/components/layout/TransportBar.vue';
 
 const backdrop =
     'min-height:200px; display:flex; align-items:flex-end; padding:16px; background:radial-gradient(circle at 30% 30%, var(--scope-amber), transparent 55%), radial-gradient(circle at 75% 70%, var(--scope-magenta), transparent 55%), var(--bg)';

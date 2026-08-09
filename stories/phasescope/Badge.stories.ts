@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import Badge from '../app/components/ds/Badge.vue';
+import Badge from '../../app/components/ds/Badge.vue';
+import { sketchTheme } from '../sketchTheme';
 
 const meta: Meta<typeof Badge> = {
     title: 'Primitives/Badge',
@@ -34,6 +35,22 @@ export const Variants: Story = {
         <Badge color="warning" variant="outline" label="3.3M pts" />
         <Badge color="error" variant="outline" label="8M pts" />
         <Badge label="Live" :live="true" variant="outline" />
+      </div>
+    `,
+    }),
+};
+
+export const SketchChips: Story = {
+    decorators: [sketchTheme],
+    render: () => ({
+        components: { Badge },
+        template: `
+      <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center">
+        <Badge :sketch="true" label="JS" />
+        <Badge :sketch="true" label="TEX" />
+        <Badge :sketch="true" label="C#" />
+        <Badge :sketch="true" size="sm" label="JS" />
+        <Badge :sketch="true" size="sm" label="TEX" />
       </div>
     `,
     }),

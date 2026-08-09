@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import ControlsOverlay from '../app/components/layout/ControlsOverlay.vue';
+import ControlsOverlay from '../../app/components/layout/ControlsOverlay.vue';
 
 const backdrop =
     'min-height:640px; padding:24px; background:radial-gradient(circle at 70% 25%, var(--scope-cyan), transparent 55%), radial-gradient(circle at 30% 75%, var(--scope-magenta), transparent 55%), var(--bg)';

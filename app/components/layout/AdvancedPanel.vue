@@ -5,6 +5,7 @@
    since the mode selector is all it holds.
    Controlled: every setting is a v-model and the parent owns the engine state. */
 import RadioGroup from '../ds/RadioGroup.vue';
+import { computed } from 'vue';
 
 const open = defineModel<boolean>('open', { default: false });
 const mode = defineModel<string | number>('mode', { default: 'expressiveness' });

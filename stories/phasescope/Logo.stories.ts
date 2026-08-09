@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import Logo from '../app/components/ds/Logo.vue';
+import Logo from '../../app/components/ds/Logo.vue';
 
 const meta: Meta<typeof Logo> = {
     title: 'Foundations/Logo',

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import Panel from '../app/components/ds/Panel.vue';
+import Panel from '../../app/components/ds/Panel.vue';
 
 const meta: Meta<typeof Panel> = {
     title: 'Primitives/Panel',

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import DisplayPanel from '../app/components/layout/DisplayPanel.vue';
+import DisplayPanel from '../../app/components/layout/DisplayPanel.vue';
 
 const meta: Meta<typeof DisplayPanel> = {
     title: 'Layouts/DisplayPanel',

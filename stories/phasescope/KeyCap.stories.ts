@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import KeyCap from '../app/components/ds/KeyCap.vue';
+import KeyCap from '../../app/components/ds/KeyCap.vue';
 
 const meta: Meta<typeof KeyCap> = {
     title: 'Primitives/KeyCap',

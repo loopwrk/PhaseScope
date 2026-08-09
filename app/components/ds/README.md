@@ -31,7 +31,24 @@ Authoring conventions for these primitives. Keep them consistent.
   colour/variant, and inject chrome via the **`:ui` slot props** (e.g.
   `:ui="{ base: '…' }"`) so tailwind-variants merges our classes over Nuxt UI
   defaults (`rounded-none` / `ring-0` win).
-- **Bespoke** (KeyCap, Readout, Panel): plain Vue + tokens, no Nuxt UI.
+- **Bespoke** (KeyCap, Readout, Panel, StatusDot, SegmentedControl,
+  TabStrip): plain Vue + tokens, no Nuxt UI.
+
+## Sketch variants
+
+Sketch (the /sketch playground, tokens/sketch.css) is hard-edged: zero
+radius, 1px ink borders, flat colour swaps on hover - no chamfer, no
+glow. Where that can't be expressed by theming alone, primitives carry a
+sketch variant instead of Sketch growing one-offs:
+
+- Button `variant="sketch-primary | sketch-surface | sketch-panel"`
+- IconButton `variant="sketch"`
+- Badge `:sketch="true"` (+ `size="sm"` for the library-card chip)
+- SegmentedControl / TabStrip / StatusDot are token-driven and designed
+  for Sketch; they read whichever theme scope they sit in.
+
+Use them inside a `.sketch-theme` scope (SketchShell) - the focus ring
+and palette come from the scoped tokens, not the variant classes.
 
 ## Signature treatments (from the tokens)
 

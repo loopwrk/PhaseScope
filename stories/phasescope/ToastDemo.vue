@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /* Demo harness for the Toast story - buttons that fire each toast kind.
    Toasts appear in the <UApp> toaster (corner of the preview). */
-import Button from '../app/components/ds/Button.vue';
-import { usePsToast } from '../app/composables/usePsToast';
+import Button from '../../app/components/ds/Button.vue';
+import { usePsToast } from '../../app/composables/usePsToast';
 
 const { show } = usePsToast();
 </script>

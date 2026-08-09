@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import Readout from '../app/components/ds/Readout.vue';
+import Readout from '../../app/components/ds/Readout.vue';
 
 const meta: Meta<typeof Readout> = {
     title: 'Primitives/Readout',

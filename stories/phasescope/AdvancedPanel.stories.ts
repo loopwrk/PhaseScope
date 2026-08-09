@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import AdvancedPanel from '../app/components/layout/AdvancedPanel.vue';
-import Panel from '../app/components/ds/Panel.vue';
+import AdvancedPanel from '../../app/components/layout/AdvancedPanel.vue';
+import Panel from '../../app/components/ds/Panel.vue';
 
 const meta: Meta<typeof AdvancedPanel> = {
     title: 'Layouts/AdvancedPanel',
     component: AdvancedPanel,
     parameters: { layout: 'padded' },
     argTypes: {
-        mode: { control: 'inline-radio', options: ['wave', 'per-point', 'per-frame'] },
+        mode: { control: 'inline-radio', options: ['expressiveness', 'intensity', 'frequency'] },
     },
 };
 
@@ -31,7 +31,7 @@ export const Collapsed: Story = {
 };
 
 export const Open: Story = {
-    args: { open: true, mode: 'wave' },
+    args: { open: true, mode: 'expressiveness' },
     render: (args) => ({
         components: { AdvancedPanel, Panel },
         setup: () => ({ args }),

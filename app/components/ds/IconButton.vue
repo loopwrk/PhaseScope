@@ -1,10 +1,12 @@
 <script setup lang="ts">
 /* IconButton - square, icon-only skin of UButton. Same chamfer/glow chrome
-   as Button. Always pass an accessible label via `aria-label`. */
-type Variant = 'primary' | 'secondary' | 'solid' | 'ghost' | 'danger';
+   as Button; the sketch variant swaps it for Sketch's hard-edged look
+   (ink border, flat hover). Always pass an accessible label via `aria-label`. */
+import { computed } from 'vue';
+type Variant = 'primary' | 'secondary' | 'solid' | 'ghost' | 'danger' | 'sketch';
 type Size = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
-withDefaults(
+const props = withDefaults(
     defineProps<{
         icon: string;
         variant?: Variant;
@@ -22,9 +24,10 @@ const variantMap: Record<Variant, { color: 'primary' | 'neutral' | 'error'; vari
         solid: { color: 'neutral', variant: 'outline' }, // neutral surface + hairline (mockup "solid")
         ghost: { color: 'neutral', variant: 'ghost' },
         danger: { color: 'error', variant: 'solid' },
+        sketch: { color: 'neutral', variant: 'ghost' },
     };
 
-const baseClass = [
+const phaseScopeBase = [
     'rounded-none [clip-path:var(--clip-chamfer-sm)]',
     'transition-[transform,box-shadow] duration-150',
     'focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-(--focus-glow)',
@@ -32,6 +35,16 @@ const baseClass = [
     'active:translate-y-px',
     'disabled:opacity-40 disabled:pointer-events-none disabled:shadow-none',
 ].join(' ');
+
+const sketchBase = [
+    'rounded-none border border-(--border-strong) ring-0',
+    'bg-(--surface-elevated) text-(--text)',
+    'transition-colors duration-150 hover:bg-(--surface)',
+    'focus-visible:ring-0 focus-visible:shadow-none',
+    'disabled:opacity-40 disabled:pointer-events-none',
+].join(' ');
+
+const baseClass = computed(() => (props.variant === 'sketch' ? sketchBase : phaseScopeBase));
 </script>
 
 <template>

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
-import Switch from '../app/components/ds/Switch.vue';
+import Switch from '../../app/components/ds/Switch.vue';
 
 const meta: Meta<typeof Switch> = {
     title: 'Primitives/Switch',

@@ -32,7 +32,7 @@ if (typeof document !== 'undefined') {
 
 const preview: Preview = {
     parameters: {
-        backgrounds: { disable: true },
+        backgrounds: { disabled: true },
         controls: {
             matchers: { color: /(background|color)$/i, date: /Date$/i },
         },

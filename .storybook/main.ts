@@ -1,7 +1,16 @@
 import type { StorybookConfig } from '@storybook/vue3-vite';
+import { fileURLToPath } from 'node:url';
+
+// Nuxt resolves ~ and @ to the srcDir (app/) at build time; Storybook mounts
+// components outside Nuxt, so its Vite needs the same aliases spelled out.
+const appDir = fileURLToPath(new URL('../app', import.meta.url));
+const rootDir = fileURLToPath(new URL('..', import.meta.url));
 
 const config: StorybookConfig = {
-    stories: ['../stories/**/*.stories.@(ts|js)'],
+    stories: [
+        { directory: '../stories/phasescope', titlePrefix: 'PhaseScope' },
+        { directory: '../stories/sketch', titlePrefix: 'Sketch' },
+    ],
     framework: {
         name: '@storybook/vue3-vite',
         options: {},
@@ -24,7 +33,11 @@ const config: StorybookConfig = {
         extra.push(ui());
 
         viteConfig.plugins = [...(viteConfig.plugins ?? []), ...extra];
-        return viteConfig;
+
+        const { mergeConfig } = await import('vite');
+        return mergeConfig(viteConfig, {
+            resolve: { alias: { '~': appDir, '@': appDir, '~~': rootDir, '@@': rootDir } },
+        });
     },
 };
 
