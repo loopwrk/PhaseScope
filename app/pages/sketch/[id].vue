@@ -4,6 +4,7 @@
    the way the spec describes; aspect and rename write straight through.
    RUN is chrome only until the runner lands. */
 import { byRecency, relativeTimeLabel, type SketchAspect } from '~/utils/sketch/model';
+import { runSketch, type RenderFrame } from '~/utils/sketch/runner';
 
 const route = useRoute();
 const router = useRouter();
@@ -68,13 +69,57 @@ function openSketch(id: string) {
     router.push(`/sketch/${id}`);
 }
 
-function run() {
-    // chunk 5: evaluate the sketch, fill the output strip and transport
+/* Run: evaluate the code tab, hand audio to the player and the frame
+   function to the canvas. Errors land in the output strip; the canvas
+   keeps its last good frame. */
+const player = useSketchPlayer();
+onUnmounted(() => player.dispose());
+
+const lastRun = ref<{ ok: boolean; message: string } | null>(null);
+const renderFrame = shallowRef<RenderFrame>();
+const rendering = ref(false);
+
+async function run() {
+    if (!sketch.value) return;
+    const result = await runSketch(sketch.value.language, code.value, player.ensureSampleRate());
+    lastRun.value = { ok: result.ok, message: result.message };
+    if (!result.ok) return;
+    if (result.channels) {
+        player.load(result.channels);
+        void player.play();
+    }
+    renderFrame.value = result.renderFrame;
+    rendering.value = Boolean(result.renderFrame);
+}
+
+function onRenderError(message: string) {
+    rendering.value = false;
+    lastRun.value = { ok: false, message: `render: ${message}` };
+}
+
+function onCapture(dataUrl: string) {
+    if (sketch.value) store.update(sketch.value.id, { thumbnail: dataUrl });
+}
+
+/* Space toggles play/pause when focus is outside the editor; L arms
+   the loop; Cmd/Ctrl+Enter runs from anywhere. */
+function inEditableTarget(e: KeyboardEvent): boolean {
+    const el = e.target as HTMLElement | null;
+    return Boolean(el?.closest('input, textarea, [contenteditable="true"], .cm-content'));
 }
 function onKeydown(e: KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
-        run();
+        void run();
+        return;
+    }
+    if (inEditableTarget(e)) return;
+    if (e.key === ' ') {
+        e.preventDefault();
+        if (player.playState.value === 'playing') void player.pause();
+        else if (player.duration.value > 0) void player.play();
+    } else if (e.key.toLowerCase() === 'l') {
+        player.loop.enabled = !player.loop.enabled;
     }
 }
 onMounted(() => window.addEventListener('keydown', onKeydown));
@@ -145,9 +190,38 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         </template>
 
         <div v-if="sketch" class="flex min-h-0 flex-1">
-            <SketchCodePane v-model:code="code" v-model:maths="maths" v-model:notes="notes" :language="sketch.language" />
-            <SketchCanvasPane v-model:aspect="aspect" :preferred-ratio="sketch.preferredRatio" />
+            <SketchCodePane
+                v-model:code="code"
+                v-model:maths="maths"
+                v-model:notes="notes"
+                :language="sketch.language"
+                :result="lastRun"
+            />
+            <SketchCanvasPane
+                v-model:aspect="aspect"
+                :preferred-ratio="sketch.preferredRatio"
+                :render-frame="renderFrame"
+                :running="rendering"
+                @capture="onCapture"
+                @render-error="onRenderError"
+            />
         </div>
-        <SketchTransport v-if="sketch" />
+        <SketchTransport
+            v-if="sketch"
+            :play-state="player.playState.value"
+            :playhead="player.playhead.value"
+            :duration="player.duration.value"
+            :peaks="player.peaks.value"
+            :meter="player.meter.value"
+            :sample-rate="player.sampleRate.value"
+            :channel-count="player.channelCount.value"
+            :loop="player.loop"
+            @play="player.play()"
+            @pause="player.pause()"
+            @stop="player.stop()"
+            @seek="player.seek($event)"
+            @toggle-loop="player.loop.enabled = !player.loop.enabled"
+            @set-loop="Object.assign(player.loop, $event)"
+        />
     </SketchShell>
 </template>

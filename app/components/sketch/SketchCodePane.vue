@@ -5,7 +5,10 @@ import StatusDot from '../ds/StatusDot.vue';
 import SketchEditor from './SketchEditor.vue';
 import type { SketchLanguage } from '~/utils/sketch/model';
 
-const props = defineProps<{ language: SketchLanguage }>();
+const props = defineProps<{
+    language: SketchLanguage;
+    result?: { ok: boolean; message: string } | null;
+}>();
 const code = defineModel<string>('code', { default: '' });
 const maths = defineModel<string>('maths', { default: '' });
 const notes = defineModel<string>('notes', { default: '' });
@@ -50,10 +53,16 @@ const editorLanguage = computed(() =>
             >
                 Output
             </span>
-            <span class="flex-1 truncate font-(family-name:--font-code) text-detail text-(--text-muted)">
-                not run yet
+            <span
+                class="max-h-24 flex-1 overflow-y-auto font-(family-name:--font-code) text-detail"
+                :class="result ? (result.ok ? 'text-(--text)' : 'text-(--error)') : 'text-(--text-muted)'"
+            >
+                {{ result?.message ?? 'not run yet' }}
             </span>
-            <StatusDot state="neutral" label="not run yet" />
+            <StatusDot
+                :state="result ? (result.ok ? 'ok' : 'error') : 'neutral'"
+                :label="result ? (result.ok ? 'ran cleanly' : 'run failed') : 'not run yet'"
+            />
         </footer>
     </section>
 </template>
