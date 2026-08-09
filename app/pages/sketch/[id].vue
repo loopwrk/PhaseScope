@@ -19,7 +19,7 @@ useSeoMeta({ title: () => (sketch.value ? `${sketch.value.name} - Sketch` : 'Ske
             <span
                 class="font-mono text-(length:--sketch-font-size-micro) tracking-label-wide text-(--text-muted) uppercase"
             >
-                Workspace - chunk 4
+                Workspace
             </span>
         </div>
     </SketchShell>
