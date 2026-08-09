@@ -43,4 +43,16 @@ describe('usePersistedState', () => {
         const state = usePersistedState('test:corrupt', () => 'safe');
         expect(state.value).toBe('safe');
     });
+
+    it('keeps persisting after the first caller unmounts', async () => {
+        /* Regression: the write watcher used to bind to the first caller's
+           effect scope, so route changes killed persistence for the key. */
+        const { effectScope } = await import('vue');
+        const firstCaller = effectScope();
+        const state = firstCaller.run(() => usePersistedState('test:outlive', () => 'a'))!;
+        firstCaller.stop();
+        state.value = 'b';
+        await flush();
+        expect(localStorage.getItem('phasescope:test:outlive')).toBe('"b"');
+    });
 });

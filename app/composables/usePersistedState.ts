@@ -30,17 +30,23 @@ export function usePersistedState<T>(key: string, defaultValue: () => T): Ref<T>
             // corrupted entry: fall back to the default and let the watcher
             // overwrite it with something valid
         }
-        watch(
-            state,
-            (value) => {
-                try {
-                    localStorage.setItem(storageKey, JSON.stringify(value));
-                } catch {
-                    // storage full or unavailable (private mode) - run unpersisted
-                }
-            },
-            { deep: true }
-        );
+        /* The watcher must outlive the component that happened to call this
+           first (the registry blocks re-registration), so it runs in a
+           detached scope instead of the caller's setup scope - otherwise
+           navigating away from the first caller silently stops persistence. */
+        effectScope(true).run(() => {
+            watch(
+                state,
+                (value) => {
+                    try {
+                        localStorage.setItem(storageKey, JSON.stringify(value));
+                    } catch {
+                        // storage full or unavailable (private mode) - run unpersisted
+                    }
+                },
+                { deep: true }
+            );
+        });
     }
 
     return state;
