@@ -20,6 +20,157 @@
 </style>
 </helmet>
 
+<section style="display:flex; flex-direction:column; gap:28px; padding:48px 56px 64px;">
+
+  <div style="display:flex; align-items:baseline; gap:16px; flex-wrap:wrap;">
+    <h1 style="margin:0; font-size:30px; font-weight:600; letter-spacing:-0.02em;">Knobs — four levels of restraint</h1>
+    <p style="margin:0; font-family:'Martian Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:#7C766A;">Turn 2 · <a href="#2a">2a</a> gauge · <a href="#2b">2b</a> dial · <a href="#2c">2c</a> ticked · <a href="#2d">2d</a> panel · drag vertically · shift = fine</p>
+  </div>
+
+  <div style="display:flex; flex-wrap:wrap; gap:32px; align-items:flex-start;">
+
+    <!-- ============ 2a GAUGE ============ -->
+    <div id="2a" style="width:660px; display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-family:'Martian Mono',monospace; font-size:12px; font-weight:600; background:#F2C230; color:#1A1917; padding:4px 9px; border:1px solid #1A1917;">2a</span>
+        <span style="font-size:19px; font-weight:600;">Gauge</span>
+        <span style="font-size:16px; color:#7C766A;">No dial body at all. An arc, a dot, the number.</span>
+      </div>
+      <div style="background:#EDE9E0; border:1px solid #1A1917; padding:26px 30px 30px; display:flex; flex-direction:column; gap:24px;">
+        <div style="font-family:'Times New Roman',Times,serif; font-size:23px; color:#1A1917;"><i style="color:#B0553B;">x</i>[<i style="color:#2B4BD6;">n</i>] = <i style="color:#1F7A6E;">A</i> cos(2π<i style="color:#8A6A00;">f</i><i style="color:#2B4BD6;">n</i><i style="color:#4A7A2B;">T</i> + <i style="color:#2B4BD6;">φ</i>)</div>
+        <div style="display:flex; gap:44px;">
+          <sc-for list="{{ knobs }}" as="k" hint-placeholder-count="3">
+            <div style="display:flex; align-items:center; gap:14px; cursor:ns-resize; user-select:none; touch-action:none;" onPointerDown="{{ k.onDown }}">
+              <svg viewBox="0 0 100 100" style="width:52px; height:52px; overflow:visible;">
+                <path d="{{ arcPath }}" fill="none" stroke="#D5CFC2" stroke-width="4" stroke-linecap="butt"></path>
+                <path d="{{ arcPath }}" fill="none" stroke="{{ k.color }}" stroke-width="4" stroke-linecap="butt" stroke-dasharray="{{ k.dash }}"></path>
+                <circle cx="{{ k.dotX }}" cy="{{ k.dotY }}" r="5.5" fill="#1A1917"></circle>
+              </svg>
+              <div style="display:flex; flex-direction:column; gap:3px;">
+                <span style="font-family:'Times New Roman',Times,serif; font-style:italic; font-size:21px; color:{{ k.color }};">{{ k.sym }}</span>
+                <span style="font-family:'Martian Mono',monospace; font-size:14px; letter-spacing:0.02em;">{{ k.value }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 2b DIAL ============ -->
+    <div id="2b" style="width:660px; display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-family:'Martian Mono',monospace; font-size:12px; font-weight:600; background:#F2C230; color:#1A1917; padding:4px 9px; border:1px solid #1A1917;">2b</span>
+        <span style="font-size:19px; font-weight:600;">Dial</span>
+        <span style="font-size:16px; color:#7C766A;">Hairline body, one pointer. Drawn like the rest of the chrome.</span>
+      </div>
+      <div style="background:#EDE9E0; border:1px solid #1A1917; padding:26px 30px 30px; display:flex; flex-direction:column; gap:24px;">
+        <div style="font-family:'Times New Roman',Times,serif; font-size:23px; color:#1A1917;"><i style="color:#B0553B;">x</i>[<i style="color:#2B4BD6;">n</i>] = <i style="color:#1F7A6E;">A</i> cos(2π<i style="color:#8A6A00;">f</i><i style="color:#2B4BD6;">n</i><i style="color:#4A7A2B;">T</i> + <i style="color:#2B4BD6;">φ</i>)</div>
+        <div style="display:flex; gap:40px;">
+          <sc-for list="{{ knobs }}" as="k" hint-placeholder-count="3">
+            <div style="display:flex; flex-direction:column; align-items:center; gap:10px; cursor:ns-resize; user-select:none; touch-action:none;" onPointerDown="{{ k.onDown }}">
+              <svg viewBox="0 0 100 100" style="width:74px; height:74px;">
+                <path d="{{ arcPath }}" fill="none" stroke="#D5CFC2" stroke-width="3"></path>
+                <path d="{{ arcPath }}" fill="none" stroke="{{ k.color }}" stroke-width="3" stroke-dasharray="{{ k.dash }}"></path>
+                <circle cx="50" cy="50" r="29" fill="#FBFAF6" stroke="#1A1917" stroke-width="1.5"></circle>
+                <line x1="50" y1="42" x2="50" y2="24" stroke="{{ k.pointer }}" stroke-width="2.5" transform="rotate({{ k.angle }} 50 50)"></line>
+              </svg>
+              <div style="display:flex; align-items:baseline; gap:8px;">
+                <span style="font-family:'Times New Roman',Times,serif; font-style:italic; font-size:19px; color:{{ k.color }};">{{ k.sym }}</span>
+                <span style="font-family:'Martian Mono',monospace; font-size:13px;">{{ k.value }}</span>
+                <span style="font-family:'Martian Mono',monospace; font-size:9px; letter-spacing:0.1em; color:#7C766A;">{{ k.unit }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 2c TICKED ============ -->
+    <div id="2c" style="width:660px; display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-family:'Martian Mono',monospace; font-size:12px; font-weight:600; background:#F2C230; color:#1A1917; padding:4px 9px; border:1px solid #1A1917;">2c</span>
+        <span style="font-size:19px; font-weight:600;">Ticked</span>
+        <span style="font-size:16px; color:#7C766A;">Scale marks and a bordered readout. Reads as an instrument.</span>
+      </div>
+      <div style="background:#EDE9E0; border:1px solid #1A1917; padding:26px 30px 30px; display:flex; flex-direction:column; gap:24px;">
+        <div style="font-family:'Times New Roman',Times,serif; font-size:23px; color:#1A1917;"><i style="color:#B0553B;">x</i>[<i style="color:#2B4BD6;">n</i>] = <i style="color:#1F7A6E;">A</i> cos(2π<i style="color:#8A6A00;">f</i><i style="color:#2B4BD6;">n</i><i style="color:#4A7A2B;">T</i> + <i style="color:#2B4BD6;">φ</i>)</div>
+        <div style="display:flex; gap:34px;">
+          <sc-for list="{{ knobs }}" as="k" hint-placeholder-count="3">
+            <div style="display:flex; flex-direction:column; align-items:center; gap:11px; cursor:ns-resize; user-select:none; touch-action:none;" onPointerDown="{{ k.onDown }}">
+              <span style="font-family:'Martian Mono',monospace; font-size:9px; letter-spacing:0.14em; color:#7C766A;">{{ k.label }}</span>
+              <svg viewBox="0 0 100 100" style="width:88px; height:88px;">
+                <g stroke="#B3ADA0">
+                  <sc-for list="{{ ticks }}" as="t" hint-placeholder-count="11">
+                    <line x1="{{ t.x1 }}" y1="{{ t.y1 }}" x2="{{ t.x2 }}" y2="{{ t.y2 }}" stroke-width="{{ t.w }}"></line>
+                  </sc-for>
+                </g>
+                <path d="{{ arcPath }}" fill="none" stroke="{{ k.color }}" stroke-width="3" stroke-dasharray="{{ k.dash }}"></path>
+                <circle cx="50" cy="50" r="26" fill="#FBFAF6" stroke="#1A1917" stroke-width="1.5"></circle>
+                <g transform="rotate({{ k.angle }} 50 50)">
+                  <line x1="50" y1="44" x2="50" y2="27" stroke="{{ k.pointer }}" stroke-width="2.5"></line>
+                </g>
+                <circle cx="50" cy="50" r="2" fill="#1A1917"></circle>
+              </svg>
+              <div style="display:flex; align-items:center; gap:8px; border:1px solid #1A1917; background:#FBFAF6; padding:5px 9px;">
+                <span style="font-family:'Times New Roman',Times,serif; font-style:italic; font-size:16px; color:{{ k.color }};">{{ k.sym }}</span>
+                <span style="font-family:'Martian Mono',monospace; font-size:13px;">{{ k.value }}</span>
+                <span style="font-family:'Martian Mono',monospace; font-size:9px; letter-spacing:0.1em; color:#7C766A;">{{ k.unit }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 2d PANEL ============ -->
+    <div id="2d" style="width:660px; display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-family:'Martian Mono',monospace; font-size:12px; font-weight:600; background:#F2C230; color:#1A1917; padding:4px 9px; border:1px solid #1A1917;">2d</span>
+        <span style="font-size:19px; font-weight:600;">Panel</span>
+        <span style="font-size:16px; color:#7C766A;">Each knob is a screened front-panel module. Least minimal.</span>
+      </div>
+      <div style="background:#EDE9E0; border:1px solid #1A1917; padding:26px 30px 30px; display:flex; flex-direction:column; gap:24px;">
+        <div style="font-family:'Times New Roman',Times,serif; font-size:23px; color:#1A1917;"><i style="color:#B0553B;">x</i>[<i style="color:#2B4BD6;">n</i>] = <i style="color:#1F7A6E;">A</i> cos(2π<i style="color:#8A6A00;">f</i><i style="color:#2B4BD6;">n</i><i style="color:#4A7A2B;">T</i> + <i style="color:#2B4BD6;">φ</i>)</div>
+        <div style="display:flex; gap:16px;">
+          <sc-for list="{{ knobs }}" as="k" hint-placeholder-count="3">
+            <div style="flex:1; background:#F6F3EC; border:1px solid #1A1917; box-shadow:3px 3px 0 rgba(26,25,23,0.12); display:flex; flex-direction:column;">
+              <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-bottom:1px solid #D5CFC2;">
+                <span style="font-family:'Times New Roman',Times,serif; font-style:italic; font-size:17px; color:{{ k.color }};">{{ k.sym }}</span>
+                <span style="font-family:'Martian Mono',monospace; font-size:9px; letter-spacing:0.14em; color:#7C766A;">{{ k.label }}</span>
+                <div style="flex:1"></div>
+                <div style="width:8px; height:8px; background:{{ k.color }};"></div>
+              </div>
+              <div style="padding:16px 10px 10px; display:grid; place-items:center; cursor:ns-resize; user-select:none; touch-action:none;" onPointerDown="{{ k.onDown }}">
+                <svg viewBox="0 0 100 100" style="width:98px; height:98px;">
+                  <g stroke="#B3ADA0">
+                    <sc-for list="{{ ticks }}" as="t" hint-placeholder-count="11">
+                      <line x1="{{ t.x1 }}" y1="{{ t.y1 }}" x2="{{ t.x2 }}" y2="{{ t.y2 }}" stroke-width="{{ t.w }}"></line>
+                    </sc-for>
+                  </g>
+                  <path d="{{ arcPath }}" fill="none" stroke="#D5CFC2" stroke-width="3.5"></path>
+                  <path d="{{ arcPath }}" fill="none" stroke="{{ k.color }}" stroke-width="3.5" stroke-dasharray="{{ k.dash }}"></path>
+                  <circle cx="50" cy="50" r="27" fill="#1A1917"></circle>
+                  <circle cx="50" cy="50" r="21" fill="none" stroke="#3A3833" stroke-width="1"></circle>
+                  <g transform="rotate({{ k.angle }} 50 50)">
+                    <line x1="50" y1="45" x2="50" y2="28" stroke="{{ k.capPointer }}" stroke-width="3" stroke-linecap="square"></line>
+                  </g>
+                </svg>
+              </div>
+              <div style="display:flex; justify-content:space-between; padding:0 12px 8px; font-family:'Martian Mono',monospace; font-size:8px; letter-spacing:0.12em; color:#B3ADA0;">
+                <span>MIN</span><span>MAX</span>
+              </div>
+              <div style="border-top:1px solid #1A1917; background:#EDE9E0; padding:9px 10px; display:flex; align-items:baseline; justify-content:center; gap:7px;">
+                <span style="font-family:'Martian Mono',monospace; font-size:15px; letter-spacing:0.02em;">{{ k.value }}</span>
+                <span style="font-family:'Martian Mono',monospace; font-size:9px; letter-spacing:0.1em; color:#7C766A;">{{ k.unit }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section style="display:flex; flex-direction:column; gap:28px; padding:48px 56px 96px;">
 
   <div style="display:flex; align-items:baseline; gap:16px; flex-wrap:wrap;">
@@ -524,10 +675,74 @@
 </section>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;sweepDeg&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:270,&quot;min&quot;:200,&quot;max&quot;:330,&quot;step&quot;:10,&quot;unit&quot;:&quot;°&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Knobs&quot;}}">
+const PARAMS = [
+  { id: 'A',   sym: 'A', label: 'AMP',   unit: '',    color: '#1F7A6E', min: -1,  max: 1,     fmt: (v) => v.toFixed(3) },
+  { id: 'f',   sym: 'f', label: 'FREQ',  unit: 'HZ',  color: '#8A6A00', min: 20,  max: 2000,  fmt: (v) => Math.round(v).toString() },
+  { id: 'phi', sym: 'φ', label: 'PHASE', unit: 'RAD', color: '#2B4BD6', min: 0,   max: 6.283, fmt: (v) => v.toFixed(2) }
+];
+const R = 42, CX = 50, CY = 50;
+const pol = (deg, r) => [CX + r * Math.sin(deg * Math.PI / 180), CY - r * Math.cos(deg * Math.PI / 180)];
+
 class Component extends DCLogic {
+  state = { A: 0.72, f: 0.34, phi: 0.55, drag: null };
+
+  componentDidMount() {
+    window.addEventListener('pointermove', this.onMove);
+    window.addEventListener('pointerup', this.onUp);
+  }
+  componentWillUnmount() {
+    window.removeEventListener('pointermove', this.onMove);
+    window.removeEventListener('pointerup', this.onUp);
+  }
+  onMove = (e) => {
+    const d = this.state.drag;
+    if (!d) return;
+    const span = e.shiftKey ? 900 : 220;
+    const t = Math.max(0, Math.min(1, d.t + (d.y - e.clientY) / span));
+    this.setState({ [d.id]: t });
+  };
+  onUp = () => { if (this.state.drag) this.setState({ drag: null }); };
+  start = (id) => (e) => {
+    e.preventDefault();
+    this.setState({ drag: { id, y: e.clientY, t: this.state[id] } });
+  };
+
   renderVals() {
+    const sweep = this.props.sweepDeg ?? 270;
+    const half = sweep / 2;
+    const [sx, sy] = pol(-half, R);
+    const [ex, ey] = pol(half, R);
+    const total = 2 * Math.PI * R * (sweep / 360);
+    const ticks = [];
+    const n = 10;
+    for (let i = 0; i <= n; i++) {
+      const a = -half + (sweep * i) / n;
+      const long = i === 0 || i === n || i === n / 2;
+      const [x1, y1] = pol(a, long ? 32 : 35);
+      const [x2, y2] = pol(a, 40);
+      ticks.push({ x1, y1, x2, y2, w: long ? 1.6 : 1 });
+    }
+    const knobs = PARAMS.map((p) => {
+      const t = this.state[p.id];
+      const angle = -half + t * sweep;
+      const filled = total * t;
+      const [dx, dy] = pol(angle, R);
+      const active = this.state.drag && this.state.drag.id === p.id;
+      return {
+        ...p,
+        t, angle,
+        value: p.fmt(p.min + t * (p.max - p.min)),
+        dash: filled.toFixed(2) + ' ' + (total - filled + 2).toFixed(2),
+        dotX: dx, dotY: dy,
+        pointer: active ? '#8A6A00' : '#1A1917',
+        capPointer: active ? '#FFD34D' : '#F2C230',
+        onDown: this.start(p.id)
+      };
+    });
     return {
+      knobs, ticks,
+      arcPath: `M${sx.toFixed(2)} ${sy.toFixed(2)} A ${R} ${R} 0 ${sweep > 180 ? 1 : 0} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`,
       sketches: [
         { name: 'dft-basis-sweep', lang: 'JS', kind: 'WAVEFORM', when: '2M AGO' },
         { name: 'window-shapes', lang: 'JS', kind: 'ENVELOPE', when: 'YESTERDAY' },

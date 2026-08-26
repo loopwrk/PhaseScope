@@ -70,9 +70,30 @@
     --sketch-syntax-plain: var(--text); /* #1a1917 */
     --sketch-console-text: oklch(0.4616 0.0137 84.59); /* #5c5850 - mobile output line */
 
+    /* --- Maths variable colours ---
+       One ink colour per symbol in the equation above the canvas, handed
+       out in order of first appearance. These are the swatch palette's
+       hues taken down to ink weight: the pastels themselves are
+       background colours and read far too pale as text on paper, so each
+       keeps its hue and drops in lightness until it clears 4.5:1 against
+       --surface. */
+    --sketch-var-1: oklch(0.526 0.1129 72.42); /* #925e00 - tan, from #efbc7b */
+    --sketch-var-2: oklch(0.53 0.14 279.41); /* #5d5fba - periwinkle, from #bbbfdd */
+    --sketch-var-3: oklch(0.51 0.0925 180.63); /* #007769 - teal, from #64c4b3 */
+    --sketch-var-4: oklch(0.522 0.1072 90.89); /* #816600 - gold, from #e3c672 */
+    --sketch-var-5: oklch(0.514 0.1256 122.2); /* #5b7200 - pale green, from #d8ecac */
+    --sketch-var-6: oklch(0.515 0.115 342); /* #934a7a - plum; the slate this replaced was
+       indistinguishable from var-3 at swatch size (OKLab dE 0.034) */
+    --sketch-var-7: oklch(0.536 0.14 43.55); /* #ad4c1c - salmon, from #eaa081 */
+
     /* --- Shadows: hard offsets, never a blur --- */
     --sketch-shadow-card: 5px 5px 0 color-mix(in oklch, var(--text) 12%, transparent);
     --sketch-shadow-card-sm: 4px 4px 0 color-mix(in oklch, var(--text) 12%, transparent);
+    --sketch-shadow-knob: 3px 3px 0 color-mix(in oklch, var(--text) 12%, transparent);
+
+    /* --- Knob --- */
+    --sketch-knob-cap: var(--text); /* #1a1917 - solid ink cap */
+    --sketch-knob-lip: oklch(0.3138 0.0053 84.59); /* #3a3833 - machined lip ring */
 
     /* --- Font families --- */
     --font-sans: 'Bricolage Grotesque Variable', system-ui, -apple-system, sans-serif;
@@ -168,4 +189,57 @@
 .sketch-grid-dots {
     background-image: radial-gradient(var(--sketch-grid-dot) 1px, transparent 1px);
     background-size: 22px 22px;
+}
+
+/* Maths variables. The colour is set per element by
+   highlightVariables(); colouring the glyph itself leaves KaTeX's
+   metrics untouched, so the equation never reflows. */
+.sketch-theme .sketch-var {
+    color: var(--sketch-var);
+}
+
+/* Inline param inputs inside the equation. Styled as a fill-in-the-blank
+   rule rather than a box, so the equation still reads as an equation:
+   KaTeX's own digit font, ink text, one hairline underline that firms up
+   on hover. The theme's focus ring takes over from there.
+
+   ns-resize advertises the drag; once focused the caret is what matters,
+   so it hands back to a text cursor. touch-action keeps a touch drag
+   scrubbing the value instead of scrolling the block. */
+.sketch-theme .sketch-param-input {
+    cursor: ns-resize;
+    touch-action: none;
+    font-family: KaTeX_Main, var(--font-sans);
+    font-size: inherit;
+    color: inherit;
+    text-align: center;
+    background-color: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--border-strong);
+    border-radius: 0;
+    padding: 0 0.08em;
+    /* KaTeX sets its own line-height; matching it keeps the baseline. */
+    line-height: inherit;
+}
+
+.sketch-theme .sketch-param-input:hover {
+    background-color: var(--surface-elevated);
+}
+
+.sketch-theme .sketch-param-input:focus {
+    cursor: text;
+}
+
+/* Locked while the sketch is playing - still readable, plainly not editable. */
+.sketch-theme .sketch-param-input:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+    border-bottom-style: dashed;
+}
+
+/* The number spinners Safari and Firefox add would crowd the glyphs. */
+.sketch-theme .sketch-param-input::-webkit-outer-spin-button,
+.sketch-theme .sketch-param-input::-webkit-inner-spin-button {
+    appearance: none;
+    margin: 0;
 }

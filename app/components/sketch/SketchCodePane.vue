@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import TabStrip from '../ds/TabStrip.vue';
 import StatusDot from '../ds/StatusDot.vue';
 import SketchEditor from './SketchEditor.vue';
-import SketchMathsPreview from './SketchMathsPreview.vue';
+import SketchParamsBar from './SketchParamsBar.vue';
 import type { SketchLanguage } from '~/utils/sketch/model';
 
 const props = defineProps<{
@@ -12,6 +12,8 @@ const props = defineProps<{
     /* mobile: full-width stack - RUN cell pinned in the tab strip, code
        one step smaller (13/1.7 via the token overrides below). */
     mobile?: boolean;
+    /* Parameter names the PARAMS strip must not let anyone edit. */
+    lockedParams?: readonly string[];
 }>();
 const emit = defineEmits<{ run: [] }>();
 const code = defineModel<string>('code', { default: '' });
@@ -64,8 +66,8 @@ const editorLanguage = computed(() =>
             </template>
         </TabStrip>
 
+        <SketchParamsBar v-model="maths" :locked="props.lockedParams" />
         <SketchEditor v-model="active" :language="editorLanguage" />
-        <SketchMathsPreview v-if="activeTab === 'maths'" :source="maths" />
 
         <footer class="flex items-center gap-3.5 border-t border-(--border-strong) bg-(--surface) px-4 py-2.5">
             <span

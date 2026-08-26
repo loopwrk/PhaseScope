@@ -6,6 +6,8 @@
 import { useMediaQuery } from '@vueuse/core';
 import { byRecency, relativeTimeLabel, type SketchAspect } from '~/utils/sketch/model';
 import { runSketch, type RenderFrame } from '~/utils/sketch/runner';
+import { extractParamRecord } from '~/utils/sketch/params';
+import { LOCKED_WHILE_PLAYING } from '~/utils/sketch/param-ranges';
 
 const route = useRoute();
 const router = useRouter();
@@ -85,18 +87,67 @@ const lastRun = ref<{ ok: boolean; message: string } | null>(null);
 const renderFrame = shallowRef<RenderFrame>();
 const rendering = ref(false);
 
+/* The maths-tab assignments, as the runner reads them. Frozen so a
+   sketch can't write back into the workspace's own state, and computed
+   so the copy is rebuilt when the maths changes rather than per frame -
+   the render loop reads this many times a second. */
+const liveParams = computed(() => Object.freeze(extractParamRecord(maths.value)));
+
+/* A buffer sketch generates its audio once per RUN and plays it as-is, so
+   unlike the canvas it cannot follow a param edit. Remember what the
+   loaded buffer was made from; anything else on screen means the
+   transport is playing something the sketch no longer describes.
+
+   A live sketch has no such gap - params reach the audio thread as they
+   change - so only a code edit can put it out of date. */
+const audioSignature = ref<string | null>(null);
+function sketchSignature(): string {
+    return player.isLive.value ? code.value : JSON.stringify([code.value, liveParams.value]);
+}
+const audioStale = computed(() => audioSignature.value !== null && audioSignature.value !== sketchSignature());
+
+/* The canvas moves with the sound: while it plays, and while it loops.
+   Pause or stop and it freezes on the frame it reached, still on screen.
+   A sketch with no audio has nothing to follow, so it just runs. */
+const animating = computed(() => player.playState.value === 'playing' || player.duration.value === 0);
+
+/* Held only while sound is coming out - paused and stopped both free it. */
+const lockedParams = computed(() => (player.playState.value === 'playing' ? LOCKED_WHILE_PLAYING : []));
+
 async function run() {
     if (!sketch.value) return;
-    const result = await runSketch(sketch.value.language, code.value, player.ensureSampleRate());
+    const result = await runSketch(
+        sketch.value.language,
+        code.value,
+        player.ensureSampleRate(),
+        () => liveParams.value
+    );
     lastRun.value = { ok: result.ok, message: result.message };
     if (!result.ok) return;
-    if (result.channels) {
+    if (result.live) {
+        await player.loadLive(result.live, liveParams.value);
+        audioSignature.value = sketchSignature();
+        void player.play();
+    } else if (result.channels) {
         player.load(result.channels);
+        audioSignature.value = sketchSignature();
         void player.play();
     }
     renderFrame.value = result.renderFrame;
     rendering.value = Boolean(result.renderFrame);
 }
+
+/* The one line that makes a value editable mid-note: every param change
+   goes straight to the audio thread. Ignored for buffer sketches. */
+watch(liveParams, (params) => player.setLiveParams(params));
+
+/* A live voice that throws cannot fail the run - it was already playing. */
+watch(
+    () => player.liveError.value,
+    (message) => {
+        if (message) lastRun.value = { ok: false, message: `live: ${message}` };
+    }
+);
 
 function onRenderError(message: string) {
     rendering.value = false;
@@ -266,10 +317,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <template v-if="sketch && isMobile">
             <SketchCanvasPane
                 v-model:aspect="aspect"
+                v-model:maths="maths"
+                :locked-params="lockedParams"
                 compact
                 :preferred-ratio="sketch.preferredRatio"
                 :render-frame="renderFrame"
                 :running="rendering"
+                :animating="animating"
+                :repaint-key="liveParams"
                 @capture="onCapture"
                 @render-error="onRenderError"
             />
@@ -283,6 +338,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 :sample-rate="player.sampleRate.value"
                 :channel-count="player.channelCount.value"
                 :loop="player.loop"
+                :stale="audioStale"
                 @play="player.play()"
                 @pause="player.pause()"
                 @stop="player.stop()"
@@ -294,6 +350,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 v-model:code="code"
                 v-model:maths="maths"
                 v-model:notes="notes"
+                :locked-params="lockedParams"
                 mobile
                 :language="sketch.language"
                 :result="lastRun"
@@ -307,14 +364,19 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     v-model:code="code"
                     v-model:maths="maths"
                     v-model:notes="notes"
+                    :locked-params="lockedParams"
                     :language="sketch.language"
                     :result="lastRun"
                 />
                 <SketchCanvasPane
                     v-model:aspect="aspect"
+                    v-model:maths="maths"
+                    :locked-params="lockedParams"
                     :preferred-ratio="sketch.preferredRatio"
                     :render-frame="renderFrame"
                     :running="rendering"
+                    :animating="animating"
+                    :repaint-key="liveParams"
                     @capture="onCapture"
                     @render-error="onRenderError"
                 />
@@ -328,6 +390,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 :sample-rate="player.sampleRate.value"
                 :channel-count="player.channelCount.value"
                 :loop="player.loop"
+                :stale="audioStale"
                 @play="player.play()"
                 @pause="player.pause()"
                 @stop="player.stop()"

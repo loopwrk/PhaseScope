@@ -3,7 +3,7 @@
    when nothing is on the bench. The whole viewport is a drop target; a
    dropped audio file currently just seeds a named sketch. */
 import { byRecency, languageCounts, type Sketch, type SketchLanguage } from '~/utils/sketch/model';
-import type { SketchStarter } from '~/utils/sketch/starters';
+import { SKETCH_STARTERS, type SketchStarter } from '~/utils/sketch/starters';
 
 useSeoMeta({ title: 'Sketch' });
 
@@ -41,6 +41,10 @@ function fromStarter(starter: SketchStarter) {
     createAndOpen(starter.seed);
 }
 
+/* Starters stay reachable once the bench has sketches (the empty-state
+   card is gone then) - the NEW button grows a ▾ menu of them. */
+const startersOpen = ref(false);
+
 function onKeydown(e: KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'n') {
         e.preventDefault();
@@ -67,7 +71,36 @@ function onDrop(e: DragEvent) {
             <span class="font-mono text-caption tracking-label text-(--text-muted)">/ SKETCHES</span>
         </template>
         <template #actions>
-            <DsButton variant="sketch-primary" size="sm" @click="createAndOpen()">New ⌘N</DsButton>
+            <div class="relative flex items-stretch">
+                <DsButton variant="sketch-primary" size="sm" @click="createAndOpen()">New ⌘N</DsButton>
+                <button
+                    type="button"
+                    class="-ml-px cursor-pointer border border-(--border-strong) bg-(--accent) px-1.5 font-mono text-caption transition-colors duration-(--motion-duration-fast) hover:bg-(--sketch-accent-hover)"
+                    aria-label="New from a starter"
+                    :aria-expanded="startersOpen"
+                    @click="startersOpen = !startersOpen"
+                >
+                    ▾
+                </button>
+                <menu
+                    v-if="startersOpen"
+                    class="absolute top-full right-0 z-20 m-0 mt-1 flex min-w-56 list-none flex-col border border-(--border-strong) bg-(--surface-elevated) p-0 shadow-(--sketch-shadow-card-sm)"
+                    @mouseleave="startersOpen = false"
+                >
+                    <li v-for="starter in SKETCH_STARTERS" :key="starter.label">
+                        <button
+                            type="button"
+                            class="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-left hover:bg-(--surface)"
+                            @click="startersOpen = false; fromStarter(starter)"
+                        >
+                            <span class="w-[30px] shrink-0 font-mono text-(length:--sketch-font-size-micro) tracking-label uppercase">
+                                {{ starter.language }}
+                            </span>
+                            <span class="text-detail">{{ starter.label }}</span>
+                        </button>
+                    </li>
+                </menu>
+            </div>
         </template>
 
         <div

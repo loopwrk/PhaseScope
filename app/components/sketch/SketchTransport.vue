@@ -20,6 +20,9 @@ const props = defineProps<{
     /* compact: the mobile band - play + loop cells, 24px well, short
        readout; no stop, meter or caption row. */
     compact?: boolean;
+    /* The loaded buffer no longer matches the sketch - the canvas follows
+       param edits live, audio only regenerates on RUN. */
+    stale?: boolean;
 }>();
 const emit = defineEmits<{
     play: [];
@@ -176,11 +179,21 @@ function segmentClass(index: number, lit: number): string {
             </div>
             <div
                 v-if="!compact"
-                class="flex justify-between font-mono text-(length:--sketch-font-size-micro) tracking-label text-(--text-muted)"
+                class="flex justify-between gap-3 font-mono text-(length:--sketch-font-size-micro) tracking-label text-(--text-muted)"
             >
                 <span>LOOP {{ formatLoopLabel(loop.start) }} — {{ formatLoopLabel(loop.end) }}</span>
+                <span v-if="stale" role="status" class="truncate text-(--sketch-accent-ink)">
+                    Audio out of date · Run ⏎
+                </span>
                 <span>{{ (sampleRate / 1000).toFixed(1) }} KHZ · {{ channelCount === 1 ? 'MONO' : 'STEREO' }}</span>
             </div>
+            <span
+                v-else-if="stale"
+                role="status"
+                class="font-mono text-(length:--sketch-font-size-nano) tracking-label text-(--sketch-accent-ink) uppercase"
+            >
+                Audio out of date · Run
+            </span>
         </div>
 
         <span

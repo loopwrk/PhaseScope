@@ -3,7 +3,11 @@ withDefaults(defineProps<{ compact?: boolean }>(), { compact: false });
 </script>
 
 <template>
-    <div class="sketch-theme flex min-h-dvh flex-col border border-(--border-strong) bg-(--surface)">
+    <!-- h-dvh, not min-h-dvh: the workspace distributes a definite height
+         down through min-h-0 flex children. With only a min-height nothing
+         in the chain is definite, so a long code tab inflates the whole
+         page and pushes the canvas off the bottom. -->
+    <div class="sketch-theme flex h-dvh flex-col border border-(--border-strong) bg-(--surface)">
         <!-- #header replaces the whole bar (the mobile workspace brings its own) -->
         <slot name="header">
             <header
@@ -23,7 +27,8 @@ withDefaults(defineProps<{ compact?: boolean }>(), { compact: false });
                 </NuxtLink>
             </header>
         </slot>
-        <main class="flex min-h-0 flex-1 flex-col">
+        <!-- The workspace fills exactly; the library scrolls inside here. -->
+        <main class="flex min-h-0 flex-1 flex-col overflow-y-auto">
             <slot />
         </main>
     </div>
