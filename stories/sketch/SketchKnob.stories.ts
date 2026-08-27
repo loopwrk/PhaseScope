@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 import SketchKnob from '../../app/components/sketch/SketchKnob.vue';
+import SketchDockableCard from '../../app/components/sketch/SketchDockableCard.vue';
 import { sketchTheme } from '../sketchTheme';
 
 const meta: Meta<typeof SketchKnob> = {
@@ -23,7 +24,7 @@ const meta: Meta<typeof SketchKnob> = {
         taper: 'linear',
         sweep: 270,
         disabled: false,
-        dense: false,
+        dense: true,
     },
 };
 
@@ -140,8 +141,8 @@ export const Sweep: Story = {
     }),
 };
 
-/* Same box, same rotary, same labels - only the padding gives. This is
-   what the workspace column uses, where every pixel is spoken for. */
+/* Same box, same rotary, same labels - only the padding gives. Dense is
+   the default; the roomier spacing from KNOB.md is opt-in. */
 export const Dense: Story = {
     render: () => ({
         components: { SketchKnob },
@@ -154,10 +155,61 @@ export const Dense: Story = {
         },
         template: `
       <div style="display:flex; gap:16px; align-items:flex-start; width:440px">
-        <div style="flex:1; min-width:0"><SketchKnob v-model="a" :min="0" :max="1" symbol="A" label="DEFAULT"
+        <div style="flex:1; min-width:0"><SketchKnob v-model="a" :min="0" :max="1" symbol="A" label="ROOMY" :dense="false"
           :color="colours.A" :format="(v) => v.toFixed(3)" /></div>
-        <div style="flex:1; min-width:0"><SketchKnob v-model="b" :min="0" :max="1" symbol="A" label="DENSE" dense
+        <div style="flex:1; min-width:0"><SketchKnob v-model="b" :min="0" :max="1" symbol="A" label="DEFAULT"
           :color="colours.A" :format="(v) => v.toFixed(3)" /></div>
+      </div>
+    `,
+    }),
+};
+
+/* Pull a card out of the dock by its label strip, drop it back on the
+   dock to re-seat it. The rotary keeps its own vertical drag, which is
+   the whole reason the grip is the strip and not the card. Floating cards
+   are teleported to <body>, so nothing clips them, and they cannot be
+   dragged off screen. */
+export const Dockable: Story = {
+    render: () => ({
+        components: { SketchKnob, SketchDockableCard },
+        setup() {
+            const amp = ref(0.44);
+            const freq = ref(693);
+            const placements = ref<Record<string, { x: number; y: number } | null>>({ A: null, f: null });
+            const zOrder = ref<Record<string, number>>({});
+            let nextZ = 50;
+            const dock = ref<HTMLElement>();
+
+            /* Same rule the workspace uses: dropped over the dock, it docks. */
+            function onDrop(name: string, point: { x: number; y: number }) {
+                const r = dock.value?.getBoundingClientRect();
+                if (!r) return;
+                const inside = point.x >= r.left && point.x <= r.right && point.y >= r.top && point.y <= r.bottom;
+                if (inside) placements.value[name] = null;
+            }
+            return { amp, freq, placements, zOrder, dock, onDrop, grab: (n: string) => (zOrder.value[n] = ++nextZ) };
+        },
+        template: `
+      <div style="width:520px">
+        <div ref="dock" style="display:flex; gap:16px; padding:14px; border:1px dashed var(--border)">
+          <div style="flex:1; min-width:0">
+            <SketchDockableCard v-model="placements.A" :z="zOrder.A ?? 50"
+              @grab="grab('A')" @drop="onDrop('A', $event)">
+              <SketchKnob v-model="amp" :min="0" :max="1" symbol="A" label="AMP" dense
+                :color="'var(--sketch-var-3)'" :format="(v) => v.toFixed(3)" />
+            </SketchDockableCard>
+          </div>
+          <div style="flex:1; min-width:0">
+            <SketchDockableCard v-model="placements.f" :z="zOrder.f ?? 50"
+              @grab="grab('f')" @drop="onDrop('f', $event)">
+              <SketchKnob v-model="freq" :min="20" :max="3000" taper="log" symbol="f" label="FREQ" unit="HZ" dense
+                :color="'var(--sketch-var-4)'" :format="(v) => String(Math.round(v))" />
+            </SketchDockableCard>
+          </div>
+        </div>
+        <p style="margin-top:12px; font-family:var(--font-mono); font-size:10px; color:var(--text-muted)">
+          drag a label strip out of the dashed dock, drop it back inside to re-seat
+        </p>
       </div>
     `,
     }),

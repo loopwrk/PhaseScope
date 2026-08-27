@@ -43,11 +43,14 @@ const props = withDefaults(
         sweep?: number;
         taper?: KnobTaper;
         disabled?: boolean;
-        /* Same box, same rotary, same labels - the padding gives instead.
-           Saves ~50px of column height per card. */
+        /* Same box, same rotary, same labels - the padding gives instead,
+           saving ~50px of column height per card. Dense is the default:
+           KNOB.md's roomier padding is a knob standing on its own, and in
+           practice these live several to a row in a column that is already
+           short. Pass :dense="false" for the spec's spacing. */
         dense?: boolean;
     }>(),
-    { unit: '', color: 'var(--accent)', sweep: KNOB_DEFAULT_SWEEP, taper: 'linear', disabled: false, dense: false }
+    { unit: '', color: 'var(--accent)', sweep: KNOB_DEFAULT_SWEEP, taper: 'linear', disabled: false, dense: true }
 );
 
 const range = computed(() => ({ min: props.min, max: props.max, taper: props.taper, step: props.step }));
@@ -160,12 +163,22 @@ function commitDraft() {
         class="flex flex-col border border-(--border-strong) bg-(--surface-elevated) shadow-(--sketch-shadow-knob)"
         :class="disabled && 'opacity-40'"
     >
-        <div class="flex items-center gap-2 border-b border-(--border)" :class="dense ? 'px-2 py-1' : 'px-2.5 py-2'">
+        <!-- data-sketch-grip: the drag handle when this card is floating.
+             It is the label strip on purpose - the rotary below owns the
+             vertical drag, so the two gestures must not share a surface. -->
+        <div
+            data-sketch-grip
+            class="flex items-center gap-2 border-b border-(--border)"
+            :class="dense ? 'px-2 py-1' : 'px-2.5 py-2'"
+        >
             <span class="text-[17px] leading-none italic" :style="{ color, fontFamily: 'KaTeX_Math, serif' }">
                 {{ symbol }}
             </span>
             <span class="font-mono text-[9px] tracking-[0.14em] text-(--text-muted) uppercase">{{ label }}</span>
             <span class="flex-1" />
+            <!-- Neutral extension point: the knob knows nothing about
+                 docking, but the card wrapping it puts its handle here. -->
+            <slot name="action" />
             <span class="size-2 shrink-0" :style="{ backgroundColor: color }" aria-hidden="true" />
         </div>
 

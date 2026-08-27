@@ -243,3 +243,37 @@
     appearance: none;
     margin: 0;
 }
+
+/* A card that can be pulled out of its row. The grip is the only part that
+   drags - everything else keeps whatever gesture it already had. The grab
+   cursor is on the DOCKED card too: it is the only thing that says the
+   strip can be grabbed before you have grabbed it. */
+.sketch-dockable [data-sketch-grip] {
+    cursor: grab;
+}
+
+.sketch-dockable[data-dragging='true'] [data-sketch-grip] {
+    cursor: grabbing;
+}
+
+/* The handle button sits in the label strip and only shows itself on
+   hover or focus, so a resting row of knobs stays as drawn. */
+.sketch-dockable [data-sketch-handle] {
+    opacity: 0;
+    transition: opacity var(--motion-duration-fast) ease;
+}
+
+.sketch-dockable:hover [data-sketch-handle],
+.sketch-dockable [data-sketch-handle]:focus,
+.sketch-floating [data-sketch-handle] {
+    opacity: 1;
+}
+
+/* :focus, not :focus-visible - a control that is invisible at rest has to
+   appear for any focus at all, or a keyboard lands on something nobody
+   can see. */
+
+/* Lifted off the page while it is being moved. Hard offset, no blur. */
+.sketch-floating[data-dragging='true'] {
+    --sketch-shadow-knob: 6px 6px 0 color-mix(in oklch, var(--text) 18%, transparent);
+}

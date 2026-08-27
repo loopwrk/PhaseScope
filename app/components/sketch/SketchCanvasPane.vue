@@ -6,12 +6,14 @@
    error the loop stops and the last good frame stays up, per spec. The
    px readout reports the canvas backing size. Corner labels are chrome
    the sketch will be able to set later - static mock values for now. */
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import SegmentedControl from '../ds/SegmentedControl.vue';
 import IconButton from '../ds/IconButton.vue';
 import SketchMathsPreview from './SketchMathsPreview.vue';
 import SketchKnob from './SketchKnob.vue';
+import SketchDockableCard from './SketchDockableCard.vue';
 import { createFrameClock } from '~/utils/sketch/frame-clock';
+import { readPlacements, type Point } from '~/utils/sketch/floating';
 import { extractParams, nameForGlyph, setParamValue } from '~/utils/sketch/params';
 import { formatFor, knobsFor } from '~/utils/sketch/param-ranges';
 import type { SketchAspect } from '~/utils/sketch/model';
@@ -79,6 +81,71 @@ function knobColour(name: string): string {
 }
 const isLocked = (name: string) => (props.lockedParams ?? []).includes(name);
 
+/* Where each knob is: absent means docked in the row, a point means
+   floating there.
+
+   Persisted globally rather than per sketch, and keyed by parameter name:
+   this is a workspace preference, not sketch content. Pull the frequency
+   knob out once and it stays out for every sketch that has an `f`, the
+   way a DAW remembers its window layout between projects. Only floating
+   cards are stored - docking deletes the key rather than writing null, so
+   the entry does not linger for every parameter ever seen. */
+const placements = usePersistedState<Record<string, Point>>('sketch:knob-placements', () => ({}));
+const dock = ref<HTMLElement>();
+
+/* Storage is not trusted on the way in; each card then clamps its own
+   restored position once it knows its size (see SketchDockableCard). */
+onMounted(() => {
+    placements.value = readPlacements(placements.value);
+});
+
+/* Most recently grabbed card sits on top. */
+const zOrder = ref<Record<string, number>>({});
+let nextZ = 50;
+function bringToFront(name: string) {
+    zOrder.value = { ...zOrder.value, [name]: ++nextZ };
+}
+
+/* Dropped over the row - dock it again. The row keeps its footprint while
+   cards are away (each leaves a placeholder), so it stays a real target
+   even when every knob has been pulled out. */
+function dockCard(name: string) {
+    /* Rebuilt rather than deleted in place: only floating cards are stored,
+       so the key has to go, not be set to null. */
+    placements.value = Object.fromEntries(Object.entries(placements.value).filter(([key]) => key !== name));
+}
+
+/* An escape hatch, and the only way back if a layout goes wrong - the
+   placements persist, so a bad one would otherwise stay bad. */
+/* The canvas rides in the same placement map as the knobs, under a key no
+   parameter can take (parameter names come from TeX identifiers). */
+const CANVAS_KEY = '@canvas';
+const canvasFloating = computed(() => Boolean(placements.value[CANVAS_KEY]));
+/* The canvas is one size wherever it is - only fullscreen changes it. The
+   well keeps its own dimensions while the canvas is away (it is flex-1,
+   and the placeholder holds its footprint), so the same measurement that
+   sizes it docked also sizes it floating. */
+const surfaceWidth = ref(0);
+
+const floatingCount = computed(() => Object.keys(placements.value).length);
+function dockAll() {
+    placements.value = {};
+}
+
+/* The canvas has no grip while docked, so the toolbar pin is its way out.
+   Done here rather than through the card: the pane already holds the
+   surface element, so it can measure where the canvas is sitting and lift
+   it from exactly there. */
+function toggleCanvas() {
+    if (canvasFloating.value) {
+        dockCard(CANVAS_KEY);
+        return;
+    }
+    const rect = surface.value?.getBoundingClientRect();
+    if (!rect) return;
+    placements.value = { ...placements.value, [CANVAS_KEY]: { x: rect.left, y: rect.top } };
+}
+
 /* A drag emits on every move so the canvas and the audio follow the knob
    live; re-rendering the equation that often is the expensive part, so it
    is held until the values settle (KNOB.md 5). */
@@ -107,7 +174,7 @@ function ratioFor(availableWidth: number, availableHeight: number): number {
 }
 
 function layoutSurface() {
-    if (props.compact || !well.value || !surface.value) return;
+    if (props.compact || !surface.value || !well.value) return;
     const box = getComputedStyle(well.value);
     const availableWidth = Math.max(
         0,
@@ -121,6 +188,7 @@ function layoutSurface() {
     const width = Math.max(1, Math.min(availableWidth, MAX_SURFACE_WIDTH, availableHeight * ratio));
     surface.value.style.width = `${width}px`;
     surface.value.style.height = `${width / ratio}px`;
+    surfaceWidth.value = width;
 }
 
 onMounted(() => {
@@ -137,7 +205,9 @@ onMounted(() => {
     fitCanvas();
 });
 
-watch([aspect, () => props.preferredRatio], () => {
+watch([aspect, () => props.preferredRatio, canvasFloating], async () => {
+    /* Wait for the teleport to settle before measuring the new home. */
+    await nextTick();
     layoutSurface();
     fitCanvas();
 });
@@ -217,7 +287,6 @@ function capture() {
 function fullscreen() {
     void surface.value?.requestFullscreen?.();
 }
-
 </script>
 
 <template>
@@ -248,7 +317,6 @@ function fullscreen() {
                     :color="knobColour(knob.name)"
                     :format="formatFor(knob)"
                     :disabled="isLocked(knob.name)"
-                    dense
                     @update:model-value="commitParam(knob.name, $event)"
                 />
             </div>
@@ -278,6 +346,23 @@ function fullscreen() {
                 {{ surfaceSize }}
             </span>
             <IconButton
+                :icon="canvasFloating ? 'i-lucide-lock-open' : 'i-lucide-lock'"
+                variant="sketch"
+                size="xs"
+                :aria-label="canvasFloating ? 'Lock canvas back in place' : 'Unlock canvas'"
+                :title="canvasFloating ? 'Lock the canvas back into the well' : 'Unlock the canvas to move it'"
+                @click="toggleCanvas"
+            />
+            <IconButton
+                v-if="floatingCount"
+                icon="i-lucide-layout-grid"
+                variant="sketch"
+                size="xs"
+                :aria-label="`Dock all ${floatingCount} floating knobs`"
+                title="Dock all knobs"
+                @click="dockAll"
+            />
+            <IconButton
                 icon="i-lucide-maximize-2"
                 variant="sketch"
                 size="xs"
@@ -300,32 +385,94 @@ function fullscreen() {
             @colours="equationColours = $event"
         />
 
-        <div v-if="knobs.length" class="flex flex-wrap gap-4 border-b border-(--border) px-4 py-3.5">
+        <div v-if="knobs.length" ref="dock" class="flex flex-wrap gap-4 border-b border-(--border) px-4 py-3.5">
             <div
                 v-for="knob in knobs"
                 :key="knob.name"
                 class="min-w-0 flex-1 basis-[190px]"
                 :title="isLocked(knob.name) ? 'Locked while playing' : undefined"
             >
-                <SketchKnob
-                    :model-value="knob.value"
-                    :min="knob.min"
-                    :max="knob.max"
-                    :step="knob.step"
-                    :symbol="knob.symbol"
-                    :label="knob.label"
-                    :unit="knob.unit"
-                    :taper="knob.taper"
-                    :color="knobColour(knob.name)"
-                    :format="formatFor(knob)"
-                    :disabled="isLocked(knob.name)"
-                    dense
-                    @update:model-value="commitParam(knob.name, $event)"
-                />
+                <SketchDockableCard
+                    v-slot="{ floating, toggle, onHandleKeydown }"
+                    v-model="placements[knob.name]"
+                    :z="zOrder[knob.name] ?? 50"
+                    @grab="bringToFront(knob.name)"
+                    @dock="dockCard(knob.name)"
+                >
+                    <SketchKnob
+                        :model-value="knob.value"
+                        :min="knob.min"
+                        :max="knob.max"
+                        :step="knob.step"
+                        :symbol="knob.symbol"
+                        :label="knob.label"
+                        :unit="knob.unit"
+                        :taper="knob.taper"
+                        :color="knobColour(knob.name)"
+                        :format="formatFor(knob)"
+                        :disabled="isLocked(knob.name)"
+                        @update:model-value="commitParam(knob.name, $event)"
+                    >
+                        <template #action>
+                            <button
+                                data-sketch-handle
+                                type="button"
+                                class="grid cursor-pointer place-items-center px-0.5 text-(--text-muted) hover:text-(--text)"
+                                :aria-label="floating ? `Lock ${knob.label} back in place` : `Unlock ${knob.label}`"
+                                :title="
+                                    floating
+                                        ? 'Lock back into the row (or Escape; arrows move it)'
+                                        : 'Unlock to move it - or drag the label strip'
+                                "
+                                @click="toggle"
+                                @keydown="onHandleKeydown"
+                            >
+                                <UIcon
+                                    :name="floating ? 'i-lucide-lock-open' : 'i-lucide-lock'"
+                                    class="size-3"
+                                />
+                            </button>
+                        </template>
+                    </SketchKnob>
+                </SketchDockableCard>
             </div>
         </div>
 
         <div ref="well" class="sketch-grid-dots grid min-h-[150px] flex-1 place-items-center p-[26px]">
+            <SketchDockableCard
+                v-slot="{ floating, toggle, onHandleKeydown }"
+                v-model="placements[CANVAS_KEY]"
+                :width="surfaceWidth"
+                :z="zOrder[CANVAS_KEY] ?? 50"
+                @grab="bringToFront(CANVAS_KEY)"
+                @dock="dockCard(CANVAS_KEY)"
+            >
+                <!-- Only shown once it is out: docked, the canvas keeps the
+                     bare well it has always had, and the toolbar's pin does
+                     the undocking. -->
+                <div
+                    v-if="floating"
+                    data-sketch-grip
+                    class="flex items-center gap-2 border border-b-0 border-(--border-strong) bg-(--surface-elevated) px-2 py-1"
+                >
+                    <span
+                        class="font-mono text-[9px] tracking-[0.14em] text-(--text-muted) uppercase"
+                    >
+                        Canvas
+                    </span>
+                    <span class="flex-1" />
+                    <button
+                        data-sketch-handle
+                        type="button"
+                        class="grid cursor-pointer place-items-center px-0.5 text-(--text-muted) hover:text-(--text)"
+                        aria-label="Lock canvas back in place"
+                        title="Lock back into the well (or Escape; arrows move it)"
+                        @click="toggle"
+                        @keydown="onHandleKeydown"
+                    >
+                        <UIcon name="i-lucide-lock-open" class="size-3" />
+                    </button>
+                </div>
             <!-- width and height are set by layoutSurface() -->
             <div ref="surface" class="relative border border-(--border-strong) bg-(--surface-sunken)">
                 <canvas ref="canvas" class="absolute inset-0 h-full w-full" />
@@ -335,6 +482,7 @@ function fullscreen() {
                 </span>
                 <span class="corner-label absolute right-2.5 bottom-2 text-(--text-muted)">N = 1024</span>
             </div>
+            </SketchDockableCard>
         </div>
     </section>
 </template>
